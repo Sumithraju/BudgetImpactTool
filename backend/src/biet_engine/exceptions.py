@@ -75,3 +75,11 @@ class DisplacementError(EngineError):
     baseline mix in a way redistribution alone can't resolve."""
 
     code = "DISPLACEMENT_NO_HEADROOM"
+
+
+class MissingFxRateError(EngineError):
+    """A currency has no rate in the run's FX snapshot (M7 section 5.5) —
+    raised rather than falling back to a live lookup, since a stored run
+    must be exactly reproducible from its own snapshot."""
+
+    code = "MISSING_FX_RATE"

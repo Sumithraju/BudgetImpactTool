@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
-**M6, M2, M3, M5, M4 done** (§8) · **Deadline:** 2026-09-06
+**M6, M2, M3, M5, M4, M7 done** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -137,7 +137,7 @@ BIET/
 ├── backend/
 │   ├── alembic/                  schema migrations (two, both reversible)
 │   ├── src/biet_api/              ORM models, config, DAL — routes/services not started
-│   ├── src/biet_engine/           pure calculation package — M6,M2,M3,M5,M4 done, M1/M7-M10 not started
+│   ├── src/biet_engine/           pure calculation package — M6,M2,M3,M5,M4,M7 done, M1/M8-M10 not started
 │   └── tests/                     engine/{unit,property,golden}/, test_layering.py
 ├── frontend/                     EMPTY — Phase 3
 └── BI_REPO/                      reference only; see §6
@@ -426,12 +426,47 @@ implies before writing a new price source's transform.
    new patients rather than crashing; the reverse case (a substitution entry naming a therapy not
    in the baseline set) still raises `UnknownTherapyError` as specified. 139 tests total, 100%
    branch coverage across `biet_engine`, mypy --strict and ruff clean.
-9. **Next — M1 (Scenario Workspace) or M7 (Budget Impact Calculator).** M1 is the resolution layer
-   that actually builds `CountryInput`/`TherapyInput` from DB rows + overrides — more
-   backend-flavored (repositories, services) than the pure-engine modules so far. M7 depends on
-   M2-M6, all done, and is the module that finally computes the incremental budget impact number
-   the whole system exists to produce. Build order and the full dependency graph:
-   [docs/modules/README.md](docs/modules/README.md).
+9. ~~**M7 — Budget Impact Calculator**~~ — done. `biet_engine/impact.py::compute_budget_impact`
+   is the definitional core: for every market and year it runs the full M2-M6 chain
+   (`combine_criteria` → `compute_funnel` → `build_market_mix` → `compute_therapy_cost` +
+   `persistence_fraction` per therapy) and executes the **full two-world subtraction**, not the
+   reduced form — the module doc is explicit that the reduced form only holds when M4's
+   displacement floor hasn't bound. The reduced form is used exactly as instructed: as a property
+   test, agreeing with the full form to 1e-6 relative whenever no `SUBSTITUTION_FLOOR` warning
+   fired. Cross-market aggregation converts every market's result to the reporting currency via
+   the run's FX snapshot (pivoting through USD, never a live lookup), and picks the peak year with
+   ties resolving to the earliest (a free consequence of Python's `max()` returning the first
+   maximum encountered, not special-cased). The <200ms / 10-markets-x-5-years latency target is
+   met by a benchmark test — with a plain Python loop, not NumPy, since 50 iterations of already-
+   fast pure functions clears 200ms by a wide margin; vectorising now would be optimising against
+   a guess rather than M9's actual PSA workload, which doesn't exist yet.
+
+   Three real gaps found in the M1/M7 contracts as documented and fixed: `CountryInput` had
+   nowhere to carry `m_without`/`sigma` (M7's own formula needs both directly) — added
+   `baseline_shares`/`substitution`, matching the shape `build_market_mix` already expected.
+   `EngineInput` was missing `fx_snapshot_date` even though `EngineResult` requires one and
+   nothing else could supply it. `Totals` was referenced in M7's contract snippet but never
+   defined anywhere — built from section 5.6's three formulas (`by_year`, `cumulative`,
+   `peak_year`). `YearResult` also gained `net_cost_per_switch`, the same class of addition as
+   M3/M4/M5's warnings fields: section 5.2 explicitly requires it be "expose[d]... in the
+   response" and section 9 names a dedicated frontend component for it.
+
+   One precision note worth remembering: the module doc's own golden-case worked example
+   (net cost per switch EUR 2,452.92) is computed from the **4-decimal-place rounded** persistence
+   fractions in the M6 reference table. This implementation calls `persistence_fraction()` itself
+   and carries the full-precision result through, per section 5.7's "never round intermediate
+   results" — correctly landing about EUR 3,500 away from the doc's rounded figure on a ~€38.2M
+   budget impact (~0.01%). The test asserts the full-precision value, not the doc's rounded one.
+
+   156 tests total (was 139), 100% branch coverage across `biet_engine`, mypy --strict and ruff
+   clean.
+10. **Next — M1 (Scenario Workspace), M8 (Affordability Solver), or M9 (Uncertainty &
+    Sensitivity).** M1 is the resolution layer that actually builds `CountryInput`/`EngineInput`
+    from DB rows + overrides — more backend-flavored (repositories, services) than the pure-engine
+    modules so far, and the only thing standing between this engine and a real API. M8 depends on
+    M5+M7, both done — it's the reverse solve (given an affordability ceiling, find the maximum
+    price). M9 depends on M7+M8. Build order and the full dependency graph:
+    [docs/modules/README.md](docs/modules/README.md).
 10. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).

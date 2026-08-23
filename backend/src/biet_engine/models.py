@@ -9,7 +9,9 @@ calculation that consumes it.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import date
 from enum import StrEnum
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -347,5 +349,88 @@ class CountryInput(BaseModel):
     gdp_pc_ppp: Valued
     funnel: FunnelRates                      # M2
     criteria: tuple[Criterion, ...]          # M3
-    therapies: tuple[TherapyInput, ...]      # M5
+    therapies: tuple[TherapyInput, ...]      # M5, T — excludes new_therapy
     new_therapy: TherapyInput
+    # Not in M1's own abbreviated CountryInput snippet, but M7's formula
+    # (section 5.1) references m_without(t,y) and sigma_t directly, and
+    # nothing else on this model carries them — M4's build_market_mix already
+    # takes exactly this shape as its `baseline`/`substitution` parameters.
+    baseline_shares: Mapping[int, tuple[float, ...]]   # drug_id -> per-year m_without
+    substitution: Substitution                          # M4, sigma
+
+
+class EngineInput(BaseModel):
+    """Everything one calculation run needs, fully resolved. No optional
+    fields, no defaults — this is the boundary past which nothing is looked
+    up (M1's contract, docs/modules/README.md "Shared contracts")."""
+
+    model_config = ConfigDict(frozen=True)
+
+    scenario_id: UUID
+    indication_id: int
+    launch_year: int
+    horizon_years: int = Field(ge=1, le=5)
+    reporting_currency: str
+    fx_rates: Mapping[str, float]
+    # Not in M1's own abbreviated EngineInput snippet. CLAUDE.md non-negotiable
+    # 6 — "FX is snapshotted into the run" — implies the snapshot has a
+    # vintage; M7's EngineResult.fx_snapshot_date has to come from the input
+    # it's reporting on, not be invented at calculation time.
+    fx_snapshot_date: date
+    uptake: UptakeInput                                 # M4 — one trajectory, all markets
+    countries: tuple[CountryInput, ...]
+
+
+# --------------------------------------------------------------------------- M7 — Budget Impact Calculator
+
+
+class YearResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    year: int                                # launch-relative, 1-indexed
+    calendar_year: int                       # launch_year + year - 1, display only
+    uptake: float
+    addressable: float
+    patients_on_new: float
+    cost_without: Money                      # local currency
+    cost_with: Money
+    budget_impact: Money
+    impact_per_patient: Money | None         # None when patients_on_new == 0
+    # Not in M7's own abbreviated contract snippet, but section 5.2 is
+    # explicit that this must be "expose[d]... in the response; it is the
+    # single most explanatory number in the model" — and section 9 names a
+    # dedicated frontend component for it (NetCostPerSwitchCard).
+    net_cost_per_switch: Money               # local currency, section 5.2's bracketed term
+
+
+class CountryResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    country_code: str
+    currency: str
+    funnel: FunnelResult                     # year 1's funnel — years[].addressable carries the rest
+    years: tuple[YearResult, ...]
+    cumulative_budget_impact: Money
+
+
+class Totals(BaseModel):
+    """Cross-market aggregation, in the reporting currency — not in M7's
+    abbreviated contract snippet (which references `Totals` without defining
+    it), but section 5.6 fully specifies the three quantities it must hold."""
+
+    model_config = ConfigDict(frozen=True)
+
+    by_year: tuple[Money, ...]               # Total(y)
+    cumulative: Money
+    peak_year: int                           # argmax Total(y); ties resolve to the earliest
+
+
+class EngineResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    engine_version: str
+    reporting_currency: str
+    fx_snapshot_date: date
+    countries: tuple[CountryResult, ...]
+    totals: Totals                           # reporting currency
+    warnings: tuple[Warning_, ...]

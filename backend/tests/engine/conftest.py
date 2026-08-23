@@ -8,17 +8,23 @@ biet-backend skill ("extract on the second occurrence").
 
 from __future__ import annotations
 
-from biet_engine.constants import CriterionType, PriceBasis
+from datetime import date
+from uuid import uuid4
+
+from biet_engine.constants import CriterionType, PriceBasis, UptakeCurve
 from biet_engine.models import (
     ConfidenceTier,
     CountryInput,
     Criterion,
+    EngineInput,
     FunnelRates,
     Money,
     Provenance,
     Regimen,
     ResolutionLevel,
+    Substitution,
     TherapyInput,
+    UptakeInput,
     Valued,
 )
 
@@ -108,6 +114,12 @@ def make_country_input(
     diagnosis_rate: float = 0.600,
     treatment_rate: float = 0.150,
     access_rate: float = 0.700,
+    horizon: int = 3,
+    baseline_shares: dict[int, tuple[float, ...]] | None = None,
+    substitution: Substitution | None = None,
+    therapies: tuple[TherapyInput, ...] | None = None,
+    new_therapy: TherapyInput | None = None,
+    criteria: tuple[Criterion, ...] | None = None,
 ) -> CountryInput:
     return CountryInput(
         country_code=country_code,
@@ -123,12 +135,46 @@ def make_country_input(
             treatment_rate=make_valued(treatment_rate),
             access_rate=make_valued(access_rate),
         ),
-        criteria=(
+        criteria=criteria if criteria is not None else (
             Criterion(
                 code="test_criterion", label="test", type=CriterionType.BMI,
                 factor=make_valued(1.0), enabled=True,
             ),
         ),
-        therapies=(make_therapy_input(drug_id=1, is_new=False),),
-        new_therapy=make_therapy_input(drug_id=2, is_new=True),
+        therapies=therapies if therapies is not None else (make_therapy_input(drug_id=1, is_new=False),),
+        new_therapy=new_therapy if new_therapy is not None else make_therapy_input(drug_id=2, is_new=True),
+        baseline_shares=baseline_shares if baseline_shares is not None else {1: (1.0,) * horizon},
+        substitution=substitution if substitution is not None
+        else Substitution(shares={1: make_valued(1.0)}),
+    )
+
+
+def make_uptake_input(
+    *, curve: UptakeCurve = UptakeCurve.MANUAL, vector: tuple[float, ...] = (0.05, 0.10, 0.15),
+    **kwargs: object,
+) -> UptakeInput:
+    return UptakeInput(curve=curve, vector=vector, **kwargs)  # type: ignore[arg-type]
+
+
+def make_engine_input(
+    *,
+    countries: tuple[CountryInput, ...] | None = None,
+    horizon_years: int = 3,
+    launch_year: int = 2028,
+    reporting_currency: str = "USD",
+    fx_rates: dict[str, float] | None = None,
+    uptake: UptakeInput | None = None,
+) -> EngineInput:
+    return EngineInput(
+        scenario_id=uuid4(),
+        indication_id=1,
+        launch_year=launch_year,
+        horizon_years=horizon_years,
+        reporting_currency=reporting_currency,
+        fx_rates=fx_rates if fx_rates is not None else {"USD": 1.0, "EUR": 0.86386},
+        fx_snapshot_date=date(2026, 8, 23),
+        uptake=uptake if uptake is not None
+        else make_uptake_input(vector=(0.05,) * horizon_years),
+        countries=countries if countries is not None
+        else (make_country_input(horizon=horizon_years),),
     )
