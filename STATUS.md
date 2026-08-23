@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
-**M6, M2, M3, M5, M4, M7, M8 done** (§8) · **Deadline:** 2026-09-06
+**M6, M2, M3, M5, M4, M7, M8, M9 done** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -137,7 +137,7 @@ BIET/
 ├── backend/
 │   ├── alembic/                  schema migrations (two, both reversible)
 │   ├── src/biet_api/              ORM models, config, DAL — routes/services not started
-│   ├── src/biet_engine/           pure calculation package — M6,M2,M3,M5,M4,M7,M8 done, M1/M9/M10 not started
+│   ├── src/biet_engine/           pure calculation package — M6,M2,M3,M5,M4,M7,M8,M9 done — only M1 and M10 left
 │   └── tests/                     engine/{unit,property,golden}/, test_layering.py
 ├── frontend/                     EMPTY — Phase 3
 └── BI_REPO/                      reference only; see §6
@@ -497,13 +497,46 @@ implies before writing a new price source's transform.
 
     190 tests total (was 156), **100% branch coverage across all of `biet_engine`**, mypy --strict
     and ruff clean. Both latency benchmarks assert green (<200 ms M7, <300 ms M8).
-11. **Next — M9 (Uncertainty & Sensitivity), M10 (Evidence/Narrative/Export), or M1 (Scenario
-    Workspace).** M9 depends on M7+M8, both now done — it's OWSA/tornado plus the 5,000-iteration
-    PSA (and the point at which M7's "plain Python loop, revisit if PSA makes it matter" note
-    should actually be revisited against real numbers). M1 is the resolution layer that builds
-    `EngineInput` from DB rows + overrides — more backend-flavored than the pure-engine modules,
-    and the only thing standing between this engine and a real API.
-12. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
+11. ~~**M9 — Uncertainty & Sensitivity**~~ — done, in three modules.
+    `distributions.py` turns a published interval or a confidence-tier default into Beta / Gamma /
+    Triangular parameters (Beta by method of moments, shrinking the SD with a `DISTRIBUTION_SHRUNK`
+    warning rather than raising when it exceeds the variance ceiling).
+    `sensitivity.py::run_owsa` is the tornado: `2N+1` forward evaluations, ranked by descending
+    swing, with published bounds taking priority over tier defaults and rate ranges silently
+    clipped to their domain. `psa.py::run_psa` is the Monte Carlo — **vectorised with NumPy**, not
+    a loop, seeded through `default_rng` so a run reproduces exactly.
+
+    **The M7 loop question, settled with a measurement.** Section 5.3 forbids a Python loop on the
+    grounds that it "will miss the 5-second budget." Measured here: one `compute_budget_impact`
+    call at 10 markets x 5 years is ~0.71 ms, so 5,000 looped calls would be ~3.5 s — *inside* the
+    budget, so that stated premise is simply wrong. The section's other reason does hold: at the
+    50,000-iteration ceiling a loop needs ~35 s. Vectorised, 5,000 x 10 markets runs in ~0.03 s.
+    So M7's earlier "revisit when M9 exists" note resolves to: M7's scalar loop stays as it is,
+    and PSA broadcasts separately.
+
+    **The hazard that created, and its guard.** Vectorising means `psa.py` re-expresses M7's
+    budget-impact arithmetic in array form — two implementations of one formula, which can drift
+    silently. `test_psa_matches_compute_budget_impact_at_zero_variance` collapses every
+    distribution to a point and asserts every draw equals `compute_budget_impact`'s scalar answer
+    to 1e-9. That test is the thing keeping the two honest; do not delete it.
+
+    An OWSA finding worth not misreading: with the default parameter set, every swing comes out
+    *identical*. That is correct, not a bug — the funnel is a pure product, so an equal relative
+    range on any one factor moves the product equally. A test asserts it with that reasoning
+    written down, so nobody "fixes" it later.
+
+    `ConfidenceTier` and `ResolutionLevel` moved from `models.py` to `constants.py` (re-exported,
+    so existing imports still work): `constants` is documented as the home for closed sets, and
+    `TIER_RELATIVE_STANDARD_ERROR` is keyed by tier, which would otherwise be a circular import.
+
+    233 tests total (was 190), **100% branch coverage across all 16 engine modules**, mypy --strict
+    and ruff clean. All four latency benchmarks green (<200 ms M7, <300 ms M8, <1 s OWSA, <5 s PSA).
+12. **Next — M10 (Evidence, Narrative & Export) or M1 (Scenario Workspace).** These are the last
+    two modules. M10 depends on M7-M9, all done — it's the retrieval-backed narrative (the
+    guideline corpus embedded in Phase 1 is what it queries) plus PDF/PPTX export. M1 is the
+    resolution layer that builds `EngineInput` from DB rows + overrides — more backend-flavored
+    than the pure-engine modules, and the only thing standing between this engine and a real API.
+13. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
 

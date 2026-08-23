@@ -16,6 +16,28 @@ from enum import StrEnum
 from typing import Final
 
 
+class ConfidenceTier(StrEnum):
+    """How much weight a resolved value carries.
+
+    Lives here rather than in `models.py` because it is a closed set (this
+    module's stated purpose) and because `constants` must be importable
+    without `models` — `TIER_RELATIVE_STANDARD_ERROR` below is keyed by it.
+    `models` re-exports it so existing `from .models import ConfidenceTier`
+    imports keep working.
+    """
+
+    A = "A"   # published, country-specific, with stated interval
+    B = "B"   # published, regional or extrapolated
+    C = "C"   # analogue-derived or expert assumption
+    D = "D"   # placeholder requiring replacement
+
+
+class ResolutionLevel(StrEnum):
+    GLOBAL_DEFAULT = "global_default"
+    COUNTRY_OVERRIDE = "country_override"
+    SCENARIO_OVERRIDE = "scenario_override"
+
+
 class FunnelStage(StrEnum):
     """`funnel.stage` and the M2 funnel order. Order is the funnel order."""
 
@@ -108,3 +130,39 @@ SOLVER_BRACKET_WIDEN_MULTIPLIER: Final[float] = 100.0
 
 #: The reference market for cross-market PPP price derivation (M5 section 5.3).
 REFERENCE_MARKET: Final[str] = "USA"
+
+#: Normal approximation to a 95% interval: SD = (high - low) / 3.92
+#: (M9 section 5.2).
+CI_TO_SD_DIVISOR: Final[float] = 3.92
+
+#: Confidence-tier default relative standard error, used for OWSA ranges and
+#: PSA spread where no published interval exists (M9 section 5.1/5.2). Tier A
+#: means "as published" — it has a real interval, so its entry here is only a
+#: fallback for an A-tier value that somehow arrives without one. These are
+#: conventions, not empirical estimates (section 12), and live here so they
+#: can be re-based without touching logic.
+TIER_RELATIVE_STANDARD_ERROR: Final[dict[ConfidenceTier, float]] = {
+    ConfidenceTier.A: 0.05,
+    ConfidenceTier.B: 0.15,
+    ConfidenceTier.C: 0.30,
+    ConfidenceTier.D: 0.50,
+}
+
+#: OWSA fallback range where neither a published interval nor a tier default
+#: applies (M9 section 5.1).
+OWSA_DEFAULT_VARIATION: Final[float] = 0.20
+
+#: PSA defaults (M9 section 5.2/5.4) and its validated bounds (section 6).
+PSA_DEFAULT_ITERATIONS: Final[int] = 5_000
+PSA_DEFAULT_SEED: Final[int] = 20_260_906
+PSA_MIN_ITERATIONS: Final[int] = 100
+PSA_MAX_ITERATIONS: Final[int] = 50_000
+
+#: PSA convergence: the running mean over the final 10% of iterations must be
+#: within 1% of the overall mean (M9 section 5.5).
+PSA_CONVERGENCE_TAIL_FRACTION: Final[float] = 0.10
+PSA_CONVERGENCE_TOLERANCE: Final[float] = 0.01
+
+#: Fraction of sampled draws that may be clipped to their domain before it
+#: stops being routine and warrants a warning (M9 section 6).
+PSA_CLIP_WARNING_FRACTION: Final[float] = 0.01

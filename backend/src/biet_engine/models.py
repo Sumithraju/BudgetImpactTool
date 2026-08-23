@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import date
-from enum import StrEnum
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
@@ -20,26 +19,20 @@ from .constants import (
     RATE_MIN,
     SHARE_SUM_TOLERANCE,
     AffordabilityBand,
+    ConfidenceTier,
     CriterionType,
     FunnelStage,
     PriceBasis,
+    ResolutionLevel,
     SolverMethod,
     UptakeCurve,
 )
 from .exceptions import CurrencyMismatchError
 
-
-class ConfidenceTier(StrEnum):
-    A = "A"   # published, country-specific, with stated interval
-    B = "B"   # published, regional or extrapolated
-    C = "C"   # analogue-derived or expert assumption
-    D = "D"   # placeholder requiring replacement
-
-
-class ResolutionLevel(StrEnum):
-    GLOBAL_DEFAULT = "global_default"
-    COUNTRY_OVERRIDE = "country_override"
-    SCENARIO_OVERRIDE = "scenario_override"
+# Re-exported: both are closed sets and now live in `constants` (which must
+# not import this module), but they were part of this module's public surface
+# first and docs/modules/README.md documents them as shared contracts here.
+__all__ = ["ConfidenceTier", "ResolutionLevel"]
 
 
 class Provenance(BaseModel):
@@ -481,4 +474,63 @@ class PriceCorridor(BaseModel):
     # other warnings field added so far (M3/M4/M5/M7): section 6 requires a
     # diagnostic when tau > 1, and section 5.6 requires one when sum(alpha) =
     # 0 (unbounded) — a pure function has no other channel to surface either.
+    warnings: tuple[Warning_, ...] = ()
+
+
+# --------------------------------------------------------------------------- M9 — Uncertainty & Sensitivity
+
+
+class SensitivityParam(BaseModel):
+    """One parameter to sweep in OWSA.
+
+    Not defined in M9's contract snippet (which references the type without
+    declaring it), so it's built from section 5.1's own description: a
+    parameter is identified by its dotted path, carries a label for the
+    tornado chart, and has a base value plus the low/high bounds the sweep
+    evaluates at.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    parameter_path: str
+    label: str
+    base_value: float
+    low_value: float
+    high_value: float
+
+
+class OwsaEntry(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    parameter_path: str
+    label: str
+    base_value: float
+    low_value: float
+    high_value: float
+    result_at_low: float                     # cumulative BI, reporting currency
+    result_at_high: float
+    swing: float                             # abs(high - low)
+    rank: int
+
+
+class OwsaResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    base_result: float
+    entries: tuple[OwsaEntry, ...]           # sorted by descending swing
+    warnings: tuple[Warning_, ...] = ()
+
+
+class PsaResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    iterations: int
+    seed: int
+    mean: float
+    median: float
+    p2_5: float
+    p97_5: float
+    samples: tuple[float, ...]               # for the histogram/CDF
+    exceedance: Mapping[str, float]          # band name -> P(ratio > threshold)
+    converged: bool
     warnings: tuple[Warning_, ...] = ()

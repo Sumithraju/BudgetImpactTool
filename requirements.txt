@@ -5,6 +5,10 @@
 httpx==0.28.1
 pandas==3.0.5
 
+# --- engine ------------------------------------------------------------------
+numpy==2.5.2               # M9 PSA vectorisation; pinned as a direct dependency
+                           # now rather than relied on incidentally via pandas
+
 # --- validation & config -----------------------------------------------------
 pydantic==2.13.4
 pydantic-settings==2.15.0
@@ -31,7 +35,7 @@ ruff==0.16.4
 # --- not yet required; added at the phase that needs them --------------------
 # fastapi          # Phase 3 — API
 # uvicorn          # Phase 3 — API
-# numpy            # Phase 2 — engine (arrives with pandas today)
+
 # anthropic        # Phase 5 — narrative
 # reportlab        # Phase 5 — PDF export
 # python-pptx      # Phase 5 — PPTX export
