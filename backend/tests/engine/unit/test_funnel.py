@@ -6,7 +6,7 @@ import pytest
 
 from biet_engine.constants import FunnelStage
 from biet_engine.exceptions import FunnelInvariantError, UnresolvedParameterError
-from biet_engine.funnel import compute_funnel
+from biet_engine.funnel import compute_funnel, project_population
 from biet_engine.models import Valued
 
 from ..conftest import make_country_input, make_valued
@@ -95,3 +95,16 @@ def test_every_stage_carries_provenance() -> None:
     assert all(stage.provenance is not None for stage in result.stages)
     assert result.stages[0].factor is None
     assert all(stage.factor is not None for stage in result.stages[1:])
+
+
+def test_project_population_below_year_one_raises() -> None:
+    with pytest.raises(ValueError, match="year"):
+        project_population(make_valued(1_000_000), make_valued(0.0), year=0)
+
+
+def test_project_population_matches_funnel_first_stage() -> None:
+    country = make_country_input(population_total=1_000_000, population_growth=0.02)
+    result = compute_funnel(country, _criteria_factor(), year=3)
+    assert result.stages[0].value == pytest.approx(
+        project_population(country.population_total, country.population_growth, year=3)
+    )

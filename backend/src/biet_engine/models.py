@@ -19,9 +19,11 @@ from .constants import (
     RATE_MAX,
     RATE_MIN,
     SHARE_SUM_TOLERANCE,
+    AffordabilityBand,
     CriterionType,
     FunnelStage,
     PriceBasis,
+    SolverMethod,
     UptakeCurve,
 )
 from .exceptions import CurrencyMismatchError
@@ -329,12 +331,14 @@ class MarketMix(BaseModel):
 class CountryInput(BaseModel):
     """One market's fully-resolved engine input.
 
-    No optional fields, no defaults (biet-backend skill section 3) — with one
-    deliberate exception. `adult_share` is typed nullable because M2 section
+    No optional fields, no defaults (biet-backend skill section 3) — with two
+    deliberate exceptions. `adult_share` is typed nullable because M2 section
     5.1 requires the *unresolved* state to reach the engine explicitly so it
     can raise `UnresolvedParameterError` rather than the resolution layer
-    silently defaulting it to 1.0 before the engine ever sees it. Every other
-    field is resolved before construction, per the general rule.
+    silently defaulting it to 1.0 before the engine ever sees it. `health_exp_pc`
+    is nullable for the identical reason, per M8 section 6 ("Missing
+    health_exp_pc for a market -> raise UnresolvedParameterError"). Every
+    other field is resolved before construction, per the general rule.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -345,7 +349,7 @@ class CountryInput(BaseModel):
     adult_share: Valued | None
     population_growth: Valued
     prevalence: Valued
-    health_exp_pc: Valued
+    health_exp_pc: Valued | None              # USD per capita (M0's health_exp_pc_usd)
     gdp_pc_ppp: Valued
     funnel: FunnelRates                      # M2
     criteria: tuple[Criterion, ...]          # M3
@@ -434,3 +438,47 @@ class EngineResult(BaseModel):
     countries: tuple[CountryResult, ...]
     totals: Totals                           # reporting currency
     warnings: tuple[Warning_, ...]
+
+
+# --------------------------------------------------------------------------- M8 — Affordability & Price Solver
+
+
+class CountryAffordability(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    country_code: str
+    health_budget: Money                     # local currency
+    ratio_by_year: tuple[float, ...]
+    cumulative_ratio: float
+    band: AffordabilityBand
+    pmpy: Money | None = None                # plan-level markets only
+
+
+class CorridorEntry(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    country_code: str
+    max_unit_price_usd: float | None         # None when infeasible or unbounded
+    max_annual_acquisition_usd: float | None
+    feasible: bool
+    unbounded: bool
+    method: SolverMethod
+    iterations: int | None = None
+    # Not in M8's own abbreviated contract snippet. Section 5.6 requires
+    # infeasibility to "report the shortfall sum(beta) - tau*sum(H)" — this
+    # is the only place in the response shape for that number to live.
+    shortfall_usd: float | None = None       # only set when infeasible via the analytic path
+
+
+class PriceCorridor(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    target_ratio: float
+    entries: tuple[CorridorEntry, ...]
+    binding_market: str | None
+    single_global_price_ceiling_usd: float | None
+    # Not in M8's own abbreviated contract snippet, same reasoning as every
+    # other warnings field added so far (M3/M4/M5/M7): section 6 requires a
+    # diagnostic when tau > 1, and section 5.6 requires one when sum(alpha) =
+    # 0 (unbounded) — a pure function has no other channel to surface either.
+    warnings: tuple[Warning_, ...] = ()

@@ -83,3 +83,12 @@ class MissingFxRateError(EngineError):
     must be exactly reproducible from its own snapshot."""
 
     code = "MISSING_FX_RATE"
+
+
+class SolverInvariantError(EngineError):
+    """The reverse solver's linear coefficient sum(alpha) came out negative
+    (M8 section 5.6) — impossible by construction, since every factor in
+    alpha's product is non-negative. Indicates a defect upstream, not a
+    reachable data condition."""
+
+    code = "SOLVER_INVARIANT_VIOLATED"

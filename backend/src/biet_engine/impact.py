@@ -17,14 +17,14 @@ real numbers, rather than vectorising against a guess.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import NamedTuple
 
 from . import __version__
 from .cost import compute_therapy_cost
 from .eligibility import combine_criteria
-from .exceptions import MissingFxRateError
 from .funnel import compute_funnel
+from .fx import convert
 from .models import (
     CountryInput,
     CountryResult,
@@ -46,18 +46,6 @@ class _ComparatorYearTerm(NamedTuple):
     sigma: float
     persistence: float
     annual_cost: float                       # local currency amount
-
-
-def _convert(amount: Money, to_currency: str, fx_rates: Mapping[str, float]) -> Money:
-    """`(amount_local / rate[local]) x rate[to]` — pivots through USD, per
-    section 5.5. `fx_rates` is `currency_code -> rate_per_usd`, USD itself
-    included as an identity row (1.0)."""
-    if amount.currency not in fx_rates:
-        raise MissingFxRateError(f"no FX rate for {amount.currency!r}", currency=amount.currency)
-    if to_currency not in fx_rates:
-        raise MissingFxRateError(f"no FX rate for {to_currency!r}", currency=to_currency)
-    usd = amount.amount / fx_rates[amount.currency]
-    return Money(amount=usd * fx_rates[to_currency], currency=to_currency)
 
 
 def _year_result(
@@ -224,7 +212,7 @@ def compute_budget_impact(inputs: EngineInput) -> EngineResult:
     for index in range(inputs.horizon_years):
         year_total = Money(amount=0.0, currency=inputs.reporting_currency)
         for country_result in country_results:
-            converted = _convert(
+            converted = convert(
                 country_result.years[index].budget_impact,
                 inputs.reporting_currency, inputs.fx_rates,
             )

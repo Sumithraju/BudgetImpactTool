@@ -11,21 +11,27 @@ from __future__ import annotations
 from datetime import date
 from uuid import uuid4
 
-from biet_engine.constants import CriterionType, PriceBasis, UptakeCurve
+from biet_engine.constants import CriterionType, FunnelStage, PriceBasis, UptakeCurve
 from biet_engine.models import (
     ConfidenceTier,
     CountryInput,
+    CountryResult,
     Criterion,
     EngineInput,
+    EngineResult,
     FunnelRates,
+    FunnelResult,
+    FunnelStageResult,
     Money,
     Provenance,
     Regimen,
     ResolutionLevel,
     Substitution,
     TherapyInput,
+    Totals,
     UptakeInput,
     Valued,
+    YearResult,
 )
 
 
@@ -120,6 +126,8 @@ def make_country_input(
     therapies: tuple[TherapyInput, ...] | None = None,
     new_therapy: TherapyInput | None = None,
     criteria: tuple[Criterion, ...] | None = None,
+    health_exp_pc: float | None = 6_849.0,     # DEU-ish USD per capita, M8 tests
+    gdp_pc_ppp: float = 75_407.0,               # DEU-ish, M8 tests
 ) -> CountryInput:
     return CountryInput(
         country_code=country_code,
@@ -128,8 +136,8 @@ def make_country_input(
         adult_share=None if adult_share is None else make_valued(adult_share),
         population_growth=make_valued(population_growth),
         prevalence=make_valued(prevalence),
-        health_exp_pc=make_valued(0.0),
-        gdp_pc_ppp=make_valued(0.0),
+        health_exp_pc=None if health_exp_pc is None else make_valued(health_exp_pc),
+        gdp_pc_ppp=make_valued(gdp_pc_ppp),
         funnel=FunnelRates(
             diagnosis_rate=make_valued(diagnosis_rate),
             treatment_rate=make_valued(treatment_rate),
@@ -177,4 +185,59 @@ def make_engine_input(
         else make_uptake_input(vector=(0.05,) * horizon_years),
         countries=countries if countries is not None
         else (make_country_input(horizon=horizon_years),),
+    )
+
+
+def make_year_result(
+    *, year: int = 1, budget_impact: float, currency: str = "USD",
+    addressable: float = 1.0, uptake: float = 0.1,
+) -> YearResult:
+    """A `YearResult` with a directly-stated `budget_impact` — for tests that
+    want to check downstream arithmetic (M8's ratio) against a known BI
+    without engineering a whole forward scenario to produce it."""
+    zero = Money(amount=0.0, currency=currency)
+    return YearResult(
+        year=year, calendar_year=2028 + year - 1, uptake=uptake, addressable=addressable,
+        patients_on_new=addressable * uptake,
+        cost_without=zero, cost_with=Money(amount=budget_impact, currency=currency),
+        budget_impact=Money(amount=budget_impact, currency=currency),
+        impact_per_patient=None, net_cost_per_switch=zero,
+    )
+
+
+def make_country_result(
+    *, country_code: str = "USA", currency: str = "USD",
+    years: tuple[YearResult, ...],
+) -> CountryResult:
+    cumulative = Money(amount=sum(y.budget_impact.amount for y in years), currency=currency)
+    funnel = FunnelResult(
+        country_code=country_code, year=1,
+        stages=(FunnelStageResult(
+            stage=FunnelStage.TOTAL_POPULATION, value=years[0].addressable,
+            factor=None, provenance=make_provenance(),
+        ),),
+    )
+    return CountryResult(
+        country_code=country_code, currency=currency, funnel=funnel,
+        years=years, cumulative_budget_impact=cumulative,
+    )
+
+
+def make_engine_result(
+    *, countries: tuple[CountryResult, ...], reporting_currency: str = "USD",
+) -> EngineResult:
+    by_year = [
+        Money(
+            amount=sum(c.years[i].budget_impact.amount for c in countries),
+            currency=reporting_currency,
+        )
+        for i in range(len(countries[0].years))
+    ]
+    cumulative = Money(amount=sum(m.amount for m in by_year), currency=reporting_currency)
+    peak_year = max(range(1, len(by_year) + 1), key=lambda y: by_year[y - 1].amount)
+    return EngineResult(
+        engine_version="test", reporting_currency=reporting_currency,
+        fx_snapshot_date=date(2026, 8, 23), countries=countries,
+        totals=Totals(by_year=tuple(by_year), cumulative=cumulative, peak_year=peak_year),
+        warnings=(),
     )

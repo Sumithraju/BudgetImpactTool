@@ -50,6 +50,18 @@ class UptakeCurve(StrEnum):
     MANUAL = "manual"
 
 
+class AffordabilityBand(StrEnum):
+    LOW = "low"
+    MODERATE = "moderate"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class SolverMethod(StrEnum):
+    ANALYTIC = "analytic"
+    BISECTION = "bisection"
+
+
 #: A rate/factor/probability is a fraction in this half-open-at-zero,
 #: closed-at-one interval (CLAUDE.md non-negotiable 5).
 RATE_MIN: Final[float] = 0.0
@@ -74,3 +86,25 @@ SHARE_SUM_TOLERANCE: Final[float] = 1e-6
 #: within this much tighter tolerance (M4 section 5.6). A violation here is a
 #: defect in this module's arithmetic, not a data problem.
 ACCOUNTING_TOLERANCE: Final[float] = 1e-9
+
+#: Cumulative affordability ratio thresholds (M8 section 5.1). A market's
+#: band is the highest threshold its ratio meets or exceeds; below the
+#: lowest, it's LOW.
+AFFORDABILITY_THRESHOLDS: Final[dict[AffordabilityBand, float]] = {
+    AffordabilityBand.MODERATE: 0.001,
+    AffordabilityBand.HIGH: 0.005,
+    AffordabilityBand.CRITICAL: 0.01,
+}
+
+#: Cross-market PPP price derivation defaults (M5 section 5.3 / M8 section 5.3).
+PPP_DEFAULT_ELASTICITY: Final[float] = 1.0
+PPP_PRICE_FLOOR: Final[float] = 0.05
+
+#: Reverse solver numerics (M8 section 5.5).
+SOLVER_RELATIVE_TOLERANCE: Final[float] = 1e-6
+SOLVER_MAX_ITERATIONS: Final[int] = 100
+SOLVER_BRACKET_MULTIPLIER: Final[float] = 10.0
+SOLVER_BRACKET_WIDEN_MULTIPLIER: Final[float] = 100.0
+
+#: The reference market for cross-market PPP price derivation (M5 section 5.3).
+REFERENCE_MARKET: Final[str] = "USA"

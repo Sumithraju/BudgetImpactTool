@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
-**M6, M2, M3, M5, M4, M7 done** (§8) · **Deadline:** 2026-09-06
+**M6, M2, M3, M5, M4, M7, M8 done** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -137,7 +137,7 @@ BIET/
 ├── backend/
 │   ├── alembic/                  schema migrations (two, both reversible)
 │   ├── src/biet_api/              ORM models, config, DAL — routes/services not started
-│   ├── src/biet_engine/           pure calculation package — M6,M2,M3,M5,M4,M7 done, M1/M8-M10 not started
+│   ├── src/biet_engine/           pure calculation package — M6,M2,M3,M5,M4,M7,M8 done, M1/M9/M10 not started
 │   └── tests/                     engine/{unit,property,golden}/, test_layering.py
 ├── frontend/                     EMPTY — Phase 3
 └── BI_REPO/                      reference only; see §6
@@ -460,14 +460,50 @@ implies before writing a new price source's transform.
 
    156 tests total (was 139), 100% branch coverage across `biet_engine`, mypy --strict and ruff
    clean.
-10. **Next — M1 (Scenario Workspace), M8 (Affordability Solver), or M9 (Uncertainty &
-    Sensitivity).** M1 is the resolution layer that actually builds `CountryInput`/`EngineInput`
-    from DB rows + overrides — more backend-flavored (repositories, services) than the pure-engine
-    modules so far, and the only thing standing between this engine and a real API. M8 depends on
-    M5+M7, both done — it's the reverse solve (given an affordability ceiling, find the maximum
-    price). M9 depends on M7+M8. Build order and the full dependency graph:
-    [docs/modules/README.md](docs/modules/README.md).
-10. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
+10. ~~**M8 — Affordability & Price Solver**~~ — done, in two modules.
+    `biet_engine/affordability.py::compute_affordability` is the forward half: the ratio of BI to
+    national health expenditure per year, the cumulative ratio as the **ratio of sums** (not the
+    sum of ratios — they differ once population growth moves the denominator), and band
+    classification, with a negative ratio classifying LOW as a saving.
+    `biet_engine/solver.py::solve_price` is the reverse half: the analytic closed-form solve on
+    the linear α/β decomposition, a bisection fallback that runs the real M7+M8 forward pass at
+    trial prices, and the cross-market price corridor with its binding market.
+
+    **Both reconciliation tests pass** — a solved price fed back through M7+M8 reproduces the
+    target ratio to 1e-6 (analytic) and 1e-5 (bisection). The module doc calls these "the
+    strongest single check in the system," and they do close the forward/reverse loop.
+
+    The spec's own correction holds up in practice: the PPP floor does *not* break linearity
+    (`max(a·p, b·p) = p·max(a, b)`), so a floor-bound market like India still takes the analytic
+    path — asserted by a test. Only a `SUBSTITUTION_FLOOR` from M4 forces bisection, since that's
+    what actually invalidates the reduced form the decomposition rests on.
+
+    Three shared extractions came out of this rather than duplicating logic: `fx.py::convert`
+    (M7 had it as a private helper; M8's two modules need the identical conversion),
+    `funnel.py::project_population` (M8's affordability denominator needs M2's *projected*
+    population, not the raw seeded value, without re-deriving the whole funnel), and
+    `solver.py::_bisect` (generic bracketed bisection, split from the solver-specific
+    bracket-widening/feasibility logic around it — which also made the non-convergence path
+    directly testable). `CountryInput.health_exp_pc` became nullable for the same reason
+    `adult_share` did: section 6 requires the unresolved state to reach the engine so it can
+    raise rather than silently defaulting. `CorridorEntry` gained `shortfall_usd` and
+    `PriceCorridor` gained `warnings` — the now-familiar pattern of a field the spec's prose
+    requires but its abbreviated contract snippet omits.
+
+    One documented simplification: the doc says a missing reference market is "permitted — ppp(ref)
+    is still computable" but never says from *what*, so `solve_price` requires USA in the market
+    set and raises `UnresolvedParameterError` otherwise, rather than inventing an undefined data
+    source.
+
+    190 tests total (was 156), **100% branch coverage across all of `biet_engine`**, mypy --strict
+    and ruff clean. Both latency benchmarks assert green (<200 ms M7, <300 ms M8).
+11. **Next — M9 (Uncertainty & Sensitivity), M10 (Evidence/Narrative/Export), or M1 (Scenario
+    Workspace).** M9 depends on M7+M8, both now done — it's OWSA/tornado plus the 5,000-iteration
+    PSA (and the point at which M7's "plain Python loop, revisit if PSA makes it matter" note
+    should actually be revisited against real numbers). M1 is the resolution layer that builds
+    `EngineInput` from DB rows + overrides — more backend-flavored than the pure-engine modules,
+    and the only thing standing between this engine and a real API.
+12. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
 

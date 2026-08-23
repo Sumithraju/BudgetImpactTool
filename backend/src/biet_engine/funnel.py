@@ -13,6 +13,19 @@ from .exceptions import FunnelInvariantError, UnresolvedParameterError
 from .models import CountryInput, FunnelResult, FunnelStageResult, Valued
 
 
+def project_population(population_total: Valued, population_growth: Valued, year: int) -> float:
+    """`population_total x (1 + population_growth)^(year - 1)`.
+
+    Factored out of `compute_funnel` because M8 needs the same projected
+    population as its affordability denominator's `Pop(c,y)` — "the projected
+    population from M2's first funnel stage — not the raw seeded value" (M8
+    section 5.1) — without re-deriving the whole funnel to get it.
+    """
+    if year < 1:
+        raise ValueError(f"year must be >= 1, got {year}")
+    return population_total.value * (1 + population_growth.value) ** (year - 1)
+
+
 def compute_funnel(country: CountryInput, criteria_factor: Valued, year: int) -> FunnelResult:
     """Stage-by-stage addressable population for one market and year.
 
@@ -71,9 +84,7 @@ def compute_funnel(country: CountryInput, criteria_factor: Valued, year: int) ->
     if criteria_factor.value < 0:
         raise ValueError(f"criteria_factor must not be negative, got {criteria_factor.value!r}")
 
-    total_population = country.population_total.value * (
-        (1 + country.population_growth.value) ** (year - 1)
-    )
+    total_population = project_population(country.population_total, country.population_growth, year)
 
     stages: list[FunnelStageResult] = [
         FunnelStageResult(
