@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
-**M6, M2, M3, M5, M4, M7, M8, M9 done** (§8) · **Deadline:** 2026-09-06
+**M6, M2, M3, M5, M4, M7, M8, M9 done; M10 pure half done** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -137,7 +137,7 @@ BIET/
 ├── backend/
 │   ├── alembic/                  schema migrations (two, both reversible)
 │   ├── src/biet_api/              ORM models, config, DAL — routes/services not started
-│   ├── src/biet_engine/           pure calculation package — M6,M2,M3,M5,M4,M7,M8,M9 done — only M1 and M10 left
+│   ├── src/biet_engine/           pure calculation package — M6,M2,M3,M5,M4,M7,M8,M9 + M10's pure half done
 │   └── tests/                     engine/{unit,property,golden}/, test_layering.py
 ├── frontend/                     EMPTY — Phase 3
 └── BI_REPO/                      reference only; see §6
@@ -531,11 +531,43 @@ implies before writing a new price source's transform.
 
     233 tests total (was 190), **100% branch coverage across all 16 engine modules**, mypy --strict
     and ruff clean. All four latency benchmarks green (<200 ms M7, <300 ms M8, <1 s OWSA, <5 s PSA).
-12. **Next — M10 (Evidence, Narrative & Export) or M1 (Scenario Workspace).** These are the last
-    two modules. M10 depends on M7-M9, all done — it's the retrieval-backed narrative (the
-    guideline corpus embedded in Phase 1 is what it queries) plus PDF/PPTX export. M1 is the
-    resolution layer that builds `EngineInput` from DB rows + overrides — more backend-flavored
-    than the pure-engine modules, and the only thing standing between this engine and a real API.
+12. **M10 — Evidence, Narrative & Export: the pure half is done; the I/O half is Phase 3.**
+    M10 is the one module the doc itself scopes as "Backend + AI" rather than Engine, and most of
+    it is I/O: pgvector retrieval, an LLM call, PDF/PPTX generation, five API endpoints. None of
+    that can live in `biet_engine` (CLAUDE.md non-negotiable 1), and `biet_api` has no
+    routes/services/repositories yet — so building it now would mean putting I/O in the wrong
+    package. What *is* pure is in `biet_engine/narrative.py`:
+
+    - **`validate_numbers`** — the post-generation half of §5.1's two-layer rule that *every*
+      number in generated text comes from the engine, never the model. The doc calls its tests
+      "the most important in this module"; they're written. It tolerates thousands separators and
+      readable roundings ("38.2 million" for 38,218,333) because those are the same engine value
+      presented differently — but rejects a plausible-looking computed number (the model doubling
+      a population), which is the actual failure mode the rule exists to stop. Zero in context
+      matches only zero, never acting as a wildcard.
+    - **`MANDATORY_LIMITATIONS`** — §5.5's seven statements, each attributed to the module that
+      owns the assumption, asserted present and distinct.
+    - **`filter_by_similarity`** — §5.3's 0.35 floor; an empty result is a documented state
+      (`NO_GROUNDING`), not an error.
+    - **`build_assumption_register`** — §5.7's table, built from the run's own `EngineInput`
+      snapshot rather than live reference data, so an export of an old run reflects what that run
+      actually used.
+
+    **Still to build, in Phase 3 when `biet_api` exists:** the pgvector retrieval repository (the
+    one documented raw-SQL exception), prompt assembly + the LLM call, the ReportLab/python-pptx
+    exporters, the copilot, and the five endpoints. The corpus they query is already embedded and
+    indexed from Phase 1.
+
+    258 tests total (was 233), 100% branch coverage across all 17 engine modules, mypy --strict
+    and ruff clean.
+
+    **The engine is now feature-complete for every module except M1.**
+13. **Next — M1 (Scenario Workspace).** The last engine-adjacent module and the real unlock: it's
+    the resolution layer that walks the global-default → country-override → scenario-override chain
+    and turns DB rows into the `EngineInput` every module above already consumes. It's
+    backend-flavored (repositories, services, a unit of work) rather than pure, so it's genuinely
+    the start of Phase 3 rather than more of Phase 2 — and it is the only thing standing between
+    this engine and a working API.
 13. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).

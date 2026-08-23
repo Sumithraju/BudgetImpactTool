@@ -9,7 +9,7 @@ calculation that consumes it.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
@@ -534,3 +534,49 @@ class PsaResult(BaseModel):
     exceedance: Mapping[str, float]          # band name -> P(ratio > threshold)
     converged: bool
     warnings: tuple[Warning_, ...] = ()
+
+
+# --------------------------------------------------------------------------- M10 — Evidence, Narrative & Export
+
+
+class RetrievedChunk(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    chunk_id: int
+    document_title: str
+    issuing_body: str                        # ISPOR | NICE | WHO | CDA-AMC
+    section: str | None
+    page_number: int | None
+    text: str
+    similarity: float
+
+
+class AssumptionEntry(BaseModel):
+    """One row of section 5.7's assumption register.
+
+    Not in M10's own contract snippet, which describes the register as "a
+    table of every resolved input: parameter path, market, value, source,
+    vintage, confidence tier and resolution level" without declaring a type
+    for it. Those seven columns are exactly the fields here.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    parameter_path: str
+    country_code: str
+    value: float
+    source: str
+    vintage_year: int | None
+    confidence_tier: ConfidenceTier
+    resolution_level: ResolutionLevel
+    is_projected: bool
+
+
+class Narrative(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    run_id: UUID
+    sections: Mapping[str, str]              # population | impact | ... | limitations
+    citations: tuple[RetrievedChunk, ...]
+    model_id: str
+    generated_at: datetime
