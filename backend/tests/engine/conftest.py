@@ -32,8 +32,31 @@ def make_provenance(
     return Provenance(source=source, confidence_tier=tier, resolution_level=level)
 
 
-def make_valued(value: float, **provenance_kwargs: object) -> Valued:
-    return Valued(value=value, provenance=make_provenance(**provenance_kwargs))  # type: ignore[arg-type]
+def make_valued(
+    value: float, *, low: float | None = None, high: float | None = None,
+    **provenance_kwargs: object,
+) -> Valued:
+    return Valued(  # type: ignore[arg-type]
+        value=value, low=low, high=high, provenance=make_provenance(**provenance_kwargs),
+    )
+
+
+def make_criterion(
+    code: str,
+    factor: float,
+    *,
+    enabled: bool = True,
+    factor_low: float | None = None,
+    factor_high: float | None = None,
+    tier: ConfidenceTier = ConfidenceTier.A,
+    correlated_with: tuple[str, ...] = (),
+    criterion_type: CriterionType = CriterionType.BMI,
+) -> Criterion:
+    return Criterion(
+        code=code, label=code, type=criterion_type,
+        factor=make_valued(factor, low=factor_low, high=factor_high, tier=tier),
+        enabled=enabled, correlated_with=correlated_with,
+    )
 
 
 def make_therapy_input(*, drug_id: int = 1, is_new: bool = True) -> TherapyInput:

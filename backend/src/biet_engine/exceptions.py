@@ -34,3 +34,12 @@ class UnresolvedParameterError(EngineError):
     answer (M2 section 5.1 — adult_share is the canonical example)."""
 
     code = "UNRESOLVED_PARAMETER"
+
+
+class CorrelatedCriteriaError(EngineError):
+    """Two enabled eligibility criteria are declared correlated (M3 section
+    5.4) — multiplying their marginal factors would understate the joint
+    population. Raised only in strict mode; permissive mode (M9's sensitivity
+    sweeps) proceeds with a warning instead."""
+
+    code = "CORRELATED_CRITERIA"

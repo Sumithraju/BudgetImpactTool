@@ -133,6 +133,19 @@ class Criterion(BaseModel):
         return _validate_rate(v, field_name="factor")
 
 
+class CriteriaResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    combined_factor: Valued
+    applied: tuple[Criterion, ...]           # enabled only, in application order
+    # Not in the module doc's abbreviated contract snippet, but required to
+    # fulfil section 5.4's own description of permissive mode ("emits a
+    # CORRELATED_CRITERIA warning and proceeds"): a pure function has no other
+    # way to surface a non-fatal condition than returning it (biet-backend
+    # skill section 8.6 — warnings are never raised, never only logged).
+    warnings: tuple[Warning_, ...] = ()
+
+
 # --------------------------------------------------------------------------- M5 — Cost & Pricing
 
 

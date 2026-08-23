@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
-**M6 and M2 done** (§8) · **Deadline:** 2026-09-06
+**M6, M2, M3 done** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -137,7 +137,7 @@ BIET/
 ├── backend/
 │   ├── alembic/                  schema migrations (two, both reversible)
 │   ├── src/biet_api/              ORM models, config, DAL — routes/services not started
-│   ├── src/biet_engine/           pure calculation package — M6 + M2 done, M1/M3-M5/M7-M10 not started
+│   ├── src/biet_engine/           pure calculation package — M6, M2, M3 done, M1/M4/M5/M7-M10 not started
 │   └── tests/                     engine/{unit,property,golden}/, test_layering.py
 ├── frontend/                     EMPTY — Phase 3
 └── BI_REPO/                      reference only; see §6
@@ -386,12 +386,21 @@ implies before writing a new price source's transform.
    second upfront `ValueError` — the module doc's own words ("monotonicity can only fail if a
    factor exceeds 1") say that's the intended path. 79 tests total, 100% branch coverage on
    `biet_engine`, mypy --strict and ruff clean.
-6. **Next — M5 (Cost & Pricing) or M1 (Scenario Workspace).** Both depend only on M0. M3
-   (Eligibility) and M4 (Uptake) need M2, now available. `TherapyInput`/`Regimen`/`Criterion` type
-   stubs already exist in `biet_engine/models.py` (see item 5) — M5/M3 add the compute functions,
-   not new types. Build order and the full dependency graph:
-   [docs/modules/README.md](docs/modules/README.md).
-7. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
+6. ~~**M3 — Eligibility & Segmentation**~~ — done. `biet_engine/eligibility.py::combine_criteria`
+   multiplies enabled criteria, propagates bounds only when every applied criterion has them,
+   takes the weakest confidence tier, and guards correlated pairs — `strict=True` (default) raises
+   `CorrelatedCriteriaError`, `strict=False` (for M9's sensitivity sweeps) returns a
+   `CORRELATED_CRITERIA` warning instead. `CriteriaResult` gained a `warnings` field beyond the
+   module doc's abbreviated contract — the only way a pure function can surface a non-fatal
+   condition without raising or logging (biet-backend skill §8.6). A golden test wires M2+M3
+   together (`combine_criteria`'s output straight into `compute_funnel`) and still reproduces the
+   311,615 addressable figure. 96 tests total, 100% branch coverage across `biet_engine`,
+   mypy --strict and ruff clean.
+7. **Next — M5 (Cost & Pricing) or M1 (Scenario Workspace).** Both depend only on M0. M4 (Uptake)
+   needs M2, done. `TherapyInput`/`Regimen` type stubs already exist in `biet_engine/models.py`
+   (§5 item 5) — M5 adds the compute functions, not new types. Build order and the full dependency
+   graph: [docs/modules/README.md](docs/modules/README.md).
+8. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
 
