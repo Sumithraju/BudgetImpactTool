@@ -22,12 +22,16 @@ pypdf==6.16.2               # PDF text extraction
 # --- testing -----------------------------------------------------------------
 pytest==9.1.1
 pytest-cov==7.1.0
+hypothesis==6.152.4        # Phase 2 — engine property tests
+
+# --- quality gates (biet-backend skill section 9) -----------------------------
+mypy==2.3.1                # --strict must pass on biet_engine
+ruff==0.16.4
 
 # --- not yet required; added at the phase that needs them --------------------
 # fastapi          # Phase 3 — API
 # uvicorn          # Phase 3 — API
 # numpy            # Phase 2 — engine (arrives with pandas today)
-# hypothesis       # Phase 2 — property tests
 # anthropic        # Phase 5 — narrative
 # reportlab        # Phase 5 — PDF export
 # python-pptx      # Phase 5 — PPTX export

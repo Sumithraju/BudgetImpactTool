@@ -15,3 +15,7 @@ src/biet_api/models/knowledge.py
 src/biet_api/models/reference.py
 src/biet_api/models/scenario.py
 src/biet_api/models/staging.py
+src/biet_engine/__init__.py
+src/biet_engine/models.py
+src/biet_engine/persistence.py
+tests/test_layering.py
