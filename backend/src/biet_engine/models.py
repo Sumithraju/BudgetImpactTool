@@ -8,11 +8,20 @@ calculation that consumes it.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
-from .constants import RATE_MAX, RATE_MIN, CriterionType, FunnelStage, PriceBasis
+from .constants import (
+    RATE_MAX,
+    RATE_MIN,
+    SHARE_SUM_TOLERANCE,
+    CriterionType,
+    FunnelStage,
+    PriceBasis,
+    UptakeCurve,
+)
 from .exceptions import CurrencyMismatchError
 
 
@@ -260,6 +269,56 @@ class TherapyCost(BaseModel):
     total: Money                             # annual cost per full treated patient-year
     price_basis: PriceBasis
     provenance: Provenance
+
+
+# --------------------------------------------------------------------------- M4 — Uptake & Market Mix
+
+
+class UptakeInput(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    curve: UptakeCurve
+    year_1: Valued | None = None             # linear
+    terminal: Valued | None = None           # linear, logistic plateau
+    steepness: Valued | None = None          # logistic k
+    inflection_year: Valued | None = None    # logistic y_mid
+    vector: tuple[float, ...] | None = None  # manual
+    allow_erosion: bool = False
+
+
+class Substitution(BaseModel):
+    """`shares` maps `drug_id -> sigma`; must sum to 1.0 (M4 section 5.3)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    shares: Mapping[int, Valued]
+
+    @field_validator("shares")
+    @classmethod
+    def _shares_valid(cls, v: Mapping[int, Valued]) -> Mapping[int, Valued]:
+        negative = [drug_id for drug_id, s in v.items() if s.value < 0]
+        if negative:
+            raise ValueError(f"substitution shares must not be negative: {negative}")
+        total = sum(s.value for s in v.values())
+        if abs(total - 1.0) > SHARE_SUM_TOLERANCE:
+            raise ValueError(f"substitution shares must sum to 1.0, got {total!r}")
+        return v
+
+
+class MarketMix(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    country_code: str
+    year: int
+    uptake: float                            # u(y), share of addressable
+    shares_without: Mapping[int, float]      # drug_id -> m_without, sums to 1.0
+    shares_with: Mapping[int, float]         # drug_id -> m_with; + uptake sums to 1.0
+    # Not in the module doc's abbreviated contract snippet — required for the
+    # same reason M3's CriteriaResult and M5's TherapyInput each needed one
+    # field beyond theirs: section 5.4 requires a SUBSTITUTION_FLOOR warning
+    # whenever displacement redistribution occurs, and a pure function has no
+    # other channel to surface that (biet-backend skill section 8.6).
+    warnings: tuple[Warning_, ...] = ()
 
 
 # --------------------------------------------------------------------------- M1 — Scenario Workspace

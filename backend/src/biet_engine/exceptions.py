@@ -51,3 +51,27 @@ class CurrencyMismatchError(EngineError):
     currency happens once, in M7, using the run's FX snapshot."""
 
     code = "CURRENCY_MISMATCH"
+
+
+class UptakeMonotonicityError(EngineError):
+    """Uptake decreased year over year without allow_erosion set (M4 section
+    5.2). Far more often a data-entry error than genuine competitive
+    erosion, so it raises by default rather than being silently accepted."""
+
+    code = "UPTAKE_NOT_MONOTONIC"
+
+
+class UnknownTherapyError(EngineError):
+    """A substitution share names a drug_id that isn't in the therapy set it
+    should be drawing from (M4 section 6)."""
+
+    code = "UNKNOWN_THERAPY"
+
+
+class DisplacementError(EngineError):
+    """A displaced share had to be redistributed across the remaining
+    therapies, but none of them had any headroom left to absorb it (M4
+    section 5.4) — the source-of-business vector is inconsistent with the
+    baseline mix in a way redistribution alone can't resolve."""
+
+    code = "DISPLACEMENT_NO_HEADROOM"

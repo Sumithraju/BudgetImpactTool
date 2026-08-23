@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
-**M6, M2, M3, M5 done** (§8) · **Deadline:** 2026-09-06
+**M6, M2, M3, M5, M4 done** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -137,7 +137,7 @@ BIET/
 ├── backend/
 │   ├── alembic/                  schema migrations (two, both reversible)
 │   ├── src/biet_api/              ORM models, config, DAL — routes/services not started
-│   ├── src/biet_engine/           pure calculation package — M6, M2, M3, M5 done, M1/M4/M7-M10 not started
+│   ├── src/biet_engine/           pure calculation package — M6,M2,M3,M5,M4 done, M1/M7-M10 not started
 │   └── tests/                     engine/{unit,property,golden}/, test_layering.py
 ├── frontend/                     EMPTY — Phase 3
 └── BI_REPO/                      reference only; see §6
@@ -414,12 +414,25 @@ implies before writing a new price source's transform.
    warning) is left to the caller, since wrapping a one-line formula in a result type to carry a
    warning would be a much bigger deviation from the spec than M3's one-field addition was.
    114 tests total, 100% branch coverage across `biet_engine`, mypy --strict and ruff clean.
-8. **Next — M1 (Scenario Workspace) or M4 (Uptake & Market Mix).** M1 is the resolution layer
+8. ~~**M4 — Uptake & Market Mix**~~ — done. `biet_engine/uptake.py` has `project_uptake` (linear,
+   logistic with defaults k=1.2/y_mid=N/2, and manual curves, each validated to [0,1] and checked
+   for monotonicity unless `allow_erosion`) and `build_market_mix` (the world-without → world-with
+   displacement, floor at zero, proportional redistribution of any deficit, with the ±1e-9 share
+   accounting invariant asserted — not just tested — inside the function itself). `MarketMix`
+   gained a `warnings` field beyond its abbreviated contract, same reasoning as M3/M5: a
+   `SUBSTITUTION_FLOOR` warning has to come from somewhere when redistribution occurs, and a pure
+   function can't log it. `displace()` uses `sigma.get(t, 0.0)` rather than the spec pseudocode's
+   `sigma[t]` — a baseline therapy absent from the substitution vector is treated as drawing no
+   new patients rather than crashing; the reverse case (a substitution entry naming a therapy not
+   in the baseline set) still raises `UnknownTherapyError` as specified. 139 tests total, 100%
+   branch coverage across `biet_engine`, mypy --strict and ruff clean.
+9. **Next — M1 (Scenario Workspace) or M7 (Budget Impact Calculator).** M1 is the resolution layer
    that actually builds `CountryInput`/`TherapyInput` from DB rows + overrides — more
-   backend-flavored (repositories, services) than the pure-engine modules so far. M4 depends on
-   M2+M3, both done. Build order and the full dependency graph:
+   backend-flavored (repositories, services) than the pure-engine modules so far. M7 depends on
+   M2-M6, all done, and is the module that finally computes the incremental budget impact number
+   the whole system exists to produce. Build order and the full dependency graph:
    [docs/modules/README.md](docs/modules/README.md).
-9. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
+10. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
 
