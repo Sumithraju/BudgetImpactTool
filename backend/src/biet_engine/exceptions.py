@@ -43,3 +43,11 @@ class CorrelatedCriteriaError(EngineError):
     sweeps) proceeds with a warning instead."""
 
     code = "CORRELATED_CRITERIA"
+
+
+class CurrencyMismatchError(EngineError):
+    """Two Money values with different currency codes were combined. No
+    implicit conversion, ever (M5 section 5.4) — conversion to the reporting
+    currency happens once, in M7, using the run's FX snapshot."""
+
+    code = "CURRENCY_MISMATCH"

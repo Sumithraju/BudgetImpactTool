@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
-**M6, M2, M3 done** (§8) · **Deadline:** 2026-09-06
+**M6, M2, M3, M5 done** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -137,7 +137,7 @@ BIET/
 ├── backend/
 │   ├── alembic/                  schema migrations (two, both reversible)
 │   ├── src/biet_api/              ORM models, config, DAL — routes/services not started
-│   ├── src/biet_engine/           pure calculation package — M6, M2, M3 done, M1/M4/M5/M7-M10 not started
+│   ├── src/biet_engine/           pure calculation package — M6, M2, M3, M5 done, M1/M4/M7-M10 not started
 │   └── tests/                     engine/{unit,property,golden}/, test_layering.py
 ├── frontend/                     EMPTY — Phase 3
 └── BI_REPO/                      reference only; see §6
@@ -396,11 +396,30 @@ implies before writing a new price source's transform.
    together (`combine_criteria`'s output straight into `compute_funnel`) and still reproduces the
    311,615 addressable figure. 96 tests total, 100% branch coverage across `biet_engine`,
    mypy --strict and ruff clean.
-7. **Next — M5 (Cost & Pricing) or M1 (Scenario Workspace).** Both depend only on M0. M4 (Uptake)
-   needs M2, done. `TherapyInput`/`Regimen` type stubs already exist in `biet_engine/models.py`
-   (§5 item 5) — M5 adds the compute functions, not new types. Build order and the full dependency
-   graph: [docs/modules/README.md](docs/modules/README.md).
-8. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
+7. ~~**M5 — Cost & Pricing**~~ — done. `biet_engine/cost.py` has `compute_therapy_cost`
+   (acquisition = unit_price × units_per_admin × admins_per_year × (1+wastage) × (1-discount),
+   total = acquisition + admin + monitoring + AE − offset, never floored at zero) and
+   `derive_ppp_price` (the cross-market PPP formula with its floor). `Money` gained `__add__`/
+   `__sub__`/`__mul__` on the shared model — `__add__`/`__sub__` raise the new
+   `CurrencyMismatchError` on a currency mismatch, so "no implicit conversion, ever" is enforced
+   by the type itself rather than by callers remembering to check. `TherapyInput` gained a
+   `price_provenance` field beyond M5's own abbreviated contract, for the same reason M3's
+   `CriteriaResult` gained `warnings`: `TherapyCost.provenance` has to come from somewhere, and
+   `unit_price: Money` carries no provenance of its own. One genuine spec-language puzzle resolved:
+   "wastage-then-discount order... reverse order gives a different number" cannot literally be true
+   for pure scalar multiplication (commutative) — what it's actually guarding against is collapsing
+   the two adjustments into one additive term, `(1 + wastage - discount)`, instead of two
+   multiplicative ones; the test documents this reading. `derive_ppp_price` stays a bare `float`
+   per its literal contract — detecting whether the floor bound (for the `PPP_FLOOR_APPLIED`
+   warning) is left to the caller, since wrapping a one-line formula in a result type to carry a
+   warning would be a much bigger deviation from the spec than M3's one-field addition was.
+   114 tests total, 100% branch coverage across `biet_engine`, mypy --strict and ruff clean.
+8. **Next — M1 (Scenario Workspace) or M4 (Uptake & Market Mix).** M1 is the resolution layer
+   that actually builds `CountryInput`/`TherapyInput` from DB rows + overrides — more
+   backend-flavored (repositories, services) than the pure-engine modules so far. M4 depends on
+   M2+M3, both done. Build order and the full dependency graph:
+   [docs/modules/README.md](docs/modules/README.md).
+9. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
 

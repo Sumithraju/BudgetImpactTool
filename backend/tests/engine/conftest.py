@@ -59,30 +59,40 @@ def make_criterion(
     )
 
 
-def make_therapy_input(*, drug_id: int = 1, is_new: bool = True) -> TherapyInput:
-    """A structurally-valid but not semantically-meaningful therapy.
-
-    `CountryInput.therapies`/`new_therapy` are M5's contract; funnel tests
-    don't exercise them but must supply something valid to construct a
-    `CountryInput` at all.
-    """
-    zero = make_valued(0.0)
+def make_therapy_input(
+    *,
+    drug_id: int = 1,
+    is_new: bool = True,
+    unit_price: float = 100.0,
+    currency: str = "USD",
+    units_per_admin: float = 1.0,
+    admins_per_year: float = 52.0,
+    wastage_pct: float = 0.0,
+    discount_pct: float = 0.0,
+    admin_cost: float = 0.0,
+    monitoring_cost: float = 0.0,
+    ae_cost: float = 0.0,
+    offset: float = 0.0,
+    price_basis: PriceBasis = PriceBasis.LIST,
+) -> TherapyInput:
+    """A structurally-valid, cheaply-overridable therapy for engine tests."""
     return TherapyInput(
         drug_id=drug_id,
         name=f"test-drug-{drug_id}",
         is_new=is_new,
         regimen=Regimen(
-            units_per_admin=make_valued(1.0),
-            admins_per_year=make_valued(52.0),
-            wastage_pct=zero,
+            units_per_admin=make_valued(units_per_admin),
+            admins_per_year=make_valued(admins_per_year),
+            wastage_pct=make_valued(wastage_pct),
         ),
-        unit_price=Money(amount=100.0, currency="USD"),
-        price_basis=PriceBasis.LIST,
-        discount_pct=zero,
-        admin_cost=Money(amount=0.0, currency="USD"),
-        monitoring_cost=Money(amount=0.0, currency="USD"),
-        ae_cost=Money(amount=0.0, currency="USD"),
-        offset=Money(amount=0.0, currency="USD"),
+        unit_price=Money(amount=unit_price, currency=currency),
+        price_basis=price_basis,
+        price_provenance=make_provenance(),
+        discount_pct=make_valued(discount_pct),
+        admin_cost=Money(amount=admin_cost, currency=currency),
+        monitoring_cost=Money(amount=monitoring_cost, currency=currency),
+        ae_cost=Money(amount=ae_cost, currency=currency),
+        offset=Money(amount=offset, currency=currency),
         persistence_12m=make_valued(1.0),
     )
 

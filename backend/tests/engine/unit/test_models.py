@@ -12,7 +12,7 @@ import pytest
 from biet_engine.constants import CriterionType
 from biet_engine.models import Criterion, FunnelRates
 
-from ..conftest import make_valued
+from ..conftest import make_therapy_input, make_valued
 
 
 def test_funnel_rates_rejects_diagnosis_rate_above_one() -> None:
@@ -48,3 +48,23 @@ def test_criterion_rejects_factor_above_one() -> None:
             code="test", label="test", type=CriterionType.BMI,
             factor=make_valued(1.5), enabled=True,
         )
+
+
+def test_regimen_rejects_wastage_at_one() -> None:
+    with pytest.raises(ValueError, match="wastage_pct"):
+        make_therapy_input(wastage_pct=1.0)
+
+
+def test_regimen_rejects_zero_admins_per_year() -> None:
+    with pytest.raises(ValueError, match="admins_per_year"):
+        make_therapy_input(admins_per_year=0.0)
+
+
+def test_therapy_input_rejects_zero_unit_price() -> None:
+    with pytest.raises(ValueError, match="unit_price"):
+        make_therapy_input(unit_price=0.0)
+
+
+def test_therapy_input_rejects_discount_at_one() -> None:
+    with pytest.raises(ValueError, match="discount_pct"):
+        make_therapy_input(discount_pct=1.0)
