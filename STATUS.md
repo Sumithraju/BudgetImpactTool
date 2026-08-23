@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
-**M6 done** (§8) · **Deadline:** 2026-09-06
+**M6 and M2 done** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -137,7 +137,7 @@ BIET/
 ├── backend/
 │   ├── alembic/                  schema migrations (two, both reversible)
 │   ├── src/biet_api/              ORM models, config, DAL — routes/services not started
-│   ├── src/biet_engine/           pure calculation package — M6 done, M1-M5/M7-M10 not started
+│   ├── src/biet_engine/           pure calculation package — M6 + M2 done, M1/M3-M5/M7-M10 not started
 │   └── tests/                     engine/{unit,property,golden}/, test_layering.py
 ├── frontend/                     EMPTY — Phase 3
 └── BI_REPO/                      reference only; see §6
@@ -372,11 +372,26 @@ implies before writing a new price source's transform.
    `backend/tests/test_layering.py` (AST-based import-boundary check — biet_engine must never import
    fastapi/sqlalchemy/psycopg/httpx/requests/biet_api/pydantic_settings). 100% branch coverage,
    mypy --strict and ruff both clean. `requirements.txt` gained `hypothesis`, `mypy`, `ruff`.
-5. **Next — M2 (Population Funnel), M5 (Cost & Pricing), or M1 (Scenario Workspace).** All three
-   depend only on M0, which is done, so any can go next; M2 is the more central one since M3/M4/M7
-   chain off it. Build order and the full dependency graph:
+5. ~~**M2 — Population Funnel**~~ — done. `biet_engine/funnel.py` implements `compute_funnel`
+   per ARCHITECTURE.md §5.2. Along the way, `biet_engine/models.py` gained the full cross-module
+   type system M2's own signature requires — `CountryInput` (M1), `Criterion` (M3), `Regimen`/
+   `TherapyInput` (M5) — transcribed verbatim from those modules' own (already-written) contract
+   sections, since `compute_funnel(country: CountryInput, ...)` can't be typed correctly without
+   them. These are pure data containers with no logic; M3/M5's actual *computation* is still
+   unbuilt. `biet_engine/constants.py` and `exceptions.py` also started here (`FunnelStage`,
+   `CriterionType`, `PriceBasis` mirrored from `biet_api.constants.domain` — the engine can't
+   import `biet_api`, so `test_constants_parity.py` guards the two from drifting apart;
+   `FunnelInvariantError`, `UnresolvedParameterError`). One spec ambiguity resolved during
+   testing: `criteria_factor > 1` raises `FunnelInvariantError` via the monotonicity check, not a
+   second upfront `ValueError` — the module doc's own words ("monotonicity can only fail if a
+   factor exceeds 1") say that's the intended path. 79 tests total, 100% branch coverage on
+   `biet_engine`, mypy --strict and ruff clean.
+6. **Next — M5 (Cost & Pricing) or M1 (Scenario Workspace).** Both depend only on M0. M3
+   (Eligibility) and M4 (Uptake) need M2, now available. `TherapyInput`/`Regimen`/`Criterion` type
+   stubs already exist in `biet_engine/models.py` (see item 5) — M5/M3 add the compute functions,
+   not new types. Build order and the full dependency graph:
    [docs/modules/README.md](docs/modules/README.md).
-6. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
+7. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
 
