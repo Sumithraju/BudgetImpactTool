@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
-**M6, M2, M3, M5, M4, M7, M8, M9 done; M10 pure half done** (§8) · **Deadline:** 2026-09-06
+**M6, M2, M3, M5, M4, M7, M8, M9 done; M10 + M1 pure halves done** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -562,13 +562,48 @@ implies before writing a new price source's transform.
     and ruff clean.
 
     **The engine is now feature-complete for every module except M1.**
-13. **Next — M1 (Scenario Workspace).** The last engine-adjacent module and the real unlock: it's
-    the resolution layer that walks the global-default → country-override → scenario-override chain
-    and turns DB rows into the `EngineInput` every module above already consumes. It's
-    backend-flavored (repositories, services, a unit of work) rather than pure, so it's genuinely
-    the start of Phase 3 rather than more of Phase 2 — and it is the only thing standing between
-    this engine and a working API.
-13. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
+13. **M1 — Scenario Workspace: the resolution core is done; CRUD and routes are Phase 3.**
+    Like M10, M1 splits cleanly into a pure half and an I/O half, and the pure half is the one
+    everything else depends on. Built, in `backend/src/biet_api/`:
+
+    - **`constants/parameter_paths.py`** — §5.1's closed override vocabulary as one declarative
+      table: 15 path specs, literal (`funnel.diagnosis_rate`) and templated
+      (`therapy.<drug_id>.market_share.<year>`) alike, each carrying its value type and range.
+      Adding a path means adding a row. The ranges encode a real distinction the spec is precise
+      about and which is easy to flatten by accident: a **rate** is `(0, 1]` — zero would mean the
+      stage passes nobody — while a **share** is `[0, 1]`, because zero uptake is a legitimate
+      scenario. Prevalence is open at *both* ends.
+    - **`services/override_validator.py`** — §6's validation, raising errors that name the
+      offending path and (for an unknown path) list the valid ones, which is what the eventual 422
+      needs. Checks `bool` before `int`/`float`, since `bool` subclasses `int` in Python and
+      `True` would otherwise validate as `1.0` against a rate path.
+    - **`services/resolution.py`** — §5.2's three-level chain and §5.3's warnings. Scenario
+      override → country default → global default, with a within-level tiebreak so an override
+      naming a market beats one applying to all markets. An override always carries **tier C**
+      regardless of what it replaced: it is the user's assertion, not an observation, so it cannot
+      inherit tier A. `STALE_VINTAGE` fires at a *six*-year gap and not a five-year one (the spec
+      says `> 5`, and that boundary has its own test). Nothing is ever defaulted — an unresolvable
+      path raises, because M2 §5.1's `adult_share` case is exactly how a silent default produces a
+      plausible wrong answer instead of a visible failure.
+    - **`exceptions.py` + `constants/errors.py`** — the API-layer hierarchy and the shared error-code
+      registry, kept separate from `biet_engine.exceptions` (which knows nothing of HTTP).
+
+    **One real gap found and fixed:** `WarningCode` was missing `TIER_D_INPUT`, which §5.3 requires
+    — mypy caught it. Added, along with `UNPRICED_MARKET`.
+
+    **Still to build, Phase 3:** the batch-loading repositories (§5.2's "one query per parameter per
+    market is an N+1 defect" — resolution deliberately takes a pre-loaded `ResolutionContext` so
+    there is exactly one place queries can happen, and it is not the resolver), scenario CRUD +
+    clone + baseline locking (§5.4–5.5), `EngineInput` assembly, run-snapshot persistence (§5.6),
+    comparison (§5.7), and the ten endpoints.
+
+    56 new tests (314 total), 100% branch coverage on the resolution chain and path vocabulary,
+    99% on the validator — the one uncovered branch is a genuinely defensive `minimum is None`
+    guard, unreachable while every declared path has a lower bound but valid for a future one that
+    does not. mypy --strict and ruff clean; no schema drift.
+14. **Next — Phase 3 proper.** `pip install fastapi uvicorn`, then the repositories and the API
+    layer: routes → controllers → services over the resolution core above. That is the last thing
+    between this engine and something a person can click.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
 

@@ -20,7 +20,6 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
-    Integer,
     Numeric,
     SmallInteger,
     Text,

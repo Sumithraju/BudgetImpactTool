@@ -122,3 +122,8 @@ class WarningCode(StrEnum):
     PROJECTED_VALUE = "PROJECTED_VALUE"
     MISSING_NDC_MAPPING = "MISSING_NDC_MAPPING"
     ESTIMATED_NET_PRICE = "ESTIMATED_NET_PRICE"
+    # M1 section 5.3's fourth resolution warning; the engine raises the rest
+    # of its own codes (SUBSTITUTION_FLOOR, CORRELATED_CRITERIA, ...) as
+    # literal strings on `Warning_`, since it cannot import this module.
+    TIER_D_INPUT = "TIER_D_INPUT"
+    UNPRICED_MARKET = "UNPRICED_MARKET"
