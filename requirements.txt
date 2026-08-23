@@ -1,0 +1,29 @@
+# BIET — Python dependencies (Phase 1: data foundation)
+# Install:  python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+
+# --- ingestion ---------------------------------------------------------------
+httpx==0.28.1
+pandas==3.0.5
+
+# --- validation & config -----------------------------------------------------
+pydantic==2.13.4
+pydantic-settings==2.15.0
+
+# --- persistence -------------------------------------------------------------
+SQLAlchemy==2.0.52
+psycopg[binary]==3.3.4
+alembic==1.19.1
+
+# --- testing -----------------------------------------------------------------
+pytest==9.1.1
+pytest-cov==7.1.0
+
+# --- not yet required; added at the phase that needs them --------------------
+# fastapi          # Phase 3 — API
+# uvicorn          # Phase 3 — API
+# numpy            # Phase 2 — engine (arrives with pandas today)
+# hypothesis       # Phase 2 — property tests
+# fastembed        # Phase 5 — corpus embedding
+# anthropic        # Phase 5 — narrative
+# reportlab        # Phase 5 — PDF export
+# python-pptx      # Phase 5 — PPTX export

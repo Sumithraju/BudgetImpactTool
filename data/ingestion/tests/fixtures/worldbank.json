@@ -1,0 +1,972 @@
+{
+ "SP.POP.TOTL": [
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2025",
+   "value": 83491249,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2024",
+   "value": 83516593,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2023",
+   "value": 83287273,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2022",
+   "value": 83177813,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2021",
+   "value": 83196078,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2020",
+   "value": 83160871,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2019",
+   "value": 83092962,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2018",
+   "value": 82905782,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2025",
+   "value": 1463865525,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2024",
+   "value": 1450935791,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2023",
+   "value": 1438069596,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.TOTL",
+    "value": "Population, total"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2022",
+   "value": 1425423212,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  }
+ ],
+ "NY.GDP.PCAP.PP.CD": [
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2025",
+   "value": 75406.6888111618,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2024",
+   "value": 73957.0012170966,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2023",
+   "value": 72262.2235142279,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2022",
+   "value": 69669.6495435563,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2021",
+   "value": 62630.7748127737,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2020",
+   "value": 58704.5861986404,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2019",
+   "value": 59310.9693966204,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2018",
+   "value": 56320.6026829454,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2025",
+   "value": 11747.9160436011,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2024",
+   "value": 10718.5934040662,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2023",
+   "value": 9853.04309264591,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  },
+  {
+   "indicator": {
+    "id": "NY.GDP.PCAP.PP.CD",
+    "value": "GDP per capita, PPP (current international $)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2022",
+   "value": 8941.09277447514,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 1
+  }
+ ],
+ "SH.XPD.CHEX.PC.CD": [
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2025",
+   "value": null,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2024",
+   "value": 6849.26367188,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2023",
+   "value": 6394.62255859,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2022",
+   "value": 6226.14208984,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2021",
+   "value": 6653.58349609,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2020",
+   "value": 5906.80615234,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2019",
+   "value": 5447.31787109,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2018",
+   "value": 5473.55712891,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2025",
+   "value": null,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2024",
+   "value": null,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2023",
+   "value": 84.68669891,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.CHEX.PC.CD",
+    "value": "Current health expenditure per capita (current US$)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2022",
+   "value": 81.50888824,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  }
+ ],
+ "SH.XPD.OOPC.CH.ZS": [
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2025",
+   "value": null,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2024",
+   "value": 10.7067318,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2023",
+   "value": 11.05290699,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2022",
+   "value": 10.43201256,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2021",
+   "value": 11.36333561,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2020",
+   "value": 11.3380394,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2019",
+   "value": 12.37548542,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2018",
+   "value": 12.1757164,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2025",
+   "value": null,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2024",
+   "value": null,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2023",
+   "value": 43.88510513,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  },
+  {
+   "indicator": {
+    "id": "SH.XPD.OOPC.CH.ZS",
+    "value": "Out-of-pocket expenditure (% of current health expenditure)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2022",
+   "value": 44.54133987,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 2
+  }
+ ],
+ "SP.POP.0014.TO.ZS": [
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2025",
+   "value": 13.8859014629835,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2024",
+   "value": 13.9101604189277,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2023",
+   "value": 13.9155702737293,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2022",
+   "value": 13.9125311211787,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2021",
+   "value": 13.8577309430111,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2020",
+   "value": 13.7617263334875,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2019",
+   "value": 13.6625971101334,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "DE",
+    "value": "Germany"
+   },
+   "countryiso3code": "DEU",
+   "date": "2018",
+   "value": 13.5626162807968,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2025",
+   "value": 24.1952667831956,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2024",
+   "value": 24.6239027058366,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2023",
+   "value": 25.0570622244071,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  },
+  {
+   "indicator": {
+    "id": "SP.POP.0014.TO.ZS",
+    "value": "Population ages 0-14 (% of total population)"
+   },
+   "country": {
+    "id": "IN",
+    "value": "India"
+   },
+   "countryiso3code": "IND",
+   "date": "2022",
+   "value": 25.4877038842946,
+   "unit": "",
+   "obs_status": "",
+   "decimal": 0
+  }
+ ]
+}

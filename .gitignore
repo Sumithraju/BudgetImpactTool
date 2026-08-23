@@ -1,0 +1,23 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+node_modules/
+dist/
+.DS_Store
+.idea/
+.vscode/
+
+# Raw extracts are reproducible from source; do not commit.
+data/raw/*
+!data/raw/.gitkeep
+
+# Reference-only original repo (287 MB, Git-LFS) and it carries a plaintext
+# credential in its own history. Never commit it here. See STATUS.md section 6.
+BI_REPO/

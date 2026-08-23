@@ -1,0 +1,3 @@
+the tech stack, python fast api, react+vite frontend. for both lets go with layered architecture
+
+routes, controller, service repository, dal , pydantic and schema, similarly for the frontend lets use mono repo with mfe 
