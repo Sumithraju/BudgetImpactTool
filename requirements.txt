@@ -13,6 +13,7 @@ pydantic-settings==2.15.0
 SQLAlchemy==2.0.52
 psycopg[binary]==3.3.4
 alembic==1.19.1
+pgvector==0.5.0            # VECTOR column type for the guideline corpus
 
 # --- testing -----------------------------------------------------------------
 pytest==9.1.1

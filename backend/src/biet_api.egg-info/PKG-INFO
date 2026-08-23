@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: biet-api
+Version: 0.1.0
+Summary: BIET — Budget Impact Estimation Tool: API and calculation engine
+Requires-Python: >=3.12
