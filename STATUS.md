@@ -1,7 +1,7 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-23 · **Phase:** 1 of 5 (Data Foundation) — **complete**, see §5 ·
-**Deadline:** 2026-09-06
+**Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
+**M6 done** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -136,7 +136,9 @@ BIET/
 │
 ├── backend/
 │   ├── alembic/                  schema migrations (two, both reversible)
-│   └── src/biet_api/             ORM models, config, DAL — Phase 2 (routes/services) not started
+│   ├── src/biet_api/              ORM models, config, DAL — routes/services not started
+│   ├── src/biet_engine/           pure calculation package — M6 done, M1-M5/M7-M10 not started
+│   └── tests/                     engine/{unit,property,golden}/, test_layering.py
 ├── frontend/                     EMPTY — Phase 3
 └── BI_REPO/                      reference only; see §6
 ```
@@ -364,11 +366,17 @@ implies before writing a new price source's transform.
 3. ~~Finish Phase 1~~ — done (§5): seed CSVs, publish stage, diabetes projection, guideline corpus
    all built and verified against a live database. Only the optional `age_bands.csv` (§5.4) and the
    IBAB password rotation (§6 item 1, not something a coding session can do) remain open.
-4. **Phase 2 — the calculation engine.** Start with **M6 (Persistence)**: zero dependencies, one
-   closed-form function, seven reference values to assert. It is the right warm-up and it is on the
-   critical path. `backend/src/biet_api/` already has the ORM models, config and DAL from Phase 1's
-   schema work — `biet_engine` (the pure calculation package) doesn't exist yet.
-5. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
+4. ~~**M6 — Persistence**~~ — done. `biet_engine` now exists (`backend/src/biet_engine/`), with
+   `persistence_fraction()`, the shared cross-module contracts (`models.py`), and the test scaffolding
+   every later engine module reuses: `backend/tests/engine/{unit,property,golden}/` and
+   `backend/tests/test_layering.py` (AST-based import-boundary check — biet_engine must never import
+   fastapi/sqlalchemy/psycopg/httpx/requests/biet_api/pydantic_settings). 100% branch coverage,
+   mypy --strict and ruff both clean. `requirements.txt` gained `hypothesis`, `mypy`, `ruff`.
+5. **Next — M2 (Population Funnel), M5 (Cost & Pricing), or M1 (Scenario Workspace).** All three
+   depend only on M0, which is done, so any can go next; M2 is the more central one since M3/M4/M7
+   chain off it. Build order and the full dependency graph:
+   [docs/modules/README.md](docs/modules/README.md).
+6. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
 
