@@ -15,8 +15,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 
 #: Dimensionality of the sentence-transformer embedding. Fixed by the model
-#: choice (all-MiniLM-L6-v2, 384 dimensions); changing it requires a migration
-#: and a full re-embed.
+#: choice (BAAI/bge-small-en-v1.5 via fastembed, 384 dimensions); changing it
+#: requires a migration and a full re-embed.
 EMBEDDING_DIMENSIONS = 384
 
 #: ivfflat list count. Rule of thumb is rows/1000 for under a million rows; the

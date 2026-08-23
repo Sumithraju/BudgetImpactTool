@@ -15,6 +15,10 @@ psycopg[binary]==3.3.4
 alembic==1.19.1
 pgvector==0.5.0            # VECTOR column type for the guideline corpus
 
+# --- guideline corpus (data/ingestion/publish/corpus.py) ---------------------
+fastembed==0.8.0           # local embedding model (BAAI/bge-small-en-v1.5), no API key
+pypdf==6.16.2               # PDF text extraction
+
 # --- testing -----------------------------------------------------------------
 pytest==9.1.1
 pytest-cov==7.1.0
@@ -24,7 +28,6 @@ pytest-cov==7.1.0
 # uvicorn          # Phase 3 — API
 # numpy            # Phase 2 — engine (arrives with pandas today)
 # hypothesis       # Phase 2 — property tests
-# fastembed        # Phase 5 — corpus embedding
 # anthropic        # Phase 5 — narrative
 # reportlab        # Phase 5 — PDF export
 # python-pptx      # Phase 5 — PPTX export

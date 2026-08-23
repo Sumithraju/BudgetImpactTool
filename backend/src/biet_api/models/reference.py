@@ -57,8 +57,15 @@ class Country(Base):
 
     # 18+ share of total population. Derived from the World Bank 0-14 band with
     # the 15-17 cohort removed, because WHO prevalence is 18+ (M0 section 5.2).
-    adult_share: Mapped[Rate] = mapped_column(Numeric(5, 4))
-    adult_share_source: Mapped[str] = mapped_column(Text)
+    #
+    # Nullable: `countries` rows are written by two independent pipeline stages
+    # in two separate transactions — curated seed data (name, region, currency)
+    # publishes first, and `adult_share` is computed afterwards from the World
+    # Bank live source (M0 section 5.7, "staged"). A country seeded but not yet
+    # reached by the World Bank publisher has a real row with an unresolved
+    # adult share, not a data-integrity violation.
+    adult_share: Mapped[Rate | None] = mapped_column(Numeric(5, 4))
+    adult_share_source: Mapped[str | None] = mapped_column(Text)
     adult_share_confidence_tier: Mapped[ConfidenceTierCol] = mapped_column(
         default=ConfidenceTier.B.value
     )
@@ -67,7 +74,8 @@ class Country(Base):
 
     __table_args__ = (
         CheckConstraint(
-            f"adult_share > {_ADULT_SHARE_MIN} AND adult_share < {_ADULT_SHARE_MAX}",
+            f"adult_share IS NULL OR "
+            f"(adult_share > {_ADULT_SHARE_MIN} AND adult_share < {_ADULT_SHARE_MAX})",
             name="ck_countries_adult_share_range",
         ),
     )

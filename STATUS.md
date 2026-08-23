@@ -1,17 +1,25 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-23 · **Phase:** 1 of 5 (Data Foundation) · **Deadline:** 2026-09-06
+**Last updated:** 2026-08-23 · **Phase:** 1 of 5 (Data Foundation) — **complete**, see §5 ·
+**Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
+
+**This machine (2026-08-23) has all of Phase 1 done:** git is initialized (main, clean),
+PostgreSQL 16 + pgvector are installed on port **5433** (5432 is held by a separate EDB
+PostgreSQL 18 install) with the full schema migrated to head, and the complete pipeline —
+six live sources, all seed CSVs, the publish stage, and the guideline corpus — runs end to
+end into that database. If you're reading this on a *different* machine, §1/§5.1 walk
+through reproducing the database; the code and seed data travel through git as normal.
 
 ---
 
 ## 1. Resuming on another machine
 
-### 1.1 Move the project first — it is NOT under version control
+### 1.1 Move the project first if it isn't under version control yet
 
-`git init` has never been run here. Do this before anything else, or the work cannot be moved
-safely.
+On this machine `git init` has already been run — skip straight to §1.2. On a fresh machine,
+do this first:
 
 ```bash
 cd /path/to/BIET
@@ -55,11 +63,18 @@ works with no network and no database.
 ### 1.4 Run the pipeline
 
 ```bash
-./.venv/bin/python -m data.ingestion.run
+./.venv/bin/python -m data.ingestion.run                       # extract + transform only
+./.venv/bin/python -m data.ingestion.run --no-extract --publish  # + write to Postgres
+./.venv/bin/python -m data.ingestion.run --seed-only            # data/seed/*.csv only
+./.venv/bin/python -m data.ingestion.run --corpus               # embed data/corpus/*.pdf
 ```
 
 Expect `6/6 sources succeeded`. Takes a few minutes; NADAC is a 124 MB download. Add
-`--no-extract` to re-run transforms against payloads already in `data/raw/`.
+`--no-extract` to re-run transforms against payloads already in `data/raw/`. `--publish`
+needs a live database (§5.1) and needs `pip install -e backend` to have actually put
+`biet_api` on the path — see the note in §5.2 about why that install can silently not work.
+`--corpus` needs `fastembed`/`pypdf` (in `requirements.txt`) and downloads a ~130 MB model
+from HuggingFace on first run.
 
 ---
 
@@ -99,24 +114,31 @@ BIET/
 │   └── biet-frontend/SKILL.md   how to write frontend code (474 lines)
 │
 ├── data/
-│   ├── ingestion/               <- ALL PHASE 1 WORK IS HERE (1,148 lines)
-│   │   ├── config.py            pydantic-settings; optional proxy
-│   │   ├── constants.py         markets, indicators, thresholds — no literals elsewhere
-│   │   ├── errors.py            exception hierarchy
-│   │   ├── http.py              retry + backoff client
-│   │   ├── base.py              Fetcher contract
-│   │   ├── run.py               CLI entry point
-│   │   ├── sources/             six fetchers
-│   │   ├── transform/           EMPTY — publish-stage transforms not written
-│   │   ├── publish/             EMPTY — blocked, see §5
-│   │   └── tests/               33 tests, offline (313 lines)
-│   ├── seed/                    EMPTY — curated CSVs not written yet
-│   ├── raw/                     gitignored; regenerate with the CLI
-│   └── corpus/                  EMPTY — guideline PDFs not yet ingested
+│   ├── ingestion/                ALL PHASE 1 WORK IS HERE
+│   │   ├── config.py             pydantic-settings; optional proxy
+│   │   ├── constants.py          markets, indicators, thresholds — no literals elsewhere
+│   │   ├── errors.py             exception hierarchy
+│   │   ├── http.py               retry + backoff client
+│   │   ├── base.py               Fetcher contract
+│   │   ├── run.py                CLI entry point (--publish / --seed-only / --corpus)
+│   │   ├── sources/              six fetchers
+│   │   ├── transform/            EMPTY — unused; transform lives on each Fetcher instead
+│   │   ├── publish/              writes seed CSVs, live sources and the corpus to Postgres
+│   │   │   ├── seed.py           the seven table-owning seed CSVs
+│   │   │   ├── live.py           worldbank / who_gho / frankfurter / nadac publishers
+│   │   │   ├── corpus.py         PDF chunk + embed + publish (fastembed, local model)
+│   │   │   ├── pipeline.py       orchestration, one transaction per source
+│   │   │   └── upsert.py         generic upsert-by-natural-key
+│   │   └── tests/                33 tests, offline
+│   ├── seed/                     ten curated CSVs, all populated — see §5
+│   ├── raw/                      gitignored; regenerate with the CLI
+│   └── corpus/                   five ISPOR/NICE/WHO guideline PDFs, embedded
 │
-├── backend/                     EMPTY — Phase 2
-├── frontend/                    EMPTY — Phase 3
-└── BI_REPO/                     reference only; see §6
+├── backend/
+│   ├── alembic/                  schema migrations (two, both reversible)
+│   └── src/biet_api/             ORM models, config, DAL — Phase 2 (routes/services) not started
+├── frontend/                     EMPTY — Phase 3
+└── BI_REPO/                      reference only; see §6
 ```
 
 **Authority chain.** `ARCHITECTURE.md` says *what the system is*. `docs/modules/` says *what each
@@ -146,67 +168,147 @@ impact by the full cost of displaced care.
 
 ---
 
-## 5. Phase 1 status
+## 5. Phase 1 status — complete
+
+Every item M0's acceptance criteria (§11) asks for is done and verified against a live database
+on this machine: `countries` (10, each with `adult_share` + `currency_code`), `country_economics`
+(5 indicators × 10 countries), `epidemiology` (obesity 2024 with low/high; diabetes 2014 plus a
+projected current-year row, flagged), `fx_rates` (7 currencies incl. USD identity), `drugs` /
+`drug_regimens` / `drug_prices` (minimum comparator coverage, every price citing a source URL),
+`funnel_defaults` / `eligibility_criteria` (both indications), `guideline_chunks` (embedded, ivfflat
+index built and returning sensible nearest neighbours). Every published row across every table
+carries `source` and `confidence_tier` — checked directly, zero nulls. `alembic check` reports no
+drift; both migrations verified reversible; the 33-test offline suite still passes.
 
 ### Done
 
 - **Secrets and config.** `pydantic-settings`, `.env.example`, `.gitignore`. Proxy fully optional;
-  all six endpoints verified reachable without one.
+  all endpoints (including HuggingFace for the embedding model) verified reachable without one.
 - **Six source fetchers**, each with `extract → validate → transform`. Raw payloads written to disk
   unmodified, so transforms never touch the network.
 - **WHO's four mandatory filters** (`apply_who_filters`) — drops income-group aggregates, region
   aggregates, single-sex series, non-adult age bands. Without these, aggregates load as markets.
-- **Latest-non-null-year resolution**, per indicator per country independently. Population and GDP
-  reach 2025; health expenditure lags to 2023/2024 with null 2025 rows present. A fixed-year join
-  silently discards health expenditure for every market.
+- **Latest-non-null-year resolution**, per indicator per country independently.
 - **Adult-share derivation with the 15–17 correction** — see §7.
 - **NADAC** current-file resolution by walking Wednesdays backwards, plus dedupe by NDC keeping the
-  latest effective date. Scans 1.5 M rows in 2.7 s.
+  latest effective date.
 - **FX** with the USD identity row so M7 can pivot every conversion through USD without a special case.
-- **CLI runner** (`python -m data.ingestion.run`).
-- **33 offline tests**, with an autouse fixture in `conftest.py` that makes any socket call a hard
-  failure — the offline guarantee is enforced, not assumed.
+- **CLI runner** with `--publish`, `--seed-only` and `--corpus` (`python -m data.ingestion.run`).
+- **33 offline tests**, socket-blocked by an autouse `conftest.py` fixture — the offline guarantee
+  is enforced, not assumed. Still pass; the publish stage isn't exercised by them (needs a live DB
+  by design, so it's verified manually below instead).
+- **Alembic schema**, two migrations, both verified reversible (upgrade → check → downgrade base →
+  upgrade): the original sixteen tables, and a follow-up making `countries.adult_share` /
+  `adult_share_source` nullable (§7). `docs/DATABASE.md` documents setup end to end.
+- **PostgreSQL 16 + pgvector 0.8.1**, installed and running on this machine (§5.1).
+- **The publish stage** (`data/ingestion/publish/`) — seed CSVs, live sources and the guideline
+  corpus all write to Postgres, each source in its own transaction so one failure doesn't touch
+  data another source already committed. `data/seed/*.csv` publish first so the live sources'
+  foreign keys (drugs, indications, countries) resolve.
+- **All ten seed CSVs**, cited (§5.3): `countries`, `indications`, `drugs`, `drug_regimens`,
+  `drug_prices`, `funnel_defaults`, `eligibility_criteria`, `ndc_regimen_map`, `diabetes_cagr`.
+  `age_bands.csv` is the one intentionally not written — see §5.4.
+- **Diabetes forward projection** — implemented in `publish/live.py::publish_who_gho`, using
+  `data/seed/diabetes_cagr.csv`. Verified: e.g. DEU 2014 5.0% → 2026 projection 7.145%
+  (`is_projected=True`, tier C).
+- **Guideline corpus** — the five ISPOR/NICE/WHO PDFs already downloaded into `BI_REPO/` (reference
+  copy) were copied into `data/corpus/` and embedded with `fastembed` (`BAAI/bge-small-en-v1.5`,
+  local, no API key or proxy — unlike `BI_REPO/ingests_pdfs_to_pgvector.py`, which hardcodes the
+  IBAB proxy credential; see §6). 269 chunks across 5 documents. A sanity-check similarity query
+  ("recommended time horizon for a BIA?") returned the WHO slide's "Time horizon: 5 years" section
+  as the top hit — the embeddings are semantically meaningful, not just present.
 
-Last verified run: `6/6 sources succeeded` — worldbank 50 rows, who_gho 30, nadac 28, openfda 69,
-clinicaltrials 200, frankfurter 7.
+Last verified full run: `6/6 sources succeeded` and `--seed-only`/`--corpus` both clean —
+worldbank 50 rows, who_gho 30, nadac 28→3 published (25 NDCs correctly skipped, unmapped),
+openfda 69, clinicaltrials 200, frankfurter 7, seed 45 rows across 7 tables, corpus 269 chunks.
 
-### Remaining in Phase 1
+### 5.1 Database — resolved on this machine
 
-1. **Seed CSVs** in `data/seed/` — ten files per M0 §5.6. The important one is `drug_prices.csv`:
-   NADAC carries **no branded incretin pricing** (26 insulin + 2 generic liraglutide, zero
-   semaglutide, zero tirzepatide), so branded prices must be curated with cited public sources and
-   stated gross-to-net assumptions.
-2. **Alembic schema** — tables per ARCHITECTURE.md §8. Authorable now; running needs a database.
-3. **Publish stage** — `data/ingestion/publish/` is empty. **Blocked**, see §5.1.
-4. **Diabetes forward projection** — WHO `NCD_GLUC_04` stops at 2014. Needs `diabetes_cagr.csv`
-   and the projection logic, with `is_projected` flagging and a `STALE_VINTAGE` warning.
-5. **Guideline corpus** — `data/corpus/` empty; embedding needs pgvector.
-
-### 5.1 Blocker: no database
-
-**PostgreSQL and Docker are both absent from the machine this was developed on.** That blocks the
-publish stage, Alembic migrations, and pgvector corpus indexing — everything downstream of
-`transform`.
-
-On the new machine, install either:
+PostgreSQL 16 + pgvector are installed and running (Homebrew, port 5433 — 5432 is held by a
+separate EDB PostgreSQL 18 install on this machine). The `biet` role/database exist, the `vector`
+extension is created, and the schema migration is applied at head. See `docs/DATABASE.md` for the
+full setup if this needs to be redone on another machine — the short version:
 
 ```bash
 brew install postgresql@16 && brew services start postgresql@16
+# pgvector's Homebrew bottle only targets PG 17/18 — for 16, compile against its pg_config
+git clone --depth 1 --branch v0.8.1 https://github.com/pgvector/pgvector.git
+cd pgvector && make PG_CONFIG=/opt/homebrew/opt/postgresql@16/bin/pg_config && make install PG_CONFIG=/opt/homebrew/opt/postgresql@16/bin/pg_config
+psql -d postgres -p 5433 -c "CREATE ROLE biet LOGIN PASSWORD 'biet';"
+createdb -O biet -p 5433 biet
+psql -d biet -p 5433 -c "CREATE EXTENSION IF NOT EXISTS vector;"
+cd backend && ../.venv/bin/alembic upgrade head
 ```
 
-or [Postgres.app](https://postgresapp.com), or Docker Desktop. pgvector is also required
-(`CREATE EXTENSION vector`). Once one is available, items 2 and 3 above unblock immediately.
+### 5.2 Gotcha: `pip install -e backend` may silently not work
+
+This machine's Python (a python.org 3.13.5 build) **silently skips every `.pth` file** in
+site-packages at startup — confirmed with `python -v -c pass`, which prints `Skipping hidden .pth
+file` for `__editable__.biet_api-*.pth`, independent of any sandboxing. So `pip install -e backend`
+appears to succeed (the `.pth` and `.dist-info` are written) but `import biet_api` still fails in a
+fresh process. `data/ingestion/publish/__init__.py` works around this by inserting `backend/src`
+into `sys.path` explicitly at import time, rather than depending on the editable install. If
+`import biet_api` fails standalone but the pipeline runs fine, that's this — not a real problem —
+but it's worth checking on a *different* machine whether the same interpreter quirk applies before
+assuming the workaround is unnecessary there.
+
+### 5.3 Seed data quality — what's solid, what's an estimate
+
+Every seed row cites a source, per the non-negotiable, but the underlying confidence varies a lot
+and every row's `confidence_tier` says so honestly:
+
+- **Solid (tier A/B).** `countries`, `indications`, `drugs` are factual/structural. `drug_prices`
+  for the seven US-market rows sourced directly from manufacturer pricing pages (`novocare.com`,
+  `pricinginfo.lilly.com`) or NADAC (government data). `diabetes_cagr` — real World Bank
+  `SH.STA.DIAB.ZS` (IDF Atlas-sourced) time series, 2011 vs 2024, same methodology both years, one
+  API call per market away from being re-derived or extended.
+- **Reasonable estimates (tier C), clearly flagged as such.** `drug_regimens.persistence_12m` —
+  real published real-world studies exist and are cited, but persistence figures vary 2-3x across
+  studies depending on definition and population, so these are informed midpoints, not precise
+  observations. `funnel_defaults` and `eligibility_criteria` — several rows are genuine published
+  statistics (obesity diagnosis documentation ~19%, diabetes undiagnosed ~43% globally / ~29% in
+  high-income countries, T2D+CVD comorbidity 53% in a German cohort) but others (treated-given-
+  diagnosed ratios, addressable-market fractions) are modelling assumptions with no direct citation
+  — the source text says so explicitly in each case rather than presenting them as observed.
+- **Only the US market is priced with branded (non-NADAC) data.** The other nine markets have no
+  `drug_prices` row for the branded GLP-1s/comparators. This is intentional, not a gap: M5's own
+  spec (§5.3) computes a PPP-derived price at *run time* for any market with no observed price —
+  seeding placeholder prices for nine markets would just be pre-empting a Phase 2 engine function
+  with worse-sourced numbers. `orlistat` and `metformin` are tier C — generic cash prices vary
+  widely by pharmacy and were estimated from a reported range rather than one authoritative figure.
+- **`price_local` unit design.** A real cross-check caught during this build: NADAC quotes
+  insulin/liraglutide per mL, but M5's engine formula (`unit_price × units_per_admin ×
+  admins_per_year`) needs `price_local` in the same unit as `drug_regimens.units_per_admin`, and
+  `drug_regimens` has exactly one row per drug regardless of how many price bases exist for it. So
+  NADAC's per-mL price is converted to per-IU (insulin) or per-mg (liraglutide) using the labelled
+  concentration before it's stored — see the docstring on `publish/live.py::publish_nadac`. Verified
+  by cross-checking `price_local × units_per_admin × admins_per_year` against the independently
+  computed `annual_cost_usd` convenience field — they agree to the cent.
+
+### 5.4 Deferred: `age_bands.csv`
+
+M0's own §12 "open questions" already frames this as optional: overriding the tier-B 15-17-cohort
+approximation with an observed UN World Population Prospects single-year figure would upgrade
+`adult_share` to tier A and move results 3-6% per market, but the approximation is explicit,
+sourced, and functions correctly without it. Not written this session; worth doing before the
+numbers go in front of anyone who'd weight the difference between tier A and B.
 
 ---
 
 ## 6. Action items for you
 
 1. **Rotate the IBAB account password.** `BI_REPO/datadownload.py`, `download_guidelines.py`,
-   `ingests_pdfs_to_pgvector.py` and `app.py` contain it in plaintext. It is in git history, so
-   deleting the line is not sufficient — the credential must be changed at the source.
-2. **Install PostgreSQL 16 + pgvector** to unblock §5.1.
-3. **Decide the diabetes CAGR source** — IDF Diabetes Atlas historical series is the likeliest;
-   needs confirming and citing before `diabetes_cagr.csv` can be populated.
+   `ingests_pdfs_to_pgvector.py` and `app.py` contain it in plaintext (re-confirmed this session,
+   reading `ingests_pdfs_to_pgvector.py` while designing the corpus embedding replacement). It is
+   in git history, so deleting the line is not sufficient — the credential must be changed at the
+   source. **Still open** — nothing in this session used or transmitted that credential; the
+   replacement corpus script (`data/ingestion/publish/corpus.py`) needs no proxy at all on this
+   machine.
+2. ~~Install PostgreSQL 16 + pgvector~~ — done on this machine, see §5.1.
+3. ~~Decide the diabetes CAGR source~~ — done: World Bank `SH.STA.DIAB.ZS` (IDF Atlas-sourced),
+   same live API this pipeline already calls for other indicators. See §5.3.
+4. **Optional: source observed 15-17 population shares** for `data/seed/age_bands.csv` — see §5.4.
+   Not blocking anything.
 
 ---
 
@@ -235,16 +337,37 @@ redistributes. The reduced form becomes a property test instead.
 0.8334 today against the fixture's 0.820. A golden fixture that moves when WHO refreshes an
 indicator is not a golden fixture.
 
+**`countries.adult_share` and `adult_share_source` had to become nullable.** The original schema
+made them `NOT NULL`, but they're populated by a *different* pipeline stage (the World Bank live
+source) than the rest of the row (curated `countries.csv` seed data) — two separate transactions by
+design (M0 §5.7, "staged"). A country seeded before World Bank publishes is a real row with an
+unresolved adult share, not a data-integrity violation. Migration `94bcd9ad76be` fixes this
+(nullable columns, `CHECK` constraint amended to `adult_share IS NULL OR (... range ...)`),
+verified reversible. If you're extending the schema and hit a similar `NOT NULL` failure on a
+column populated by a different source than the row's other columns, this is probably why —
+consider nullability before adding the constraint, not after the insert fails.
+
+**`drug_prices.price_local` must be per clinical-dose-unit, never per the source's native unit.**
+NADAC quotes insulin/liraglutide per mL; the seed data quotes everything else per mg. Since
+`drug_regimens` has one row per drug regardless of how many `drug_prices` rows (bases) exist for
+it, every basis for a drug must share the *same* unit convention or M5's `unit_price ×
+units_per_admin` breaks the moment two differently-unit-quoted prices exist for one drug. See
+§5.3's last bullet for the concrete fix; the general lesson is to check what unit `units_per_admin`
+implies before writing a new price source's transform.
+
 ---
 
 ## 8. Next steps, in order
 
-1. `git init` and commit (§1.1).
-2. Install PostgreSQL 16 + pgvector.
-3. Finish Phase 1: seed CSVs → Alembic schema → publish stage → diabetes projection.
+1. ~~`git init` and commit~~ — done (§1.1).
+2. ~~Install PostgreSQL 16 + pgvector~~ — done (§5.1).
+3. ~~Finish Phase 1~~ — done (§5): seed CSVs, publish stage, diabetes projection, guideline corpus
+   all built and verified against a live database. Only the optional `age_bands.csv` (§5.4) and the
+   IBAB password rotation (§6 item 1, not something a coding session can do) remain open.
 4. **Phase 2 — the calculation engine.** Start with **M6 (Persistence)**: zero dependencies, one
    closed-form function, seven reference values to assert. It is the right warm-up and it is on the
-   critical path.
+   critical path. `backend/src/biet_api/` already has the ORM models, config and DAL from Phase 1's
+   schema work — `biet_engine` (the pure calculation package) doesn't exist yet.
 5. Phase 3 — API and core UI. Phase 4 — solver, tornado, PSA. Phase 5 — narrative and export.
 
 Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
@@ -257,14 +380,27 @@ Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
 # tests (offline, no database needed)
 ./.venv/bin/python -m pytest data/ingestion/tests -q
 
-# full ingestion
+# full ingestion, transform only (no database needed)
 ./.venv/bin/python -m data.ingestion.run
+
+# full ingestion + publish everything to Postgres (seed, live sources, in that order)
+./.venv/bin/python -m data.ingestion.run --no-extract --publish
+
+# seed CSVs only — countries/indications/drugs/regimens/prices/funnel/eligibility
+./.venv/bin/python -m data.ingestion.run --seed-only
+
+# guideline corpus only — chunk, embed (fastembed, local model) and publish the five PDFs
+./.venv/bin/python -m data.ingestion.run --corpus
 
 # re-transform without re-downloading
 ./.venv/bin/python -m data.ingestion.run --no-extract
 
 # one source, verbose
 ./.venv/bin/python -m data.ingestion.run who_gho -v
+
+# migrations (from backend/)
+../.venv/bin/alembic upgrade head
+../.venv/bin/alembic check              # model/database drift; must say "No new upgrade operations"
 
 # regenerate the Word version of the architecture document
 # (needs: npm install docx; script is in the session scratchpad — see note below)
