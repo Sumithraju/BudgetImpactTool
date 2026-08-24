@@ -1,11 +1,11 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-24 · **Phase:** 4 of 5 done; only Phase 5 remains.
-**Phase 4 complete — all ten modules reachable from the UI** (§8) · **Deadline:** 2026-09-06
+**Last updated:** 2026-08-24 · **Phase:** 5 of 5 — every phase in ARCHITECTURE.md §15 is done.
+**All five phases complete** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
-**This machine has Phases 1-4 done.** `./run.sh` brings up the API on :8077 and the
+**This machine has all five phases done.** `./run.sh` brings up the API on :8077 and the
 interface on :5173; the database must already be running (§5.1).
 
 **Phase 1 detail:** git is initialized (main, clean),
@@ -626,17 +626,40 @@ implies before writing a new price source's transform.
     EUR 5.42B — exactly double, addressable doubling to match — and the diff isolates
     the one changed path. No console errors.
 
-15. **What is genuinely left — Phase 5 only.**
-    - **M10's I/O half** — pgvector retrieval, the LLM narrative, PDF/PPTX export.
-      The safety core (numeric validator, mandatory limitations, assumption
-      register) is built and tested; the corpus is embedded and indexed. This is the
-      last engineering work in the plan.
-    - **The deck and the project report** — not started. These are deliverables in
-      their own right and are largely writing rather than code.
-    - **`age_bands.csv`** (§5.4) and the **IBAB password rotation** (§6) remain open;
-      neither blocks anything.
+15. ~~**Phase 5 — Evidence, Export and Hardening**~~ — done. **A complete scenario now
+    produces a distributable, fully cited deliverable**, which is the exit criterion for
+    the whole project.
 
-    **Honest read with the deadline close:** Phases 1-4 are done and the system works
-    end to end. Phase 5 (narrative + export) is additive — the thing a judge would
-    actually be shown already runs, and the two published artifacts already stand in
-    for the export deliverable if time runs short.
+    - **Retrieval** — `repositories/guideline.py`, holding the one documented raw-SQL
+      exception in the codebase (pgvector's `<=>` has no ORM expression). Queries the
+      269 embedded chunks; the similarity floor is 0.35.
+    - **Narrative** — two paths. The deterministic composer builds the account from the
+      engine's own numbers and always works. The model path (Claude Opus 5) rewrites it
+      more readably, then goes through `validate_numbers`; any figure absent from the
+      engine output discards the whole draft. Without a credential the model path is
+      skipped — an ordinary state, not a failure. `generated_by` tells the reader which
+      path wrote the prose.
+    - **Export** — PDF (6 pages) and PPTX (16:9), both with narrative, citations, the
+      seven mandatory limitations, and the full 145-row assumption register.
+
+    **The test caught a real inconsistency in my own code.** The deterministic composer
+    was summing addressable populations across markets and stating the total — a number
+    the engine never computed and the response does not contain. That is exactly what
+    the validator rejects in a model draft, and the composer had quietly exempted
+    itself. Fixed: it now quotes the largest market's figure, which is in the result.
+    The rule applies to both paths or it is not a rule.
+
+    354 tests, mypy --strict and ruff clean across 53 files, tsc clean.
+
+16. **What remains — none of it engineering.**
+    - **The deck and the project report.** Hackathon deliverables in their own right,
+      and mostly writing. The PPTX export is a starting point for the deck; the two
+      published artifacts and this document cover much of the report's substance.
+    - **`ANTHROPIC_API_KEY`** — set it and the narrative upgrades from deterministic
+      prose to a validated model draft. Everything works without it.
+    - **IBAB password rotation** (§6) and the optional **`age_bands.csv`** (§5.4).
+
+    **Honest read:** every phase in the specification is complete and verified. The
+    system ingests real data, computes a defensible incremental number, exposes it
+    through an API and an interface, and exports a cited document. What is left is
+    presentation, not construction.
