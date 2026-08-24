@@ -10,6 +10,7 @@ import {
 } from "../shared/api";
 import { ScenarioForm, type Draft } from "../features/scenario-builder/ScenarioForm";
 import { Results } from "../features/results/Results";
+import { ScenarioCompare, type SavedRun } from "../features/scenario-compare/ScenarioCompare";
 
 const DEFAULT_DRAFT: Draft = {
   name: "Wegovy obesity launch",
@@ -36,6 +37,10 @@ export function App() {
   const [owsa, setOwsa] = useState<Owsa | null>(null);
   const [psa, setPsa] = useState<Psa | null>(null);
 
+  /** Every run this session, so any two can be compared. Kept in memory
+   *  rather than re-fetched: the scenarios are already persisted server-side
+   *  and this is only the shortlist the user has actually looked at. */
+  const [saved, setSaved] = useState<SavedRun[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ message: string; field: string | null } | null>(null);
 
@@ -88,6 +93,15 @@ export function App() {
       setCalculation(result);
       setOwsa(null);
       setPsa(null);
+      setSaved((current) => [
+        ...current,
+        {
+          scenarioId: scenario.scenario_id,
+          label: `Run ${current.length + 1}`,
+          cumulative: result.totals.cumulative,
+          currency: result.totals.currency,
+        },
+      ]);
 
       const [o, p] = await Promise.all([
         api.owsa(scenario.scenario_id),
@@ -151,7 +165,10 @@ export function App() {
           )}
 
           {calculation && (
-            <Results calculation={calculation} owsa={owsa} psa={psa} bands={bands} />
+            <>
+              <Results calculation={calculation} owsa={owsa} psa={psa} bands={bands} />
+              <ScenarioCompare saved={saved} />
+            </>
           )}
         </main>
       </div>

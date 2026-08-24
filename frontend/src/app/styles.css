@@ -276,3 +276,22 @@ tbody tr:last-child td { border-bottom: none; }
   .gauge-row { grid-template-columns: 38px 1fr 68px; }
   .gauge-row .chip { display: none; }
 }
+
+/* comparison ------------------------------------------------------- */
+.cmp-picker { display: flex; gap: 7px; flex-wrap: wrap; align-items: stretch;
+  margin-bottom: 16px; }
+.cmp-picker button { font: inherit; font-size: 12px; padding: 7px 12px;
+  border: 1px solid var(--line-2); background: var(--surface); color: var(--ink-2);
+  border-radius: 3px; cursor: pointer; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 2px; }
+.cmp-picker button em { font-family: "IBM Plex Mono", monospace; font-style: normal;
+  font-size: 11px; color: var(--ink-3); }
+.cmp-picker button[aria-pressed="true"] { border-color: var(--accent);
+  background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.cmp-picker button[aria-pressed="true"] em { color: var(--accent); }
+.cmp-run { align-self: center; background: var(--accent) !important;
+  border-color: var(--accent) !important; color: var(--on-accent) !important;
+  font-weight: 600 !important; justify-content: center !important; }
+.cmp-run:disabled { opacity: .45; cursor: not-allowed; }
+.difftitle { font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-3); margin: 24px 0 12px; }
