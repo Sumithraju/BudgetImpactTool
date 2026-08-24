@@ -163,6 +163,33 @@ export interface Comparison {
   diff: DiffEntry[];
 }
 
+export interface Citation {
+  issuing_body: string;
+  document_title: string;
+  page_number: number | null;
+  similarity: number;
+  excerpt: string;
+}
+
+export interface Assumption {
+  parameter_path: string;
+  country_code: string | null;
+  value: number;
+  confidence_tier: string;
+  source: string;
+}
+
+export interface NarrativeDoc {
+  sections: Record<string, string>;
+  limitations: string[];
+  citations: Citation[];
+  assumptions: Assumption[];
+  /** Which path wrote the prose — the deterministic composer, or a model
+   *  draft that passed numeric validation. The reader is entitled to know. */
+  generated_by: string;
+  warnings: string[];
+}
+
 export interface CountryOption {
   country_code: string;
   country_name: string;
@@ -273,6 +300,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ target_ratio: targetRatio }),
     }),
+
+  narrative: (id: string) => request<NarrativeDoc>(`/api/v1/scenarios/${id}/narrative`),
+
+  /** Export URLs are hrefs, not fetches — letting the browser navigate keeps
+   *  the Content-Disposition filename, which a blob download would discard. */
+  exportUrl: (id: string, format: "pdf" | "pptx") =>
+    `/api/v1/scenarios/${id}/export.${format}`,
 
   compare: (scenarioIds: string[]) =>
     request<Comparison>("/api/v1/scenarios/compare", {

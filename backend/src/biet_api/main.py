@@ -140,10 +140,11 @@ def create_app() -> FastAPI:
 
     # ------------------------------------------------------------- routes
 
-    from .routes import reference, scenarios
+    from .routes import exports, reference, scenarios
 
     app.include_router(scenarios.router)
     app.include_router(reference.router)
+    app.include_router(exports.router)
 
     @app.get("/health", tags=["meta"])
     def health() -> dict[str, str]:

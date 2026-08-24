@@ -11,6 +11,7 @@ import {
 import { ScenarioForm, type Draft } from "../features/scenario-builder/ScenarioForm";
 import { Results } from "../features/results/Results";
 import { ScenarioCompare, type SavedRun } from "../features/scenario-compare/ScenarioCompare";
+import { Evidence } from "../features/evidence/Evidence";
 
 const DEFAULT_DRAFT: Draft = {
   name: "Wegovy obesity launch",
@@ -167,6 +168,7 @@ export function App() {
           {calculation && (
             <>
               <Results calculation={calculation} owsa={owsa} psa={psa} bands={bands} />
+              <Evidence scenarioId={calculation.scenario_id} />
               <ScenarioCompare saved={saved} />
             </>
           )}

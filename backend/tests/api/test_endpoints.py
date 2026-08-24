@@ -303,3 +303,129 @@ def test_compare_rejects_mixed_indications(client: TestClient) -> None:
 
     for s in (obesity, diabetes):
         client.delete(f"/api/v1/scenarios/{s['scenario_id']}")
+
+
+# --------------------------------------------------------------------------- M10
+
+
+def test_narrative_is_composed_with_citations_and_a_register(
+    client: TestClient, scenario_id: str,
+) -> None:
+    body = client.get(f"/api/v1/scenarios/{scenario_id}/narrative").json()
+
+    assert set(body["sections"]) == {
+        "population", "impact", "affordability", "uncertainty", "limitations",
+    }
+    assert len(body["limitations"]) == 7
+    assert body["assumptions"]
+    assert body["generated_by"]
+
+
+def test_every_number_in_the_narrative_comes_from_the_engine(
+    client: TestClient, scenario_id: str,
+) -> None:
+    """M10 section 5.1, end to end. Whichever path wrote the prose, no figure
+    in it may be one the engine did not produce — that is the guarantee the
+    whole narrative feature rests on."""
+    from biet_engine.narrative import unsupported_numbers
+
+    result = client.post(
+        f"/api/v1/scenarios/{scenario_id}/calculate", params={"persist": False},
+    ).json()
+    body = client.get(f"/api/v1/scenarios/{scenario_id}/narrative").json()
+
+    context: list[float] = [
+        result["totals"]["cumulative"],
+        float(result["totals"]["peak_year"]),
+        float(result["launch_year"]),
+        float(result["horizon_years"]),
+        float(len(result["countries"])),
+        *result["totals"]["by_year"],
+    ]
+    for country in result["countries"]:
+        context.append(country["cumulative_budget_impact"])
+        if country["affordability"]:
+            context.append(country["affordability"]["cumulative_ratio"])
+            context.append(country["affordability"]["cumulative_ratio"] * 100)
+        for year in country["years"]:
+            context.extend([
+                year["addressable"], year["patients_on_new"], year["budget_impact"],
+                float(year["calendar_year"]),
+            ])
+
+    for name, section in body["sections"].items():
+        assert unsupported_numbers(section, context) == (), name
+
+
+def test_narrative_cites_the_embedded_guideline_corpus(
+    client: TestClient, scenario_id: str,
+) -> None:
+    body = client.get(f"/api/v1/scenarios/{scenario_id}/narrative").json()
+
+    assert body["citations"], "corpus is embedded; retrieval should return chunks"
+    for citation in body["citations"]:
+        assert citation["issuing_body"] in {"ISPOR", "NICE", "WHO"}
+        # Section 5.3's similarity floor — nothing weaker should be cited.
+        assert citation["similarity"] >= 0.35
+
+
+def test_assumption_register_carries_tier_and_source_on_every_row(
+    client: TestClient, scenario_id: str,
+) -> None:
+    body = client.get(f"/api/v1/scenarios/{scenario_id}/narrative").json()
+
+    for entry in body["assumptions"]:
+        assert entry["source"]
+        assert entry["confidence_tier"] in {"A", "B", "C", "D"}
+
+
+def test_pdf_export_is_a_real_pdf_with_the_register(
+    client: TestClient, scenario_id: str,
+) -> None:
+    response = client.get(f"/api/v1/scenarios/{scenario_id}/export.pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert "attachment" in response.headers["content-disposition"]
+    assert response.content.startswith(b"%PDF")
+
+    from io import BytesIO
+
+    from pypdf import PdfReader
+
+    reader = PdfReader(BytesIO(response.content))
+    assert len(reader.pages) >= 2          # narrative, then the register's own page
+    text = "".join(page.extract_text() or "" for page in reader.pages)
+    assert "Assumption register" in text
+    assert "Stated limitations" in text
+
+
+def test_pptx_export_is_a_real_deck(client: TestClient, scenario_id: str) -> None:
+    response = client.get(f"/api/v1/scenarios/{scenario_id}/export.pptx")
+
+    assert response.status_code == 200
+    assert "presentationml" in response.headers["content-type"]
+    # OOXML is a zip container; PK is its magic number.
+    assert response.content[:2] == b"PK"
+
+    from io import BytesIO
+
+    from pptx import Presentation
+
+    deck = Presentation(BytesIO(response.content))
+    assert len(deck.slides) >= 6
+
+
+def test_export_filename_survives_an_awkward_asset_name(client: TestClient) -> None:
+    """A slash in the asset name must not truncate the Content-Disposition
+    header at the slash."""
+    created = client.post("/api/v1/scenarios", json={
+        **VALID, "asset_name": "Wegovy 2.4mg (EU/US)",
+    }).json()
+
+    disposition = client.get(
+        f"/api/v1/scenarios/{created['scenario_id']}/export.pdf",
+    ).headers["content-disposition"]
+    assert "/" not in disposition.split("filename=")[1].split(";")[0]
+
+    client.delete(f"/api/v1/scenarios/{created['scenario_id']}")

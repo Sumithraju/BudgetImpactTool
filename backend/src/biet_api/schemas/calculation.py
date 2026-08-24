@@ -258,3 +258,38 @@ class DrugOption(BaseModel):
     company: str | None
     drug_class: str | None
     is_comparator: bool
+
+
+# --------------------------------------------------------------------------- narrative
+
+
+class CitationRead(BaseModel):
+    issuing_body: str
+    document_title: str
+    page_number: int | None
+    similarity: float
+    excerpt: str
+
+
+class AssumptionRead(BaseModel):
+    parameter_path: str
+    country_code: str | None
+    value: float
+    confidence_tier: str
+    source: str
+
+
+class NarrativeResponse(BaseModel):
+    """`generated_by` names the path that produced the prose — the
+    deterministic composer, or a model draft that passed numeric validation.
+    The reader is entitled to know which."""
+
+    scenario_id: uuid.UUID
+    sections: dict[str, str]
+    limitations: list[str]
+    citations: list[CitationRead]
+    assumptions: list[AssumptionRead]
+    generated_by: str
+    warnings: list[str] = Field(default_factory=list)
+    reporting_currency: str
+    cumulative: float

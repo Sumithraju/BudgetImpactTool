@@ -36,8 +36,7 @@ ruff==0.16.4
 fastapi==0.141.1
 uvicorn==0.52.4
 
-# --- not yet required; added at the phase that needs them --------------------
-
-# anthropic        # Phase 5 — narrative
-# reportlab        # Phase 5 — PDF export
-# python-pptx      # Phase 5 — PPTX export
+# --- evidence, narrative and export (Phase 5) --------------------------------
+anthropic==1.0.0           # optional: narrative drafting; falls back without a key
+reportlab==5.0.1           # PDF export
+python-pptx==1.0.2         # PowerPoint export
