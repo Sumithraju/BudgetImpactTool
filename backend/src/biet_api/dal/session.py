@@ -36,3 +36,18 @@ def session_scope() -> Iterator[Session]:
         raise
     finally:
         session.close()
+
+
+def get_session() -> Iterator[Session]:
+    """FastAPI dependency. Rolls back and closes on the way out.
+
+    Deliberately does *not* commit: routes commit explicitly after a
+    successful write, so a handler that raises never leaves a partial
+    transaction committed behind it.
+    """
+    session = session_factory()
+    try:
+        yield session
+    finally:
+        session.rollback()
+        session.close()

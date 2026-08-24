@@ -1,0 +1,273 @@
+"""Runs the engine and maps its output to the HTTP contract.
+
+The engine is called here and nowhere else in the API. It receives a fully
+resolved `EngineInput` and returns frozen results; this module's only job is
+to invoke it, persist the run, and translate the result into response
+schemas. No calculation happens in this file.
+"""
+
+from __future__ import annotations
+
+import time
+import uuid
+from collections.abc import Sequence
+
+from sqlalchemy.orm import Session
+
+from biet_engine import __version__ as engine_version
+from biet_engine.affordability import compute_affordability
+from biet_engine.impact import compute_budget_impact
+from biet_engine.models import (
+    CountryInput,
+    CountryResult,
+    EngineInput,
+    EngineResult,
+    Provenance,
+    TherapyInput,
+    Warning_,
+)
+from biet_engine.psa import run_psa
+from biet_engine.sensitivity import run_owsa
+
+from ..constants.domain import RunType
+from ..schemas.calculation import (
+    AffordabilityRead,
+    CalculationResponse,
+    CountryRead,
+    CriterionRead,
+    FunnelStageRead,
+    OwsaEntryRead,
+    OwsaResponse,
+    ProvenanceRead,
+    PsaResponse,
+    TherapyRead,
+    TotalsRead,
+    WarningRead,
+    YearRead,
+)
+from .engine_input import EngineInputBuilder
+
+#: Buckets for the PSA histogram. Enough shape to read the skew, few enough
+#: that the payload stays small — the interface never plots raw samples.
+PSA_HISTOGRAM_BINS = 36
+
+DEFAULT_PSA_ITERATIONS = 5_000
+DEFAULT_PSA_SEED = 20_260_906
+
+
+def _provenance(p: Provenance | None) -> ProvenanceRead | None:
+    if p is None:
+        return None
+    return ProvenanceRead(
+        source=p.source, vintage_year=p.vintage_year,
+        confidence_tier=str(p.confidence_tier),
+        resolution_level=str(p.resolution_level),
+        is_projected=p.is_projected, note=p.note,
+    )
+
+
+def _warnings(items: Sequence[Warning_]) -> list[WarningRead]:
+    return [
+        WarningRead(
+            code=w.code, message=w.message,
+            country_code=w.country_code, parameter_path=w.parameter_path,
+        )
+        for w in items
+    ]
+
+
+def _therapy(t: TherapyInput, currency: str) -> TherapyRead:
+    prov = _provenance(t.price_provenance)
+    assert prov is not None            # TherapyInput.price_provenance is non-optional
+    return TherapyRead(
+        drug_id=t.drug_id, name=t.name, is_new=t.is_new,
+        unit_price=t.unit_price.amount, currency=currency,
+        price_basis=str(t.price_basis), provenance=prov,
+        persistence_12m=t.persistence_12m.value,
+    )
+
+
+class CalculationService:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+        self._builder = EngineInputBuilder(session)
+
+    def build_input(self, scenario: object) -> tuple[EngineInput, tuple[Warning_, ...]]:
+        """Resolve a scenario without calculating — for callers like the
+        solver that drive the engine themselves."""
+        return self._builder.build(scenario)  # type: ignore[arg-type]
+
+    # ----------------------------------------------------------------- forward
+
+    def calculate(self, scenario: object) -> tuple[CalculationResponse, EngineInput, EngineResult]:
+        """Forward run: funnel through incremental budget impact.
+
+        Returns the response alongside the raw engine input and result, so a
+        caller that also wants sensitivity does not rebuild and recompute.
+        """
+        started = time.perf_counter()
+        engine_input, resolution_warnings = self._builder.build(scenario)  # type: ignore[arg-type]
+        result = compute_budget_impact(engine_input)
+        affordability = compute_affordability(result, engine_input)
+        duration_ms = int((time.perf_counter() - started) * 1000)
+
+        by_code = {a.country_code: a for a in affordability}
+        countries = [
+            self._country(cr, engine_input, by_code.get(cr.country_code))
+            for cr in result.countries
+        ]
+
+        response = CalculationResponse(
+            scenario_id=engine_input.scenario_id,
+            engine_version=result.engine_version,
+            reporting_currency=result.reporting_currency,
+            fx_snapshot_date=result.fx_snapshot_date,
+            launch_year=engine_input.launch_year,
+            horizon_years=engine_input.horizon_years,
+            countries=countries,
+            totals=TotalsRead(
+                by_year=[m.amount for m in result.totals.by_year],
+                cumulative=result.totals.cumulative.amount,
+                peak_year=result.totals.peak_year,
+                currency=result.totals.cumulative.currency,
+            ),
+            warnings=_warnings(list(resolution_warnings) + list(result.warnings)),
+            duration_ms=duration_ms,
+        )
+        return response, engine_input, result
+
+    def _country(
+        self,
+        cr: CountryResult,
+        engine_input: EngineInput,
+        affordability: object | None,
+    ) -> CountryRead:
+        ci: CountryInput = next(
+            c for c in engine_input.countries if c.country_code == cr.country_code
+        )
+        return CountryRead(
+            country_code=cr.country_code,
+            currency=cr.currency,
+            cumulative_budget_impact=cr.cumulative_budget_impact.amount,
+            funnel=[
+                FunnelStageRead(
+                    stage=str(s.stage), value=s.value, factor=s.factor,
+                    provenance=_provenance(s.provenance),
+                )
+                for s in cr.funnel.stages
+            ],
+            years=[
+                YearRead(
+                    year=y.year, calendar_year=y.calendar_year, uptake=y.uptake,
+                    addressable=y.addressable, patients_on_new=y.patients_on_new,
+                    cost_without=y.cost_without.amount, cost_with=y.cost_with.amount,
+                    budget_impact=y.budget_impact.amount,
+                    net_cost_per_switch=y.net_cost_per_switch.amount,
+                    impact_per_patient=(
+                        y.impact_per_patient.amount if y.impact_per_patient else None
+                    ),
+                )
+                for y in cr.years
+            ],
+            criteria=[
+                CriterionRead(
+                    code=c.code, label=c.label, factor=c.factor.value,
+                    enabled=c.enabled, correlated_with=list(c.correlated_with),
+                )
+                for c in ci.criteria
+            ],
+            therapies=[_therapy(t, ci.currency) for t in ci.therapies],
+            new_therapy=_therapy(ci.new_therapy, ci.currency),
+            affordability=(
+                AffordabilityRead(
+                    cumulative_ratio=affordability.cumulative_ratio,  # type: ignore[attr-defined]
+                    band=str(affordability.band),                     # type: ignore[attr-defined]
+                    health_budget=affordability.health_budget.amount,  # type: ignore[attr-defined]
+                    pmpy=(
+                        affordability.pmpy.amount                      # type: ignore[attr-defined]
+                        if affordability.pmpy else None                # type: ignore[attr-defined]
+                    ),
+                )
+                if affordability is not None else None
+            ),
+        )
+
+    # ----------------------------------------------------------------- sensitivity
+
+    def owsa(self, scenario: object) -> OwsaResponse:
+        engine_input, _ = self._builder.build(scenario)  # type: ignore[arg-type]
+        result = run_owsa(engine_input)
+        return OwsaResponse(
+            scenario_id=engine_input.scenario_id,
+            base_result=result.base_result,
+            currency=engine_input.reporting_currency,
+            entries=[
+                OwsaEntryRead(
+                    parameter_path=e.parameter_path, label=e.label,
+                    base_value=e.base_value, low_value=e.low_value,
+                    high_value=e.high_value, result_at_low=e.result_at_low,
+                    result_at_high=e.result_at_high, swing=e.swing, rank=e.rank,
+                )
+                for e in result.entries
+            ],
+            warnings=_warnings(result.warnings),
+        )
+
+    def psa(
+        self,
+        scenario: object,
+        *,
+        iterations: int = DEFAULT_PSA_ITERATIONS,
+        seed: int = DEFAULT_PSA_SEED,
+    ) -> PsaResponse:
+        engine_input, _ = self._builder.build(scenario)  # type: ignore[arg-type]
+        result = run_psa(engine_input, iterations=iterations, seed=seed)
+
+        samples = list(result.samples)
+        low, high = min(samples), max(samples)
+        span = high - low
+        bins = [0] * PSA_HISTOGRAM_BINS
+        for sample in samples:
+            # A zero span means every draw landed identically (no uncertainty
+            # to sample); bucket 0 then holds them all rather than dividing
+            # by zero.
+            index = (
+                0 if span == 0
+                else min(int((sample - low) / span * PSA_HISTOGRAM_BINS), PSA_HISTOGRAM_BINS - 1)
+            )
+            bins[index] += 1
+
+        return PsaResponse(
+            scenario_id=engine_input.scenario_id,
+            currency=engine_input.reporting_currency,
+            iterations=result.iterations, seed=result.seed,
+            mean=result.mean, median=result.median,
+            p2_5=result.p2_5, p97_5=result.p97_5,
+            histogram=bins, histogram_min=low, histogram_max=high,
+            exceedance=dict(result.exceedance), converged=result.converged,
+            warnings=_warnings(result.warnings),
+        )
+
+    # ----------------------------------------------------------------- persistence
+
+    @staticmethod
+    def snapshot(engine_input: EngineInput, response: CalculationResponse) -> dict[str, object]:
+        """What gets frozen into `model_runs` — the resolved inputs and the
+        results, so replaying through the recorded engine version reproduces
+        this exact answer (M1 section 5.6)."""
+        return {
+            "input": engine_input.model_dump(mode="json"),
+            "results": response.model_dump(mode="json"),
+        }
+
+    @staticmethod
+    def run_type_forward() -> str:
+        return RunType.FORWARD.value
+
+    @staticmethod
+    def engine_version() -> str:
+        return engine_version
+
+
+def new_run_id() -> uuid.UUID:
+    return uuid.uuid4()

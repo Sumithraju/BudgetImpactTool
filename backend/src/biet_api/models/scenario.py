@@ -106,7 +106,11 @@ class ScenarioOverride(Base):
     )
     country_code: Mapped[CountryCode | None]
     parameter_path: Mapped[str] = mapped_column(Text)
-    value: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    # JSONB, and deliberately `Any`: an override's value is a float for a
+    # rate, a bool for `criteria.<code>.enabled`, a string for
+    # `uptake.curve`, or a list for `uptake.vector`. Typing it `dict` would
+    # describe only a shape it never actually holds.
+    value: Mapped[Any] = mapped_column(JSONB)
     note: Mapped[str | None] = mapped_column(Text)
 
     scenario: Mapped[Scenario] = relationship(back_populates="overrides")
