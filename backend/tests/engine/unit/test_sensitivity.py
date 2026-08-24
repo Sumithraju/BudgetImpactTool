@@ -154,10 +154,14 @@ def test_substituting_adult_share_leaves_an_unresolved_market_untouched() -> Non
         fx_rates={"USD": 1.0}, uptake=make_uptake_input(vector=(0.05, 0.10)),
     )
 
+    base = resolved.adult_share
+    assert base is not None
     swapped = _with_parameter(inputs, "countries.adult_share", 0.70)
 
+    # 0.70 is a multiplier, not an absolute: the sweep scales each market by
+    # the same proportion so heterogeneous markets keep their own levels.
     assert swapped.countries[0].adult_share is not None
-    assert swapped.countries[0].adult_share.value == pytest.approx(0.70)
+    assert swapped.countries[0].adult_share.value == pytest.approx(base.value * 0.70)
     assert swapped.countries[1].adult_share is None      # left as-is, not fabricated
 
 
@@ -176,3 +180,59 @@ def test_default_params_empty_for_no_markets() -> None:
     inputs = make_engine_input(horizon_years=1)
     empty = inputs.model_copy(update={"countries": ()})
     assert default_params(empty) == ()
+
+
+def test_sweep_scales_each_market_proportionally_not_to_one_absolute_value() -> None:
+    """Regression. `default_params` reads its bounds from `countries[0]`, and
+    an earlier version wrote that absolute value into every market — so
+    sweeping obesity prevalence forced Japan's 5.9% up to the USA's 38.2%
+    lower bound, raising prevalence in most markets and pushing *both* ends
+    of the tornado bar above the base case.
+
+    Scaling by proportion keeps each market's own level, so the ratio
+    between two markets survives the sweep.
+    """
+    from biet_engine.sensitivity import _with_parameter
+
+    high = _differentiated_country("USA").model_copy(update={
+        "prevalence": make_valued(0.40),
+    })
+    low = _differentiated_country("DEU").model_copy(update={
+        "prevalence": make_valued(0.05),
+    })
+    inputs = make_engine_input(
+        countries=(high, low), horizon_years=2, reporting_currency="USD",
+        fx_rates={"USD": 1.0, "EUR": 1.0}, uptake=make_uptake_input(vector=(0.05, 0.10)),
+    )
+
+    swept = _with_parameter(inputs, "epidemiology.prevalence", 0.5)
+
+    assert swept.countries[0].prevalence.value == pytest.approx(0.20)
+    assert swept.countries[1].prevalence.value == pytest.approx(0.025)
+    # The eightfold gap between the two markets is preserved, not flattened.
+    ratio = swept.countries[0].prevalence.value / swept.countries[1].prevalence.value
+    assert ratio == pytest.approx(8.0)
+
+
+def test_owsa_bounds_straddle_the_base_case_for_heterogeneous_markets() -> None:
+    """The symptom the bug produced, asserted at the public entry point: a
+    tornado bar must bracket the base case, since one end raises the
+    assumption and the other lowers it."""
+    high = _differentiated_country("USA").model_copy(update={
+        "prevalence": make_valued(0.40, low=0.38, high=0.44),
+    })
+    low = _differentiated_country("DEU").model_copy(update={
+        "prevalence": make_valued(0.05, low=0.04, high=0.06),
+    })
+    inputs = make_engine_input(
+        countries=(high, low), horizon_years=2, reporting_currency="USD",
+        fx_rates={"USD": 1.0, "EUR": 1.0}, uptake=make_uptake_input(vector=(0.05, 0.10)),
+    )
+
+    result = run_owsa(inputs)
+    prevalence = next(
+        e for e in result.entries if e.parameter_path == "epidemiology.prevalence"
+    )
+
+    lower, upper = sorted((prevalence.result_at_low, prevalence.result_at_high))
+    assert lower <= result.base_result <= upper

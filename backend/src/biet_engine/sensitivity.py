@@ -106,32 +106,69 @@ def default_params(inputs: EngineInput) -> tuple[SensitivityParam, ...]:
     return tuple(params)
 
 
-def _with_parameter(inputs: EngineInput, path: str, value: float) -> EngineInput:
-    """A copy of `inputs` with `path` set to `value` in every market.
+def _bound_factors(param: SensitivityParam) -> tuple[float, float]:
+    """The low/high bounds re-expressed as multipliers of the base value.
+
+    A zero base has no meaningful proportion, so it sweeps as a no-op rather
+    than dividing by zero — its zero swing then reads as "not swept", which
+    is what the PARAMETER_NOT_SWEPT warning already says elsewhere.
+    """
+    if param.base_value == 0:
+        return 1.0, 1.0
+    return param.low_value / param.base_value, param.high_value / param.base_value
+
+
+def _with_parameter(inputs: EngineInput, path: str, factor: float) -> EngineInput:
+    """A copy of `inputs` with `path` scaled by `factor` in every market.
 
     Applied across all markets rather than market-by-market: OWSA ranks
     assumptions for the run as a whole, so a swing has to move the whole
     cross-market total to be meaningful.
+
+    `factor` is a *multiplier*, not an absolute value, and that distinction
+    is load-bearing. Writing one market's absolute bound into every market
+    destroys genuine cross-market heterogeneity: obesity prevalence runs
+    from 5.9% (JPN) to 41.0% (USA), so substituting the USA's lower bound
+    (38.2%) everywhere raises prevalence in four markets out of five and
+    pushes *both* ends of the sweep above the base case — a tornado bar
+    pointing the wrong way. Scaling each market by the same proportion asks
+    the question OWSA actually means: "if this assumption were at its low
+    end, what happens to the total?"
+
+    Rate-like parameters are clipped to (0, 1] after scaling, since a
+    multiplier can otherwise carry a high base past 1.0.
     """
+    is_rate = path in _RATE_PATHS
+
+    def _scaled(current: float) -> float:
+        scaled = current * factor
+        if is_rate:
+            return min(max(scaled, 1e-9), 1.0)
+        return max(scaled, 0.0)
+
     countries: list[CountryInput] = []
     for country in inputs.countries:
         if path == "epidemiology.prevalence":
             countries.append(country.model_copy(update={
-                "prevalence": country.prevalence.model_copy(update={"value": value}),
+                "prevalence": country.prevalence.model_copy(
+                    update={"value": _scaled(country.prevalence.value)},
+                ),
             }))
         elif path == "countries.adult_share":
             if country.adult_share is None:
                 countries.append(country)
             else:
                 countries.append(country.model_copy(update={
-                    "adult_share": country.adult_share.model_copy(update={"value": value}),
+                    "adult_share": country.adult_share.model_copy(
+                        update={"value": _scaled(country.adult_share.value)},
+                    ),
                 }))
         elif path in ("funnel.diagnosis_rate", "funnel.treatment_rate", "funnel.access_rate"):
             field = path.split(".", 1)[1]
             current = getattr(country.funnel, field)
             countries.append(country.model_copy(update={
                 "funnel": country.funnel.model_copy(update={
-                    field: current.model_copy(update={"value": value}),
+                    field: current.model_copy(update={"value": _scaled(current.value)}),
                 }),
             }))
         else:
@@ -183,11 +220,16 @@ def run_owsa(
                 parameter_path=param.parameter_path,
             ))
 
+        # `low_value`/`high_value` are the reference market's absolute bounds,
+        # reported as-is for display. The sweep itself scales every market by
+        # the same *proportion* those bounds represent, so heterogeneous
+        # markets keep their own levels — see `_with_parameter`.
+        low_factor, high_factor = _bound_factors(param)
         at_low = compute_budget_impact(
-            _with_parameter(inputs, param.parameter_path, param.low_value)
+            _with_parameter(inputs, param.parameter_path, low_factor)
         ).totals.cumulative.amount
         at_high = compute_budget_impact(
-            _with_parameter(inputs, param.parameter_path, param.high_value)
+            _with_parameter(inputs, param.parameter_path, high_factor)
         ).totals.cumulative.amount
         scored.append((abs(at_high - at_low), param, at_low, at_high))
 
