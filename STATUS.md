@@ -1,11 +1,14 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-23 · **Phase:** 2 of 5 (Calculation Engine) — Phase 1 complete (§5),
-**M6, M2, M3, M5, M4, M7, M8, M9 done; M10 + M1 pure halves done** (§8) · **Deadline:** 2026-09-06
+**Last updated:** 2026-08-24 · **Phase:** 3 of 5 (API + UI) — Phases 1 and 2 complete,
+**Phase 3 complete — the API and interface are live** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
-**This machine (2026-08-23) has all of Phase 1 done:** git is initialized (main, clean),
+**This machine has Phases 1-3 done.** `./run.sh` brings up the API on :8077 and the
+interface on :5173; the database must already be running (§5.1).
+
+**Phase 1 detail:** git is initialized (main, clean),
 PostgreSQL 16 + pgvector are installed on port **5433** (5432 is held by a separate EDB
 PostgreSQL 18 install) with the full schema migrated to head, and the complete pipeline —
 six live sources, all seed CSVs, the publish stage, and the guideline corpus — runs end to
@@ -136,10 +139,15 @@ BIET/
 │
 ├── backend/
 │   ├── alembic/                  schema migrations (two, both reversible)
-│   ├── src/biet_api/              ORM models, config, DAL — routes/services not started
-│   ├── src/biet_engine/           pure calculation package — M6,M2,M3,M5,M4,M7,M8,M9 + M10's pure half done
-│   └── tests/                     engine/{unit,property,golden}/, test_layering.py
-├── frontend/                     EMPTY — Phase 3
+│   ├── src/biet_api/              models, dal, repositories, services, schemas, routes, main
+│   ├── src/biet_engine/           pure calculation package — every module built
+│   └── tests/                     engine/{unit,property,golden}/, api/, test_layering.py
+├── frontend/                      Vite + React, feature-sliced
+│   └── src/
+│       ├── app/                   App shell and the token stylesheet
+│       ├── features/              scenario-builder/, results/
+│       └── shared/                api client, formatters
+├── run.sh                         starts API + interface together
 └── BI_REPO/                      reference only; see §6
 ```
 
@@ -562,89 +570,48 @@ implies before writing a new price source's transform.
     and ruff clean.
 
     **The engine is now feature-complete for every module except M1.**
-13. **M1 — Scenario Workspace: the resolution core is done; CRUD and routes are Phase 3.**
-    Like M10, M1 splits cleanly into a pure half and an I/O half, and the pure half is the one
-    everything else depends on. Built, in `backend/src/biet_api/`:
+13. ~~**M1 — Scenario Workspace**~~ and ~~**Phase 3 — API + interface**~~ — done. BIET is now a
+    working application, not a library.
 
-    - **`constants/parameter_paths.py`** — §5.1's closed override vocabulary as one declarative
-      table: 15 path specs, literal (`funnel.diagnosis_rate`) and templated
-      (`therapy.<drug_id>.market_share.<year>`) alike, each carrying its value type and range.
-      Adding a path means adding a row. The ranges encode a real distinction the spec is precise
-      about and which is easy to flatten by accident: a **rate** is `(0, 1]` — zero would mean the
-      stage passes nobody — while a **share** is `[0, 1]`, because zero uptake is a legitimate
-      scenario. Prevalence is open at *both* ends.
-    - **`services/override_validator.py`** — §6's validation, raising errors that name the
-      offending path and (for an unknown path) list the valid ones, which is what the eventual 422
-      needs. Checks `bool` before `int`/`float`, since `bool` subclasses `int` in Python and
-      `True` would otherwise validate as `1.0` against a rate path.
-    - **`services/resolution.py`** — §5.2's three-level chain and §5.3's warnings. Scenario
-      override → country default → global default, with a within-level tiebreak so an override
-      naming a market beats one applying to all markets. An override always carries **tier C**
-      regardless of what it replaced: it is the user's assertion, not an observation, so it cannot
-      inherit tier A. `STALE_VINTAGE` fires at a *six*-year gap and not a five-year one (the spec
-      says `> 5`, and that boundary has its own test). Nothing is ever defaulted — an unresolvable
-      path raises, because M2 §5.1's `adult_share` case is exactly how a silent default produces a
-      plausible wrong answer instead of a visible failure.
-    - **`exceptions.py` + `constants/errors.py`** — the API-layer hierarchy and the shared error-code
-      registry, kept separate from `biet_engine.exceptions` (which knows nothing of HTTP).
+    **Run it:**
+    ```bash
+    ./run.sh              # API on :8077, interface on :5173
+    ```
+    The database must already be up (§5.1). API docs at http://localhost:8077/docs.
 
-    **One real gap found and fixed:** `WarningCode` was missing `TIER_D_INPUT`, which §5.3 requires
-    — mypy caught it. Added, along with `UNPRICED_MARKET`.
+    **What exists now:**
+    - `backend/src/biet_api/` — schemas, services, repositories, routes, and one
+      `main.py` that registers every exception handler. Ten endpoints: scenario
+      create/list/read/update, override replace, clone, baseline, archive, calculate,
+      OWSA, PSA, solve, run history, run snapshot, compare.
+    - `frontend/` — feature-sliced Vite + React. Scenario builder on the left,
+      results on the right: headline with credible interval, per-market table,
+      population funnel with tier chips, tornado, PSA histogram.
+    - **Verified end to end in a browser:** five markets, €2.71 bn cumulative,
+      correct currency symbols per market, PPP-derived prices labelled as derived.
 
-    **Still to build, Phase 3:** the batch-loading repositories (§5.2's "one query per parameter per
-    market is an N+1 defect" — resolution deliberately takes a pre-loaded `ResolutionContext` so
-    there is exactly one place queries can happen, and it is not the resolver), scenario CRUD +
-    clone + baseline locking (§5.4–5.5), `EngineInput` assembly, run-snapshot persistence (§5.6),
-    comparison (§5.7), and the ten endpoints.
+    **Two bugs the integration caught that unit tests structurally could not:**
+    - `replace_overrides` returned the overrides it had just deleted. The delete and
+      insert were correct; the relationship had been loaded before the swap and the
+      identity map still held the stale collection. Fixed by expiring it after flush.
+    - The OWSA tornado had both ends of the prevalence bar above the base case —
+      impossible for a monotone parameter. `default_params` read bounds from
+      `countries[0]` and wrote that *absolute* value into every market, forcing
+      Japan's 5.9% obesity prevalence up to the USA's 38%. Now sweeps proportionally.
+      Committed separately as `795f069`.
 
-    56 new tests (314 total), 100% branch coverage on the resolution chain and path vocabulary,
-    99% on the validator — the one uncovered branch is a genuinely defensive `minimum is None`
-    guard, unreachable while every declared path has a lower bound but valid for a future one that
-    does not. mypy --strict and ruff clean; no schema drift.
-14. **Next — Phase 3 proper.** `pip install fastapi uvicorn`, then the repositories and the API
-    layer: routes → controllers → services over the resolution core above. That is the last thing
-    between this engine and something a person can click.
+    347 tests, mypy --strict clean across 49 files, ruff and tsc clean.
 
-Build order and dependencies: [docs/modules/README.md](docs/modules/README.md).
+14. **What is genuinely left.**
+    - **M10's I/O half** — pgvector retrieval, the LLM narrative, PDF/PPTX export.
+      The safety core (numeric validator, mandatory limitations, assumption
+      register) is built and tested; the corpus is embedded and indexed. This is
+      Phase 5 in the original plan and is the last engineering work.
+    - **The deck and the project report** — not started. These are deliverables in
+      their own right and are largely writing rather than code.
+    - **`age_bands.csv`** (§5.4) and the **IBAB password rotation** (§6) remain open;
+      neither blocks anything.
 
----
-
-## 9. Useful commands
-
-```bash
-# tests (offline, no database needed)
-./.venv/bin/python -m pytest data/ingestion/tests -q
-
-# full ingestion, transform only (no database needed)
-./.venv/bin/python -m data.ingestion.run
-
-# full ingestion + publish everything to Postgres (seed, live sources, in that order)
-./.venv/bin/python -m data.ingestion.run --no-extract --publish
-
-# seed CSVs only — countries/indications/drugs/regimens/prices/funnel/eligibility
-./.venv/bin/python -m data.ingestion.run --seed-only
-
-# guideline corpus only — chunk, embed (fastembed, local model) and publish the five PDFs
-./.venv/bin/python -m data.ingestion.run --corpus
-
-# re-transform without re-downloading
-./.venv/bin/python -m data.ingestion.run --no-extract
-
-# one source, verbose
-./.venv/bin/python -m data.ingestion.run who_gho -v
-
-# migrations (from backend/)
-../.venv/bin/alembic upgrade head
-../.venv/bin/alembic check              # model/database drift; must say "No new upgrade operations"
-
-# regenerate the Word version of the architecture document
-# (needs: npm install docx; script is in the session scratchpad — see note below)
-node md2docx.js
-```
-
-**Note on the DOCX generator:** `md2docx.js` was written to a session scratchpad and is **not** in
-the repo. If you need to regenerate the Word document after editing `ARCHITECTURE.md`, it must be
-rewritten. Two gotchas it worked around: `docx-js` serialises paragraph border children in an order
-that violates the OOXML schema when top/bottom are combined with left (use left+right only), and
-two formula blocks use bracket-piece glyphs (`⌠⎮⌡`, `⎛⎝⎞⎠`) absent from most Windows monospace
-fonts, so they are substituted with ASCII in the Word version only.
+    **Honest read with the deadline close:** the system works end to end and the
+    demo is real. The remaining engineering (export, narrative) is additive — the
+    thing a judge would actually be shown already runs.
