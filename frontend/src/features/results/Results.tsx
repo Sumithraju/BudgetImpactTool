@@ -1,5 +1,7 @@
 import { useState } from "react";
 import type { Calculation, Owsa, Psa } from "../../shared/api";
+import { AffordabilityGauge } from "../affordability/AffordabilityGauge";
+import { PriceCorridor } from "../price-solver/PriceCorridor";
 import {
   BASIS_LABELS,
   STAGE_LABELS,
@@ -20,10 +22,12 @@ export function Results({
   calculation,
   owsa,
   psa,
+  bands,
 }: {
   calculation: Calculation;
   owsa: Owsa | null;
   psa: Psa | null;
+  bands: Record<string, number>;
 }) {
   const [market, setMarket] = useState(calculation.countries[0]?.country_code ?? "");
   const selected =
@@ -124,6 +128,22 @@ export function Results({
           </table>
         </div>
       </section>
+
+      {/* affordability ----------------------------------------------- */}
+      {Object.keys(bands).length > 0 && (
+        <AffordabilityGauge countries={calculation.countries} bands={bands} />
+      )}
+
+      {/* price corridor ---------------------------------------------- */}
+      <PriceCorridor
+        scenarioId={calculation.scenario_id}
+        currentPriceUsd={
+          // The solver reports in USD, so the comparison mark only means
+          // something for a market already priced in USD.
+          calculation.countries.find((c) => c.currency === "USD")?.new_therapy.unit_price ??
+          null
+        }
+      />
 
       {/* funnel ------------------------------------------------------ */}
       <section>

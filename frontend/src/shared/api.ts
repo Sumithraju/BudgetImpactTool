@@ -127,6 +127,42 @@ export interface Psa {
   converged: boolean;
 }
 
+export interface CorridorEntry {
+  country_code: string;
+  max_unit_price_usd: number | null;
+  max_annual_acquisition_usd: number | null;
+  feasible: boolean;
+  unbounded: boolean;
+  method: string;
+  iterations: number | null;
+  shortfall_usd: number | null;
+}
+
+export interface Corridor {
+  target_ratio: number;
+  entries: CorridorEntry[];
+  /** The market that sets the ceiling — the corridor is only as wide as
+   *  its narrowest market, so this is what a single global price must clear. */
+  binding_market: string | null;
+  single_global_price_ceiling_usd: number | null;
+  warnings: Warning[];
+}
+
+export interface DiffEntry {
+  parameter_path: string;
+  country_code: string | null;
+  values: Record<string, number | string | boolean | null>;
+  resolution_levels: Record<string, string>;
+}
+
+export interface Comparison {
+  scenario_ids: string[];
+  indication_id: number;
+  reporting_currency: string;
+  results: Calculation[];
+  diff: DiffEntry[];
+}
+
 export interface CountryOption {
   country_code: string;
   country_name: string;
@@ -228,6 +264,21 @@ export const api = {
     }),
 
   owsa: (id: string) => request<Owsa>(`/api/v1/scenarios/${id}/owsa`),
+
+  affordabilityBands: () =>
+    request<Record<string, number>>("/api/v1/reference/affordability-bands"),
+
+  solve: (id: string, targetRatio: number) =>
+    request<Corridor>(`/api/v1/scenarios/${id}/solve`, {
+      method: "POST",
+      body: JSON.stringify({ target_ratio: targetRatio }),
+    }),
+
+  compare: (scenarioIds: string[]) =>
+    request<Comparison>("/api/v1/scenarios/compare", {
+      method: "POST",
+      body: JSON.stringify({ scenario_ids: scenarioIds }),
+    }),
   psa: (id: string, iterations = 4000) =>
     request<Psa>(`/api/v1/scenarios/${id}/psa?iterations=${iterations}`),
 };

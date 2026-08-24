@@ -29,6 +29,7 @@ const DEFAULT_DRAFT: Draft = {
 export function App() {
   const [countries, setCountries] = useState<CountryOption[]>([]);
   const [indications, setIndications] = useState<IndicationOption[]>([]);
+  const [bands, setBands] = useState<Record<string, number>>({});
   const [draft, setDraft] = useState<Draft>(DEFAULT_DRAFT);
 
   const [calculation, setCalculation] = useState<Calculation | null>(null);
@@ -39,10 +40,11 @@ export function App() {
   const [error, setError] = useState<{ message: string; field: string | null } | null>(null);
 
   useEffect(() => {
-    Promise.all([api.countries(), api.indications()])
-      .then(([c, i]) => {
+    Promise.all([api.countries(), api.indications(), api.affordabilityBands()])
+      .then(([c, i, b]) => {
         setCountries(c);
         setIndications(i);
+        setBands(b);
       })
       .catch((e: ApiError) =>
         setError({ message: `Could not reach the API — ${e.message}`, field: null }),
@@ -148,7 +150,9 @@ export function App() {
             </div>
           )}
 
-          {calculation && <Results calculation={calculation} owsa={owsa} psa={psa} />}
+          {calculation && (
+            <Results calculation={calculation} owsa={owsa} psa={psa} bands={bands} />
+          )}
         </main>
       </div>
     </div>

@@ -68,3 +68,16 @@ def list_parameter_paths() -> list[str]:
     from ..constants.parameter_paths import VALID_PATH_TEMPLATES
 
     return list(VALID_PATH_TEMPLATES)
+
+
+@router.get("/affordability-bands", response_model=dict[str, float])
+def affordability_bands() -> dict[str, float]:
+    """The band boundaries, as fractions of national health expenditure.
+
+    Served rather than duplicated in the interface: a threshold that drifts
+    between the engine and the gauge drawing it would mislabel a result
+    without either side erroring.
+    """
+    from biet_engine.constants import AFFORDABILITY_THRESHOLDS
+
+    return {band.value: threshold for band, threshold in AFFORDABILITY_THRESHOLDS.items()}

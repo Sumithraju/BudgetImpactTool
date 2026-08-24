@@ -214,3 +214,65 @@ tbody tr:last-child td { border-bottom: none; }
 .warnings code { font-family: "IBM Plex Mono", monospace; font-size: 11px;
   color: var(--t-C); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* affordability gauge ---------------------------------------------- */
+.gauge { border: 1px solid var(--line); border-radius: 3px; background: var(--surface);
+  padding: 30px 18px 16px; position: relative; }
+.gauge-track { position: relative; height: 0; margin: 0 0 14px; }
+.gauge-tick { position: absolute; top: -20px; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  font-family: "IBM Plex Mono", monospace; font-size: 9.5px; white-space: nowrap; }
+.gauge-tick em { font-style: normal; font-weight: 600; }
+.gauge-tick span { letter-spacing: .05em; opacity: .75; }
+.gauge-tick::after { content: ""; position: absolute; top: 26px; height: 999px;
+  width: 1px; background: currentColor; opacity: .22; }
+.gauge-row { display: grid; grid-template-columns: 44px 1fr 76px 74px; gap: 11px;
+  align-items: center; padding: 5px 0; position: relative; z-index: 1; }
+.gauge-label { font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600; }
+.gauge-bar { position: relative; height: 16px; background: var(--surface-2);
+  border-radius: 2px; overflow: visible; }
+.gauge-bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px;
+  background: currentColor; opacity: .3; }
+.gauge-bar u { position: absolute; top: -3px; bottom: -3px; width: 2px;
+  background: currentColor; }
+.gauge-val { font-size: 12px; text-align: right; font-weight: 500; }
+.gauge-row .chip { margin-left: 0; justify-self: start; }
+
+/* price corridor --------------------------------------------------- */
+.solve-controls { display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  margin-bottom: 16px; }
+.solve-controls button { font-family: "IBM Plex Mono", monospace; font-size: 12px;
+  padding: 5px 12px; border: 1px solid var(--line-2); background: var(--surface);
+  color: var(--ink-2); border-radius: 2px; cursor: pointer; }
+.solve-controls button[aria-pressed="true"] { background: var(--accent);
+  border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.solve-controls button:disabled { opacity: .5; cursor: progress; }
+.dim { color: var(--ink-3); font-size: 11.5px; }
+.binding { border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 0 3px 3px 0; background: var(--surface); padding: 15px 18px;
+  margin-bottom: 16px; }
+.binding > div { display: flex; flex-direction: column; gap: 3px; }
+.figure-sm { font-size: 26px; font-weight: 600; letter-spacing: -.02em; }
+.figure-sm em { font-style: normal; font-size: 13px; color: var(--ink-3); font-weight: 400; }
+.binding p { font-family: "Source Serif 4", Georgia, serif; font-size: 14px;
+  color: var(--ink-2); margin: 9px 0 0; max-width: 68ch; }
+.corridor { display: flex; flex-direction: column; gap: 3px; }
+.crow { display: grid; grid-template-columns: 116px 1fr 108px 68px; gap: 12px;
+  align-items: center; padding: 5px 0; }
+.crow.binding-row .cbar i { opacity: .85; }
+.clab { font-family: "IBM Plex Mono", monospace; font-size: 12px; font-weight: 600;
+  display: flex; align-items: center; gap: 5px; }
+.clab .chip { margin-left: 0; }
+.cbar { position: relative; height: 18px; background: var(--surface-2); border-radius: 2px; }
+.cbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent);
+  opacity: .5; border-radius: 2px; }
+.cbar u { position: absolute; top: -3px; bottom: -3px; width: 0;
+  border-left: 2px dashed var(--t-C); }
+.cval { font-size: 12px; text-align: right; }
+.cmethod { font-size: 10px; color: var(--ink-3); text-align: right; }
+@media (max-width: 700px) {
+  .crow { grid-template-columns: 96px 1fr 92px; }
+  .cmethod { display: none; }
+  .gauge-row { grid-template-columns: 38px 1fr 68px; }
+  .gauge-row .chip { display: none; }
+}
