@@ -62,6 +62,13 @@ class Scenario(Base):
         UUID(as_uuid=True), ForeignKey("scenarios.scenario_id")
     )
     is_baseline: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # Soft delete. M1 section 6: a scenario with runs is archived, never
+    # hard-deleted, because `model_runs` rows reference it and a run whose
+    # parent scenario vanished is no longer reproducible — which is the whole
+    # point of storing it (non-negotiable 9). Archived scenarios stay
+    # readable (section 12).
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

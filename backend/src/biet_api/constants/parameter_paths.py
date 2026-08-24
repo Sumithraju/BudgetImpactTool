@@ -119,6 +119,19 @@ PARAMETER_PATHS: Final[tuple[ParameterPathSpec, ...]] = (
     ),
 )
 
+#: `funnel_defaults.stage` -> override path. The two vocabularies genuinely
+#: differ and are each fixed by their own spec: M0 stores the funnel *stage*
+#: a rate produces (`diagnosed`), while M1 section 5.1 names the *rate* that
+#: produces it (`funnel.diagnosis_rate`). Deriving one from the other by
+#: string surgery would silently yield paths outside the vocabulary, so the
+#: bridge is explicit and total — a stage absent here has no override path
+#: and will not resolve, which is the loud failure rather than the quiet one.
+FUNNEL_STAGE_TO_PATH: Final[dict[str, str]] = {
+    "diagnosed": "funnel.diagnosis_rate",
+    "treated": "funnel.treatment_rate",
+    "addressable": "funnel.access_rate",
+}
+
 #: Every declared template, for the "listing valid paths" half of the 422
 #: response M1 section 6 requires on an unknown path.
 VALID_PATH_TEMPLATES: Final[tuple[str, ...]] = tuple(

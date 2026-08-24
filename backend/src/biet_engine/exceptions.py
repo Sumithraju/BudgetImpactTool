@@ -92,3 +92,13 @@ class SolverInvariantError(EngineError):
     reachable data condition."""
 
     code = "SOLVER_INVARIANT_VIOLATED"
+
+
+class UnpricedReferenceError(EngineError):
+    """The reference market itself has no observed price, so there is nothing
+    to derive a cross-market price *from* (M5 section 5.3). Raised rather
+    than falling back to deriving from an already-derived price, which would
+    compound one modelling assumption on top of another and present the
+    result as if it were grounded."""
+
+    code = "UNPRICED_REFERENCE"

@@ -32,9 +32,11 @@ hypothesis==6.152.4        # Phase 2 — engine property tests
 mypy==2.3.1                # --strict must pass on biet_engine
 ruff==0.16.4
 
+# --- API (Phase 3) -----------------------------------------------------------
+fastapi==0.141.1
+uvicorn==0.52.4
+
 # --- not yet required; added at the phase that needs them --------------------
-# fastapi          # Phase 3 — API
-# uvicorn          # Phase 3 — API
 
 # anthropic        # Phase 5 — narrative
 # reportlab        # Phase 5 — PDF export
