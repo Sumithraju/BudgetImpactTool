@@ -1,11 +1,11 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-24 · **Phase:** 3 of 5 (API + UI) — Phases 1 and 2 complete,
-**Phase 3 complete — the API and interface are live** (§8) · **Deadline:** 2026-09-06
+**Last updated:** 2026-08-24 · **Phase:** 4 of 5 done; only Phase 5 remains.
+**Phase 4 complete — all ten modules reachable from the UI** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
-**This machine has Phases 1-3 done.** `./run.sh` brings up the API on :8077 and the
+**This machine has Phases 1-4 done.** `./run.sh` brings up the API on :8077 and the
 interface on :5173; the database must already be running (§5.1).
 
 **Phase 1 detail:** git is initialized (main, clean),
@@ -602,16 +602,41 @@ implies before writing a new price source's transform.
 
     347 tests, mypy --strict clean across 49 files, ruff and tsc clean.
 
-14. **What is genuinely left.**
+14. ~~**Phase 4 — Analysis Capabilities**~~ — done. The engine and API already had all
+    four; what was missing was reaching them from the interface.
+
+    - **Affordability gauge** — logarithmic scale, and that is load-bearing: real ratios
+      here run near 0.02% against a 1% critical threshold, so a linear axis would pin
+      every market to the left edge. Band boundaries come from
+      `/api/v1/reference/affordability-bands` rather than being duplicated in the
+      frontend, because a threshold that drifted between the engine that classifies and
+      the gauge that draws would mislabel a result without either side erroring.
+    - **Price corridor** — M8's reverse mode. Running it across all five markets gave
+      the result that makes the feature worth having: **India is the binding market at
+      $746/unit**, down from $5,069 with only USA+DEU in scope. India's health
+      expenditure is $85 per capita against the USA's $13,473, so a single global price
+      is constrained by the poorest market in the set.
+    - **Tornado and PSA** — already reachable from Phase 3.
+    - **Scenario comparison** — 2-4 runs side by side; the diff lists only assumptions
+      that actually differ. A parameter never touched shows as "seeded default" rather
+      than its resolved value, because a seeded default and an override that happens to
+      equal it are different claims.
+
+    Verified in the browser: two runs at 23% and 46% treatment rate give EUR 2.71B and
+    EUR 5.42B — exactly double, addressable doubling to match — and the diff isolates
+    the one changed path. No console errors.
+
+15. **What is genuinely left — Phase 5 only.**
     - **M10's I/O half** — pgvector retrieval, the LLM narrative, PDF/PPTX export.
       The safety core (numeric validator, mandatory limitations, assumption
-      register) is built and tested; the corpus is embedded and indexed. This is
-      Phase 5 in the original plan and is the last engineering work.
+      register) is built and tested; the corpus is embedded and indexed. This is the
+      last engineering work in the plan.
     - **The deck and the project report** — not started. These are deliverables in
       their own right and are largely writing rather than code.
     - **`age_bands.csv`** (§5.4) and the **IBAB password rotation** (§6) remain open;
       neither blocks anything.
 
-    **Honest read with the deadline close:** the system works end to end and the
-    demo is real. The remaining engineering (export, narrative) is additive — the
-    thing a judge would actually be shown already runs.
+    **Honest read with the deadline close:** Phases 1-4 are done and the system works
+    end to end. Phase 5 (narrative + export) is additive — the thing a judge would
+    actually be shown already runs, and the two published artifacts already stand in
+    for the export deliverable if time runs short.
