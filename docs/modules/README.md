@@ -23,6 +23,19 @@ define *how to write the code*. Where they conflict, the architecture document w
 | [M9](M9-uncertainty-sensitivity.md) | Uncertainty & Sensitivity | Engine | M7, M8 |
 | [M10](M10-evidence-narrative-export.md) | Evidence, Narrative & Export | Backend + AI | M7–M9 |
 
+### Comparator intelligence (Phases 7–11)
+
+M0–M10 assume the comparator set is known. These five remove that assumption. See
+ARCHITECTURE.md §4A for the requirement coverage map.
+
+| Spec | Module | Owner area | Depends on |
+|---|---|---|---|
+| [M11](M11-comparator-discovery.md) | Comparator Discovery | Data + Backend | M0, M4, M5 |
+| [M12](M12-comparator-registry.md) | Comparator Registry & Asset Intake | Backend + Data | M0, M5, M11 |
+| [M13](M13-safety-ae-economics.md) | Safety & Adverse-Event Economics | Engine + Backend | M5, M7, M12 |
+| [M14](M14-launch-year-landscape.md) | Launch-Year Competitive Landscape | Engine + Backend | M4, M11, M12 |
+| [M15](M15-evidence-gap-intelligence.md) | Evidence-Gap Intelligence | Backend | M9, M10 |
+
 ## Build order
 
 ```
@@ -34,6 +47,21 @@ M0 ──┬── M1 ───────────────────�
 
 M0 blocks everything. M6 is independent and can be built first by anyone as a warm-up — it is
 a single closed-form function with no dependencies.
+
+Comparator intelligence layers on top, and its own order is close to a straight line — each module
+needs the previous one's output to be worth building:
+
+```
+M11 ── M12 ──┬── M13 ── (M5, M7)
+             └── M14 ── (M4, M7)
+
+M9 ── M15
+```
+
+M12 is the hinge. Until a discovered molecule can be promoted into a priced comparator, M13 has
+nothing to attach a safety profile to and M14 has nothing to admit into a baseline. M15 depends on
+none of them — it needs only a sensitivity result and the tiers already on every value, so it can be
+built at any point.
 
 ## Specification template
 

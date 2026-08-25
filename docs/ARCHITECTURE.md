@@ -17,6 +17,7 @@
 2. [System Overview](#2-system-overview)
 3. [Technology Stack](#3-technology-stack)
 4. [Module Architecture](#4-module-architecture)
+4A. [Comparator Intelligence Modules](#4a-comparator-intelligence-modules)
 5. [Calculation Engine Specification](#5-calculation-engine-specification)
 6. [Country and Reference Data](#6-country-and-reference-data)
 7. [Data Architecture](#7-data-architecture)
@@ -298,6 +299,75 @@ Retrieval over a vector-indexed corpus of ISPOR, NICE and WHO budget impact guid
 
 ---
 
+## 4A. Comparator Intelligence Modules
+
+M0–M10 assume the comparator set is known. M11–M15 remove that assumption: they discover what a
+new asset competes with, make a discovered molecule economically usable, connect its safety profile
+to the cost stack, project the market it will meet at launch, and rank what evidence is worth
+acquiring before the decision is made.
+
+### Requirement coverage
+
+Where each requirement of the comparator-intelligence brief is satisfied. A requirement marked
+*existing* was built in Phases 1–5 and needs no new module — it is listed so the brief can be
+checked off against something.
+
+| Requirement | Home | Status |
+|---|---|---|
+| Comparator definition, categories, relevance score | M11 §5.3–5.5 | Phase 7 |
+| New-asset input (molecule, target, MoA, pathway, regimen, launch year, markets) | M12 §5.1 | Phase 8 |
+| Open Targets and ChEMBL retrieval | M11 §5.2 | Phase 7 |
+| Reactome pathway mapping | M11 §5.9 | Phase 7 |
+| Comparator discovery, filtering, ranking, explanation | M11 §5.3–5.6 | Phase 7 |
+| Current-market comparator record (brand, manufacturer, line, dose, price, tier) | M12 §5.2 | Phase 8 |
+| Pipeline competitor discovery, sponsor, phase, completion date | M14 §5.2 | Phase 10 |
+| Safety data collection, AE incidence with source and population | M13 §5.1 | Phase 9 |
+| Expected AE cost — Σ P(AE) × Cost(AE) | M13 §5.2 | Phase 9 |
+| Persistence and discontinuation, evidence-gated tolerability link | M13 §5.5, M6 | Phase 9 |
+| Existing market mix — world without the new therapy | **M4 §5.2** | existing |
+| Source-of-business / substitution vector, incl. treatment-naive | **M4 §5.3** | existing |
+| Annual cost stack — acquisition, admin, monitoring, AE, offsets, wastage, discount | **M5 §5.5** | existing |
+| Net cost per switch, and its component attribution | M7 §5.6 (value), M13 §5.3 (bridge) | existing + Phase 9 |
+| World-with versus world-without | **M7 §5.6** | existing |
+| Feed comparators into M3–M10 | M12 §5.5 | Phase 8 |
+| Comparator discovery and selection interface | M11 §9, M12 §9 | Phases 7–8 |
+| Drug-versus-drug comparison dashboard | M13 §9 | Phase 9 |
+| Source, vintage, retrieval date, confidence tier on every value | **§7.3, M0** | existing |
+| Evidence-gap ranking — influence × weakness | M15 §5.2 | Phase 11 |
+| Validation against a known asset and indication | Phase 7–11 exit criteria | per phase |
+
+### M11 — Comparator Discovery
+
+**Responsibility.** Given a new asset's molecular target, indication and mechanism of action, retrieve the therapies it would actually compete with — marketed and late-stage — from public drug-discovery sources, classify them, and rank them by economic relevance.
+
+The comparator set is the world-without. Typing it by hand assumes the analyst already knows every competitor, including the Phase III asset that will be marketed by the time this one launches. Discovery queries Open Targets for every drug and clinical candidate registered against the target, links each to a row in `drugs` where one exists, and separates the result into direct competitors (same indication, target and mechanism), therapeutic competitors (same indication, different mechanism) and pipeline entrants (not yet marketed). Pathway membership from Reactome contributes to the score but never on its own promotes a drug to direct: two drugs can share a signalling pathway and never compete for a patient. The module proposes; the analyst disposes.
+
+### M12 — Comparator Registry and Asset Intake
+
+**Responsibility.** Capture the new asset once, hold the single drug–target–market record for every comparator the system knows about, and promote a discovered molecule into one that can enter a calculation.
+
+Discovery yields a molecule, a target and a clinical stage. M5 needs a price, a regimen and a persistence figure, and no public target database carries any of them. The registry is where the two meet: `comparator_assets` records what discovery found alongside what a human curated on top of it — brand name, manufacturer, line of therapy, market approvals — and promotion writes the `drugs`, `drug_regimens` and `drug_prices` rows that make a comparator usable, each with its own source, vintage and confidence tier. A discovered drug that has not been promoted is visible, flagged, and rejected at scenario build rather than silently dropped from the market mix, because a comparator that vanishes understates the world-without and therefore overstates budget impact.
+
+### M13 — Safety and Adverse-Event Economics
+
+**Responsibility.** Convert an observed adverse-event profile into the adverse-event management cost M5 already consumes, and attribute the net incremental cost per patient switched across its cost components.
+
+A payer does not compare acquisition prices; it compares total cost of care. A therapy priced above the incumbent it displaces can still be close to budget-neutral if it avoids enough adverse-event management, monitoring and administration. This module makes that arithmetic explicit and evidence-gated: expected adverse-event cost is the sum over events of incidence times unit management cost, each incidence carrying the trial or label it came from and the population it was observed in. The module never asserts a safety advantage the evidence does not support, and where one therapy has a profile and its comparators do not, the asymmetry is warned about rather than quietly scored in the new therapy's favour.
+
+### M14 — Launch-Year Competitive Landscape
+
+**Responsibility.** Project the market a not-yet-launched asset will actually meet, by admitting discovered pipeline entrants into the baseline mix from their expected entry year.
+
+For an asset launching in four years, today's market is the wrong world-without. A Phase III competitor approved two years from now is part of the market this asset competes in from year three onward. The module reads expected entry from ClinicalTrials.gov primary completion dates plus a stated regulatory lag, ramps each modelled entrant from its entry year, and rescales incumbent shares to make room. It is off by default: every entrant's price is an assumption rather than an observation, so its use is explicit, tier-D by construction, warned about, and belongs in a scenario variant rather than the base case.
+
+### M15 — Evidence-Gap Intelligence
+
+**Responsibility.** Rank the parameters worth acquiring evidence for, by combining how much each moves the answer with how weak its current basis is.
+
+M9 already computes how much each input moves cumulative budget impact; every resolved value already carries a confidence tier. Neither alone tells an analyst what to go and find out. A parameter with a large swing and a tier-A source is settled; one with a large swing and a tier-D placeholder is the reason the answer cannot yet be trusted. The product of influence and weakness is the priority ranking, and it is the module that turns an uncertainty analysis into a research plan.
+
+---
+
 ## 5. Calculation Engine Specification
 
 ### 5.1 Notation
@@ -543,6 +613,98 @@ Reported outputs: mean, median, 2.5th and 97.5th percentiles of cumulative budge
 | B | Published, regional or extrapolated | 15% |
 | C | Analogue-derived or expert assumption | 30% |
 | D | Placeholder requiring replacement | 50% |
+
+---
+
+### 5.10 Module M13 — Adverse-Event Economics
+
+**Expected adverse-event cost.** For therapy `t` in market `c`, over the event set `E_t`:
+
+```
+AECost(t,c) = Σ(e ∈ E_t) [ p(e,t) × unit_cost(e,c) ]
+```
+
+where `p(e,t)` is the annualised incidence of event `e` on therapy `t` and `unit_cost(e,c)` is the market-specific cost of managing one occurrence — consultation, medication, laboratory, hospitalisation and any event-driven monitoring, summed into a single figure with its own provenance.
+
+**Annualisation.** Trial incidence is observed over the trial's exposure window, which is rarely one year. A 68-week incidence quoted as an annual rate overstates it; a 26-week incidence quoted as annual understates it. Under a constant-hazard assumption:
+
+```
+p(e,t) = 1 - ( 1 - p_obs(e,t) ) ^ ( 52 / exposure_weeks(e,t) )
+```
+
+The transformation is the identity when `exposure_weeks = 52`, and is skipped entirely when the source already reports an annualised rate. The constant-hazard assumption is stated wherever an annualised incidence appears, because for events concentrated in a titration period — gastrointestinal events on an incretin, characteristically — it overstates the second half of the year.
+
+`AECost(t,c)` populates `ae_cost` in M5's therapy input. It does not replace a directly observed adverse-event cost where one exists; an observed figure outranks a derived one, exactly as in the price resolution chain of §7.3.
+
+**Component attribution — the cost bridge.** §5.6 gives the net incremental cost per patient switched as the bracketed term:
+
+```
+NetCostPerSwitch(c) = f_n × AC(n,c) - Σ(t ∈ T) σ_t × f_t × AC(t,c)
+```
+
+Since `AC` is a sum of components, that term decomposes exactly. For each component `k ∈ {acquisition, admin, monitoring, ae}` and for the offset:
+
+```
+Δ_k(c) = f_n × k(n,c) - Σ(t ∈ T) σ_t × f_t × k(t,c)
+
+Δ_offset(c) = f_n × offset(n,c) - Σ(t ∈ T) σ_t × f_t × offset(t,c)
+
+NetCostPerSwitch(c) = Δ_acq + Δ_admin + Δ_monitoring + Δ_ae - Δ_offset
+```
+
+The identity is exact by construction and is asserted as an invariant, not assumed. It is the answer to the question a payer actually asks: not "what does the new drug cost" but "of the difference, how much is price and how much is everything else". A therapy carrying a higher acquisition cost and a materially lower adverse-event cost produces a bridge whose components have opposite signs, and the net is the only figure that decides anything.
+
+**Persistence.** Better tolerability plausibly raises persistence, which changes `f_t` and therefore exposure and cost. The link is real but it is an inference, not an observation, so this system does not derive persistence from an adverse-event profile. Persistence is a separately sourced input (M6) and a scenario that assumes a tolerability-driven persistence advantage must state that assumption and carry its own confidence tier.
+
+### 5.11 Module M14 — Launch-Year Competitive Landscape
+
+An asset launching in year `L` does not meet today's market. Each modelled pipeline entrant `e` carries an expected entry year, a terminal share and a ramp length.
+
+**Expected entry.** From a trial's primary completion date plus a stated regulatory lag, expressed launch-relative:
+
+```
+y_e = max( 1, ⌈ completion_year + regulatory_lag - L + 1 ⌉ )
+```
+
+with `regulatory_lag` defaulting to 1.5 years. An entrant whose expected entry falls beyond the horizon is discovered, reported and not modelled.
+
+**Entrant share trajectory.**
+
+```
+m_e(y) = 0                                          for y < y_e
+m_e(y) = s_e × min( 1, (y - y_e + 1) / r_e )        for y ≥ y_e
+```
+
+**Incumbent rescaling.** Entrants take share proportionally from every incumbent rather than from a nominated one, since no public source says which incumbent loses:
+
+```
+E(y) = Σ(e) m_e(y),        capped at MAX_ENTRANT_TOTAL_SHARE
+
+m'_t(y) = m_t(y) × ( 1 - E(y) )
+```
+
+so that `Σ(t) m'_t(y) + Σ(e) m_e(y) = 1` at every year. The rescaled baseline replaces `m_without(t,y)` in §5.6.
+
+**This is a scenario, not a base case.** Every entrant introduces three assumptions the evidence does not supply: that it is approved at all, when, and at what price. All three are tier D by construction. Landscape projection is therefore off unless explicitly enabled, emits `PIPELINE_ENTRANT_MODELLED` naming every entrant admitted, and its result is reported beside the current-market base case rather than in place of it.
+
+### 5.12 Module M15 — Evidence-Gap Priority
+
+Sensitivity says which assumptions move the answer. Confidence tiers say which assumptions are weakly founded. Neither alone says what to go and find out; their product does.
+
+```
+influence_i = swing_i / max(j) swing_j                      ∈ [0, 1]
+
+weakness_i  = W(tier_i)                                     A → 0.05
+                                                            B → 0.25
+                                                            C → 0.60
+                                                            D → 1.00
+
+priority_i  = influence_i × weakness_i
+```
+
+Bands: `critical ≥ 0.50`, `high ≥ 0.25`, `medium ≥ 0.10`, otherwise `sufficient`.
+
+A parameter with no influence is never a priority however weak its source — spending a week pinning down a value that cannot move the result is the mistake this ranking exists to prevent. Equally, a parameter with the largest swing in the model and a published country-specific interval is settled, and the tornado alone would have wrongly nominated it first.
 
 ---
 
@@ -898,6 +1060,110 @@ CREATE INDEX idx_guideline_embedding
     WITH (lists = 100);
 ```
 
+### 8.4 Comparator Intelligence
+
+`comparator_assets` is the single drug–target–market record. Discovery writes the mechanistic
+columns; a curator writes the commercial ones; promotion links the row to `drugs` and only then can
+the asset enter a calculation. `drug_id` being null is the flag that it cannot.
+
+```sql
+CREATE TABLE comparator_assets (
+    asset_id              SERIAL PRIMARY KEY,
+    source_id             TEXT NOT NULL,          -- ChEMBL id; the cross-source key
+    asset_name            TEXT NOT NULL,
+    brand_name            TEXT,
+    manufacturer          TEXT,
+    indication_id         INTEGER NOT NULL REFERENCES indications(indication_id),
+    target_symbol         TEXT NOT NULL,          -- HGNC symbol, e.g. GLP1R
+    target_id             TEXT,                   -- Ensembl gene id
+    mechanism_of_action   TEXT,
+    action_type           TEXT,                   -- AGONIST | ANTAGONIST | INHIBITOR | ...
+    pathway_ids           TEXT[] NOT NULL DEFAULT '{}',   -- Reactome stable ids
+    drug_type             TEXT,
+    route                 TEXT,
+    line_of_therapy       TEXT,
+    max_clinical_stage    TEXT NOT NULL,          -- APPROVAL | PHASE_3 | ...
+    competitor_class      TEXT NOT NULL,          -- direct | therapeutic | pipeline | excluded
+    relevance             NUMERIC(6,4) NOT NULL,
+    rationale             TEXT NOT NULL,
+    sponsor               TEXT,                   -- pipeline entrants
+    primary_completion    DATE,                   -- pipeline entrants
+    expected_entry_year   SMALLINT,               -- launch-relative, M14
+    assumed_terminal_pct  NUMERIC(5,4),           -- M14 entrant plateau share
+    is_new_asset          BOOLEAN NOT NULL DEFAULT FALSE,
+    drug_id               INTEGER REFERENCES drugs(drug_id),   -- null until promoted
+    source                TEXT NOT NULL,
+    source_url            TEXT,
+    retrieved_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    confidence_tier       CHAR(1) NOT NULL DEFAULT 'B',
+    UNIQUE (source_id, indication_id),
+    CHECK (relevance >= 0 AND relevance <= 1),
+    CHECK (assumed_terminal_pct IS NULL
+           OR (assumed_terminal_pct > 0 AND assumed_terminal_pct < 1))
+);
+
+CREATE TABLE comparator_approvals (
+    approval_id           SERIAL PRIMARY KEY,
+    asset_id              INTEGER NOT NULL REFERENCES comparator_assets(asset_id)
+                              ON DELETE CASCADE,
+    country_code          CHAR(3) NOT NULL REFERENCES countries(country_code),
+    approval_year         SMALLINT,
+    is_reimbursed         BOOLEAN,
+    source                TEXT NOT NULL,
+    confidence_tier       CHAR(1) NOT NULL DEFAULT 'B',
+    UNIQUE (asset_id, country_code)
+);
+```
+
+Adverse-event economics is two catalogues and one join. The event vocabulary and its per-market
+management cost are reference data; incidence is a property of a therapy observed in a specific
+trial over a specific window, and the window is stored because an incidence without one cannot be
+annualised (§5.10).
+
+```sql
+CREATE TABLE adverse_events (
+    ae_code               TEXT PRIMARY KEY,       -- 'nausea', 'severe_hypoglycaemia'
+    ae_label              TEXT NOT NULL,
+    is_serious            BOOLEAN NOT NULL DEFAULT FALSE,
+    meddra_pt             TEXT
+);
+
+CREATE TABLE adverse_event_costs (
+    ae_cost_id            SERIAL PRIMARY KEY,
+    ae_code               TEXT NOT NULL REFERENCES adverse_events(ae_code),
+    country_code          CHAR(3) NOT NULL REFERENCES countries(country_code),
+    unit_cost_local       NUMERIC NOT NULL,       -- cost of managing one occurrence
+    currency_code         CHAR(3) NOT NULL,
+    cost_year             SMALLINT,
+    source                TEXT NOT NULL,
+    source_url            TEXT,
+    confidence_tier       CHAR(1) NOT NULL DEFAULT 'C',
+    UNIQUE (ae_code, country_code),
+    CHECK (unit_cost_local >= 0)
+);
+
+CREATE TABLE drug_adverse_events (
+    dae_id                SERIAL PRIMARY KEY,
+    drug_id               INTEGER NOT NULL REFERENCES drugs(drug_id) ON DELETE CASCADE,
+    ae_code               TEXT NOT NULL REFERENCES adverse_events(ae_code),
+    incidence             NUMERIC(6,5) NOT NULL,  -- fraction, as observed
+    exposure_weeks        SMALLINT,               -- null means already annualised
+    population            TEXT,                   -- 'adults with obesity, BMI >= 30'
+    evidence_type         TEXT NOT NULL,          -- trial | label | literature
+    source                TEXT NOT NULL,
+    source_url            TEXT,
+    vintage_year          SMALLINT,
+    confidence_tier       CHAR(1) NOT NULL,
+    UNIQUE (drug_id, ae_code),
+    CHECK (incidence >= 0 AND incidence <= 1),
+    CHECK (exposure_weeks IS NULL OR exposure_weeks > 0)
+);
+```
+
+`source` is `NOT NULL` on every one of these tables and `confidence_tier` has no default on
+`drug_adverse_events` specifically: an adverse-event incidence with no stated origin is the one
+value in this system most likely to be repeated as fact, so it cannot be written without one.
+
 ---
 
 ## 9. Backend Architecture
@@ -1092,6 +1358,23 @@ Base path `/api/v1`. All responses are JSON. The OpenAPI 3.1 document is generat
 ```
 
 The `binding_market` and `single_global_price_ceiling_usd` fields make the central tension of global pricing explicit: a single worldwide price satisfying every market's affordability constraint is set by the poorest market, which is precisely why differential pricing exists.
+
+### 10.7 Comparator Intelligence Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/comparators/targets/{symbol}` | Resolve a gene symbol to an Ensembl identifier |
+| GET | `/comparators/discover` | Ranked, classified comparator basket for a target and indication |
+| GET | `/comparators/assets` | Registry contents, filterable by indication and class |
+| POST | `/comparators/assets` | Register a new asset or a discovered comparator |
+| POST | `/comparators/assets/{id}/promote` | Attach a regimen and prices; make it usable by M5 |
+| GET | `/comparators/assets/{id}/bridge` | Cost bridge against a nominated comparator basket |
+| GET | `/comparators/landscape` | Pipeline entrants with expected entry year, for a launch year |
+| GET | `/scenarios/{id}/evidence-gaps` | Parameters ranked by influence × evidence weakness |
+
+Discovery is a read-through to public APIs and is not persisted (M11 §7): trial status changes, and
+a cached basket goes stale silently. Registration is the deliberate act that makes a discovered
+molecule durable.
 
 ---
 
@@ -1310,7 +1593,11 @@ BIET/
 
 ## 15. Delivery Plan
 
-Five phases. Phase boundaries are defined by demonstrable capability, not by elapsed time.
+Eleven phases. Phase boundaries are defined by demonstrable capability, not by elapsed time.
+Phases 1–5 build the budget impact model itself. Phase 6 is competitive hardening — data
+quality and workflow fit rather than calculation. Phases 7–11 are the comparator intelligence
+layer of §4A, which removes the assumption that the analyst already knows what the asset
+competes with.
 
 ### Phase 1 — Data Foundation
 
@@ -1356,6 +1643,64 @@ Five phases. Phase boundaries are defined by demonstrable capability, not by ela
 - Performance targets verified; documentation completed.
 
 **Exit criterion.** A complete scenario produces a distributable, fully cited deliverable.
+
+### Phase 6 — Competitive Hardening
+
+Added after Phases 1–5 completed, on assessing what separated this from a commercial tool. The gap
+was data quality and workflow fit, not calculation.
+
+- Excel export with live formulas, so the model can be re-checked in the tool the discipline runs on.
+- Observed European prices replacing purchasing-power derivations, and a `MIXED_PRICE_BASIS` warning naming any market whose therapies do not share one price basis.
+- External validation of annual therapy cost against published list prices.
+- Measured performance against the §13.1 targets.
+
+**Exit criterion.** Every headline figure is either observed or explicitly labelled as derived, and a market mixing the two says so.
+
+### Phase 7 — Comparator Discovery
+
+- Target resolution from gene symbol or Ensembl identifier.
+- Open Targets and ChEMBL retrieval, with the schema drift of M11 §5.2 pinned and dated.
+- Reactome pathway membership as a scoring contribution, never as a promotion rule.
+- Classification into direct, therapeutic, pipeline and excluded; relevance ranking with a per-row rationale.
+- Discovery interface: grouped, ranked, checkbox selection, nothing pre-selected.
+
+**Exit criterion.** A gene symbol and an indication yield a ranked, classified, individually justified comparator basket, and an upstream outage degrades to a partial basket rather than a silent empty one.
+
+### Phase 8 — Comparator Registry and Asset Intake
+
+- New-asset intake: molecule, indication, target, mechanism, pathway, route, dose, frequency, expected launch year, target markets — with everything the public sources can supply pre-filled from M11.
+- `comparator_assets` as the single drug–target–market record, with curated fields for brand, manufacturer, line of therapy and market approval.
+- Promotion: a discovered molecule plus a supplied regimen and price becomes rows in `drugs`, `drug_regimens` and `drug_prices`, each carrying source, vintage and tier.
+- Scenario build rejects an unpromoted comparator by name rather than dropping it.
+
+**Exit criterion.** A comparator discovered from a public API is priced, promoted, selected into a scenario and present in the resulting market mix, with every value traceable to its source.
+
+### Phase 9 — Safety and Adverse-Event Economics
+
+- Adverse-event catalogue with market-specific unit management costs.
+- Per-therapy event profiles with incidence, exposure window, population and citation.
+- Expected annual adverse-event cost feeding M5, observed figures outranking derived ones.
+- Net-cost-per-switch decomposed into its acquisition, administration, monitoring, adverse-event and offset components, with the identity asserted.
+- Drug-versus-drug comparison view built on the bridge.
+
+**Exit criterion.** Two therapies differing only in adverse-event profile produce different budget impact, the difference reconciles exactly to the bridge, and a profile without a citation is refused rather than used.
+
+### Phase 10 — Launch-Year Competitive Landscape
+
+- ClinicalTrials.gov retrieval for pipeline entrants: sponsor, phase, status, primary completion date.
+- Expected entry year derived with a stated regulatory lag.
+- Entrant ramp and proportional incumbent rescaling, applied to the baseline mix.
+- Current-market and launch-year results reported side by side.
+
+**Exit criterion.** A Phase III entrant expected before the horizon ends changes the world-without in the years after its entry and only in those years, and the run states which entrants were admitted and on what assumptions.
+
+### Phase 11 — Evidence-Gap Intelligence
+
+- Confidence tier joined to one-way sensitivity swing per parameter.
+- Priority ranking and banding.
+- Evidence-priority panel in the interface and in the exported deliverable.
+
+**Exit criterion.** A scenario produces a ranked list of what to go and find out, in which a high-swing tier-D parameter outranks a high-swing tier-A one.
 
 ---
 
