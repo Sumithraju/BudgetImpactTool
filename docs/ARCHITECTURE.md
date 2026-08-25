@@ -18,6 +18,7 @@
 3. [Technology Stack](#3-technology-stack)
 4. [Module Architecture](#4-module-architecture)
 4A. [Comparator Intelligence Modules](#4a-comparator-intelligence-modules)
+4B. [Outcomes and Payer-Fit Modules](#4b-outcomes-and-payer-fit-modules)
 5. [Calculation Engine Specification](#5-calculation-engine-specification)
 6. [Country and Reference Data](#6-country-and-reference-data)
 7. [Data Architecture](#7-data-architecture)
@@ -365,6 +366,100 @@ For an asset launching in four years, today's market is the wrong world-without.
 **Responsibility.** Rank the parameters worth acquiring evidence for, by combining how much each moves the answer with how weak its current basis is.
 
 M9 already computes how much each input moves cumulative budget impact; every resolved value already carries a confidence tier. Neither alone tells an analyst what to go and find out. A parameter with a large swing and a tier-A source is settled; one with a large swing and a tier-D placeholder is the reason the answer cannot yet be trusted. The product of influence and weakness is the priority ranking, and it is the module that turns an uncertainty analysis into a research plan.
+
+---
+
+## 4B. Outcomes and Payer-Fit Modules
+
+M0–M15 answer what a new therapy costs a payer relative to what it displaces. They do not
+answer what the payer gets back. M16–M19 close that, and re-shape the model around a single
+disease with subgroups rather than a list of indications.
+
+### Requirement coverage — HEOR review, 2026-08-25
+
+Against the input taxonomy and dashboard specified in review. *Existing* means built in an
+earlier phase and needing no new module.
+
+| Required input | Home | Status |
+|---|---|---|
+| Population — covered population, age range, annual growth | M17 §5.2, **M2** | Phase 13 (covered lives); growth existing |
+| Epidemiology — prevalence, diagnosed percentage | **M2, M0** | existing |
+| Eligibility — BMI threshold, comorbidities, treatment eligibility | **M3** | existing — the seeded criteria are already this list |
+| Current care — lifestyle programme, existing medicines, bariatric surgery | **M5**, M12 | medicines existing; two non-drug comparators in Phase 12 |
+| New intervention — drug/device, price, administration cost | **M5** | existing |
+| Uptake — 1-to-5-year adoption | **M4** | existing |
+| Treatment behaviour — adherence, discontinuation, persistence | **M6** | existing |
+| Treatment behaviour — weight regain | M16 §5.4 | Phase 12 |
+| Outcomes — weight loss, reduction in diabetes, hypertension, sleep apnoea, CV events | M16 §5.2–5.3 | Phase 12 |
+| Healthcare costs — drug, consultations, labs, hospitalisations | **M5** | existing |
+| Healthcare costs — complication treatment | M16 §5.5 | Phase 12 |
+| Time horizon | **M1** | existing |
+| Perspective — insurer, employer, government, health system | M17 §5.1 | Phase 13 |
+
+| Required output | Home | Status |
+|---|---|---|
+| Total cost with current care | **M7** `cost_without` | existing |
+| Total cost after the intervention | **M7** `cost_with` | existing |
+| Incremental budget impact by year | **M7** | existing |
+| Cumulative 3- or 5-year impact | **M7** | existing |
+| Cost per treated patient | **M7** `impact_per_patient` | existing |
+| Number of patients treated | **M7** `patients_on_new` | existing |
+| PMPM impact for the payer | M17 §5.3 | Phase 13 — M8 computes PMPY today |
+| Expected weight-loss responders | M16 §5.2 | Phase 12 |
+| Diabetes or cardiovascular events avoided | M16 §5.3 | Phase 12 |
+| Hospital costs avoided | M16 §5.5 | Phase 12 |
+| Break-even treatment price | M17 §5.4 | Phase 13 — M8 solves to an affordability target, not to zero |
+| Budget impact under low, medium, high uptake | M17 §5.5 | Phase 13 |
+
+Twelve of the twenty-five are already built. The gap is concentrated in one place: the model
+prices care and never valued its consequences.
+
+### M16 — Clinical Outcomes and Avoided Events
+
+**Responsibility.** Turn an observed treatment effect into the events it avoids and the cost
+those avoided events would have carried.
+
+Budget impact without outcomes is half an argument. A payer asked to fund a therapy at
+$8,800 net per switched patient will ask what the $8,800 buys, and "weight loss" is not an
+answer a budget holder can act on — avoided myocardial infarctions, avoided incident type 2
+diabetes and the hospitalisations that come with them are. The module takes a response rate
+and a risk reduction, both from named trials, and produces events avoided per year and the
+cost offset they represent. It asserts no effect it was not given.
+
+### M17 — Payer Perspective and Decision Views
+
+**Responsibility.** Frame the same computation for the budget holder who is actually reading
+it, and produce the three summary figures a payer conversation opens with.
+
+An insurer covering four million lives, a self-insured employer covering forty thousand and a
+national health system are looking at different denominators and count different costs. The
+perspective selects the covered population, decides whether indirect costs are in scope, and
+converts impact to per-member-per-month. It also carries the two views the review named that
+M8 and M9 do not quite give today: the break-even price at which incremental impact is zero,
+and the same scenario at low, medium and high uptake side by side.
+
+### M18 — Disease Subgroups
+
+**Responsibility.** Replace the list of indications with one disease and the clinically
+distinct populations inside it.
+
+Obesity with type 2 diabetes is not obesity with established cardiovascular disease: they
+differ in prevalence, in eligible fraction, in what they are currently treated with, in
+uptake, and — most consequentially — in the events a therapy avoids. Modelling them as one
+average population produces a number that describes nobody. A subgroup is a scenario
+dimension rather than an engine contract: the engine runs unchanged, once per segment, and
+results aggregate. That keeps `biet_engine` pure and lets each segment carry its own
+comparator mix and its own outcome profile, which the alternative could not.
+
+### M19 — Workbook Import
+
+**Responsibility.** Accept a company's own inputs and market data as a spreadsheet.
+
+HEOR runs on Excel. A tool that requires re-typing a market model someone has already built
+does not fit the workflow it is meant to serve. Import accepts a scenario workbook and a
+competitor workbook, validates every cell against the same rules the API enforces, and
+rejects the file with a row-and-column reference rather than importing something half-right.
+Every imported value carries its sheet and row as its provenance.
 
 ---
 
@@ -1593,11 +1688,13 @@ BIET/
 
 ## 15. Delivery Plan
 
-Eleven phases. Phase boundaries are defined by demonstrable capability, not by elapsed time.
+Fifteen phases. Phase boundaries are defined by demonstrable capability, not by elapsed time.
 Phases 1–5 build the budget impact model itself. Phase 6 is competitive hardening — data
 quality and workflow fit rather than calculation. Phases 7–11 are the comparator intelligence
 layer of §4A, which removes the assumption that the analyst already knows what the asset
-competes with.
+competes with. Phases 12–15 are the outcomes and payer-fit layer of §4B, added after HEOR
+review: they value what the spend buys, frame it for the budget holder reading it, and
+narrow the model from a list of indications to one disease with subgroups.
 
 ### Phase 1 — Data Foundation
 
@@ -1701,6 +1798,42 @@ was data quality and workflow fit, not calculation.
 - Evidence-priority panel in the interface and in the exported deliverable.
 
 **Exit criterion.** A scenario produces a ranked list of what to go and find out, in which a high-swing tier-D parameter outranks a high-swing tier-A one.
+
+### Phase 12 — Clinical Outcomes and Avoided Events
+
+- Response-rate and risk-reduction inputs per subgroup, each carrying its trial.
+- Weight-loss responders, avoided incident diabetes and avoided cardiovascular events, per year.
+- Complication unit costs, and the offset avoided events represent.
+- Weight regain applied to the effect over the horizon.
+- Lifestyle programme and bariatric surgery as costed non-drug comparators.
+
+**Exit criterion.** The result states what the spend buys — events avoided and costs avoided — and every effect traces to a named trial, with no effect asserted that was not supplied.
+
+### Phase 13 — Payer Perspective and Decision Views
+
+- Perspective selector: insurer, employer, government payer, health system.
+- Covered population as an input, distinct from national population.
+- PMPM alongside the existing PMPY.
+- Break-even price — the solve at which incremental impact is zero.
+- Low, medium and high uptake reported side by side.
+
+**Exit criterion.** A payer can read their own denominator, their own per-member figure, and the price at which the therapy stops adding cost.
+
+### Phase 14 — Disease Subgroups
+
+- One disease with clinically distinct subgroups replacing the indication list.
+- Per-subgroup epidemiology, eligibility, comparator mix, uptake and outcome profile.
+- Aggregation across subgroups, with each segment's contribution visible.
+
+**Exit criterion.** A run reports the total and the subgroup breakdown, and moving a patient between subgroups changes the answer in the direction the clinical difference implies.
+
+### Phase 15 — Workbook Import and Interface
+
+- Scenario and competitor workbook import, validated cell by cell.
+- Every field explained in place on hover, in both the inputs and the results.
+- Interface ordered inputs first, then outputs.
+
+**Exit criterion.** A market model built in Excel loads without re-typing, and a reader who has never seen the tool can name what any figure on screen means without leaving it.
 
 ---
 

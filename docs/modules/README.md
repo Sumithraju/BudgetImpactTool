@@ -36,6 +36,19 @@ ARCHITECTURE.md §4A for the requirement coverage map.
 | [M14](M14-launch-year-landscape.md) | Launch-Year Competitive Landscape | Engine + Backend | M4, M11, M12 |
 | [M15](M15-evidence-gap-intelligence.md) | Evidence-Gap Intelligence | Backend | M9, M10 |
 
+### Outcomes and payer fit (Phases 12–15)
+
+Added after HEOR review. M0–M15 price care; these value its consequences and
+frame the result for the budget holder reading it. See ARCHITECTURE.md §4B for
+the requirement coverage map.
+
+| Spec | Module | Owner area | Depends on |
+|---|---|---|---|
+| [M16](M16-clinical-outcomes.md) | Clinical Outcomes & Avoided Events | Engine + Backend | M2, M5, M6, M7 |
+| M17 | Payer Perspective & Decision Views | Backend + Frontend | M7, M8, M9 |
+| M18 | Disease Subgroups | Backend | M2, M3, M16 |
+| M19 | Workbook Import | Backend | M1, M12 |
+
 ## Build order
 
 ```

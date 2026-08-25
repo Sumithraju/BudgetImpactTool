@@ -1,8 +1,9 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-25 · **Phase:** 11 of 11 — the budget impact model and the
-comparator intelligence layer on top of it are both complete.
-**All eleven phases complete**, bar one deliberate deferral (§8) · **Deadline:** 2026-09-06
+**Last updated:** 2026-08-25 · **Phase:** 12 of 15 — the budget impact model and the
+comparator intelligence layer are complete; the outcomes layer is being built.
+**Phases 1–11 complete**, bar one deliberate deferral (§8) · **Phase 12 under way** ·
+**Phases 13–15 specified** after HEOR review (§9) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -408,6 +409,62 @@ it, every basis for a drug must share the *same* unit convention or M5's `unit_p
 units_per_admin` breaks the moment two differently-unit-quoted prices exist for one drug. See
 §5.3's last bullet for the concrete fix; the general lesson is to check what unit `units_per_admin`
 implies before writing a new price source's transform.
+
+---
+
+## 9. HEOR review — 2026-08-25, and what it changed
+
+Reviewed by the Global HEOR Lead. Three structural notes and two lists — an input taxonomy
+and a dashboard. The lists were mapped against the build rather than accepted wholesale, and
+**twelve of the twenty-five items were already delivered**; the coverage map lives in
+ARCHITECTURE.md §4B so the mapping is checkable rather than asserted.
+
+**What the review got right that the build had missed.** The gap was not scattered — it was
+concentrated in one place. The model priced care and never valued its consequences. Every
+missing output traced back to that: weight-loss responders, diabetes and cardiovascular
+events avoided, hospital costs avoided. A payer asked to fund a therapy at $8,800 net per
+switched patient asks what the $8,800 buys, and until now this tool could not answer.
+
+**Three structural changes accepted.**
+
+1. **One disease with subgroups, not two indications.** Obesity with type 2 diabetes is not
+   obesity with established cardiovascular disease — different prevalence, different eligible
+   fraction, different current care, and most consequentially different event rates. An
+   averaged population describes neither. Becomes M18, and notably it is **M3 §12's deferred
+   segmentation**, which STATUS previously recorded as too expensive to add. The review makes
+   it necessary, and a cheaper design than the one M3 feared is available: a subgroup is a
+   *scenario dimension*, so the engine runs unchanged once per segment and results aggregate.
+   `biet_engine` stays pure and each segment keeps its own comparator mix.
+2. **Perspective belongs to the payer, not the model.** An insurer covering four million
+   lives, a self-insured employer covering forty thousand and a national health system read
+   different denominators and count different costs. Becomes M17, which also carries PMPM
+   (M8 computes PMPY today) and break-even price (M8 solves to an affordability target, not
+   to zero).
+3. **Flow reads inputs to outputs.** An interface ordering change, Phase 15.
+
+**Phase 12 — M16, Clinical Outcomes and Avoided Events. Engine built.** The pure module is
+in `biet_engine/outcomes.py` with 20 unit tests and 5 property tests.
+
+- Events avoided = exposed patients x baseline rate x relative reduction x effect retained.
+- **Exposure is persistence-adjusted, not headline uptake.** An effect accrues only while a
+  patient is on therapy; counting a discontinued patient as a responder overstates the
+  clinical result and the economic one together.
+- **Weight regain decays the effect** from year 2, and is full in year 1 by construction — a
+  trial's reported effect *is* the year-one effect, so decaying it in the year it was
+  measured would double-count regain the trial already observed.
+- **The offset averages across the horizon**, not year 1. M5 carries one offset figure and
+  the effect decays; taking year 1 would credit the therapy with its best year every year.
+- **Nothing is inferred.** No effect is derived from a drug class, a mechanism or another
+  therapy. A therapy with no supplied effect raises `NO_OUTCOME_EVIDENCE` — zero avoided
+  events and no evidence about avoided events are different claims. A horizon extending past
+  the trial's follow-up raises `EFFECT_BEYOND_FOLLOW_UP` naming the duration.
+- Evidence located for seeding: **SELECT** (NCT03574597, 17,604 participants, composite MACE
+  in overweight or obesity) for cardiovascular reduction, **STEP 1** for responder share.
+
+**Still to build in Phase 12:** the `treatment_effects` and `event_costs` tables, the seed
+from those trials, wiring the offset into M5, and the outcomes panel.
+
+504 tests, mypy --strict and ruff clean.
 
 ---
 

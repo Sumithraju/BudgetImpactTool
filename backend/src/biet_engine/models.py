@@ -22,10 +22,12 @@ from .constants import (
     ConfidenceTier,
     CostComponent,
     CriterionType,
+    EventClass,
     EvidencePriority,
     FunnelStage,
     PriceBasis,
     ResolutionLevel,
+    ResponseThreshold,
     SolverMethod,
     UptakeCurve,
 )
@@ -429,6 +431,100 @@ class EvidenceGapReport(BaseModel):
 
     gaps: tuple[EvidenceGap, ...]            # ranked, highest priority first
     max_swing: Money
+
+
+# --------------------------------------------------------------------------- M16 — Clinical Outcomes
+
+
+class TreatmentEffect(BaseModel):
+    """One therapy's effect on one event class, in one market.
+
+    Baseline rate is a property of the *subgroup*, not of the therapy: obesity
+    with established cardiovascular disease carries a materially higher annual
+    MACE rate than obesity alone, and one averaged rate describes neither
+    (M16 section 5.3).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    drug_id: int
+    event: EventClass
+    baseline_rate: Valued                    # annual event rate on current care
+    relative_reduction: Valued               # [0, 1)
+    unit_cost: Money
+    trial: str                               # what the effect rests on
+    follow_up_weeks: int | None = None
+
+    @field_validator("baseline_rate")
+    @classmethod
+    def _baseline_in_range(cls, v: Valued) -> Valued:
+        if not (0.0 <= v.value <= 1.0):
+            raise ValueError(
+                f"baseline_rate must be an annual probability in [0, 1], got {v.value!r}"
+            )
+        return v
+
+    @field_validator("relative_reduction")
+    @classmethod
+    def _reduction_in_range(cls, v: Valued) -> Valued:
+        if not (0.0 <= v.value < 1.0):
+            raise ValueError(
+                f"relative_reduction must be in [0, 1), got {v.value!r} — a reduction "
+                "of 1.0 claims total prevention, which no trial establishes"
+            )
+        return v
+
+
+class ResponseProfile(BaseModel):
+    """The proportion reaching a weight-loss threshold, and how it decays."""
+
+    model_config = ConfigDict(frozen=True)
+
+    drug_id: int
+    threshold: ResponseThreshold
+    responder_share: Valued
+    mean_weight_loss_pct: Valued
+    #: Annual proportional loss of the achieved effect. Zero means a
+    #: maintained effect, which is defensible on continuous therapy and is
+    #: stated as an assumption rather than assumed silently (M16 section 5.4).
+    regain_per_year: Valued
+    trial: str
+
+    @field_validator("responder_share", "regain_per_year")
+    @classmethod
+    def _fraction(cls, v: Valued, info: ValidationInfo) -> Valued:
+        if not (0.0 <= v.value <= 1.0):
+            raise ValueError(
+                f"{info.field_name} must be a fraction in [0, 1], got {v.value!r}"
+            )
+        return v
+
+
+class AvoidedEvents(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    event: EventClass
+    year: int
+    events_without: float
+    events_with: float
+    avoided: float
+    cost_avoided: Money
+    trial: str
+
+
+class OutcomeResult(BaseModel):
+    """What the spend buys, per market."""
+
+    model_config = ConfigDict(frozen=True)
+
+    country_code: str
+    #: None, not zero, when no response profile was supplied — an absence of
+    #: evidence and a responder rate of nothing are different claims.
+    responders: tuple[float, ...] | None
+    mean_weight_loss_pct: float | None
+    avoided: tuple[AvoidedEvents, ...]
+    total_cost_avoided: tuple[Money, ...]    # per year
+    warnings: tuple[Warning_, ...] = ()
 
 
 # --------------------------------------------------------------------------- M14 — Launch-Year Landscape

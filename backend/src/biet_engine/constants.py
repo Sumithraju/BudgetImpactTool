@@ -59,6 +59,30 @@ class CriterionType(StrEnum):
     PRIOR_FAILURE = "prior_failure"
 
 
+class EventClass(StrEnum):
+    """Clinical events a therapy can avoid (M16 section 4).
+
+    `MACE` means the composite SELECT reports — cardiovascular death,
+    non-fatal myocardial infarction, non-fatal stroke — and not a broader
+    definition, because the relative reduction seeded against it is that
+    trial's.
+    """
+
+    INCIDENT_T2D = "incident_t2d"
+    MACE = "mace"
+    HOSPITALISATION = "hospitalisation"
+    OSA_PROGRESSION = "osa_progression"
+    HYPERTENSION = "hypertension"
+
+
+class ResponseThreshold(StrEnum):
+    """Weight-loss thresholds trials report responder proportions against."""
+
+    WL_5 = "wl_5"
+    WL_10 = "wl_10"
+    WL_15 = "wl_15"
+
+
 class EvidencePriority(StrEnum):
     """What a parameter is worth going and finding out (M15 section 5.2)."""
 
