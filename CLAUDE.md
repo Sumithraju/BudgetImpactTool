@@ -8,7 +8,8 @@ multi-country, ISPOR-aligned budget impact estimates in minutes, under explicit 
 | Document | Covers |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | **The specification.** Scope, modules, formulas, schema, API, delivery plan. |
-| [docs/modules/](docs/modules/README.md) | **Per-module specs (M0–M10).** Contracts, logic, edge cases, tests, acceptance criteria. Read your module's spec before building it. |
+| [docs/modules/](docs/modules/README.md) | **Per-module specs (M0–M22).** Contracts, logic, edge cases, tests, acceptance criteria. Read your module's spec before building it. |
+| [docs/PROMPTS.md](docs/PROMPTS.md) | **One build prompt per phase.** What to read, what to build, what goes wrong, when it is done. |
 | [.claude/skills/biet-backend/SKILL.md](.claude/skills/biet-backend/SKILL.md) | How to write backend code |
 | [.claude/skills/biet-frontend/SKILL.md](.claude/skills/biet-frontend/SKILL.md) | How to write frontend code |
 
@@ -51,4 +52,7 @@ BI_REPO/                   source datasets and guideline corpus
 
 ## Status
 
-Specification baselined. Implementation begins at Phase 1 (data foundation) per §15.
+Phases 1–11 complete — the budget impact model and the comparator intelligence layer.
+Phase 12 (clinical outcomes) is under way; its engine module is built. Phases 13–18 are
+specified and unbuilt: subgroups, payer perspective, live reference data, workbook import,
+the guided interface and the language-model gateway. See STATUS.md §8 and §10.

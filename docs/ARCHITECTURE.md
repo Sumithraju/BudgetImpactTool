@@ -19,6 +19,7 @@
 4. [Module Architecture](#4-module-architecture)
 4A. [Comparator Intelligence Modules](#4a-comparator-intelligence-modules)
 4B. [Outcomes and Payer-Fit Modules](#4b-outcomes-and-payer-fit-modules)
+4C. [Analyst-Fit Modules](#4c-analyst-fit-modules)
 5. [Calculation Engine Specification](#5-calculation-engine-specification)
 6. [Country and Reference Data](#6-country-and-reference-data)
 7. [Data Architecture](#7-data-architecture)
@@ -58,16 +59,19 @@ BIET closes that gap. It produces an indication-specific, multi-country, ISPOR-a
 
 ### 1.3 In Scope
 
-- Epidemiological (top-down) budget impact estimation for chronic disease indications
-- Cardiometabolic therapy areas: **obesity** and **type 2 diabetes**
+- Epidemiological (top-down) budget impact estimation for chronic disease
+- **One disease — obesity — modelled with clinically distinct subgroups** (§4C, M18). Type 2 diabetes enters as the `obesity_t2d` subgroup rather than as a second indication
 - Ten markets spanning high-, upper-middle- and lower-middle-income health systems
 - Incremental budget impact — world-with versus world-without comparison
 - Persistence- and wastage-adjusted cost of therapy
-- Reverse price solving against an affordability threshold
+- Clinical outcomes: responders, events avoided and the cost they would have carried
+- Payer perspectives — insurer, employer, government payer, health system — with per-member figures
+- Reverse price solving against an affordability threshold, and against a zero-impact break-even
 - One-way deterministic sensitivity and probabilistic sensitivity analysis
 - Scenario definition, persistence and side-by-side comparison
+- Scenario and comparator input by spreadsheet, and every input editable against the registry
 - Retrieval-augmented narrative generation with source citations
-- Export to PDF and PowerPoint
+- Export to PDF, PowerPoint and Excel
 
 ### 1.4 Out of Scope
 
@@ -82,6 +86,7 @@ The following are deliberately excluded. They are recorded here so that scope di
 | Machine-learned budget impact prediction | Budget impact is deterministic arithmetic over stated assumptions, not a supervised learning problem. Uncertainty is handled by probabilistic sensitivity analysis, which is the method recognised by ISPOR. |
 | Licensed commercial data integration (IQVIA, Optum, Symphony) | Procurement and licensing exceed the delivery window. All data sources are public and openly licensed. |
 | Claims-based (bottom-up) population derivation | The epidemiological approach is the primary method. Claims-based estimation is a future extension. |
+| A library of diseases in the first release | One disease modelled with real subgroup structure is more useful to a payer than several modelled as averages. A second disease is a seeding exercise against the M18 structure, not a change to it. |
 | Multi-tenancy, SSO, role-based access control | Single-organisation internal deployment. |
 
 ### 1.5 Target Users
@@ -372,8 +377,9 @@ M9 already computes how much each input moves cumulative budget impact; every re
 ## 4B. Outcomes and Payer-Fit Modules
 
 M0–M15 answer what a new therapy costs a payer relative to what it displaces. They do not
-answer what the payer gets back. M16–M19 close that, and re-shape the model around a single
-disease with subgroups rather than a list of indications.
+answer what the payer gets back. M16–M18 close that, and re-shape the model around a single
+disease with subgroups rather than a list of indications. M19, specified here originally, is
+built alongside the analyst-fit modules of §4C and is described there.
 
 ### Requirement coverage — HEOR review, 2026-08-25
 
@@ -382,7 +388,7 @@ earlier phase and needing no new module.
 
 | Required input | Home | Status |
 |---|---|---|
-| Population — covered population, age range, annual growth | M17 §5.2, **M2** | Phase 13 (covered lives); growth existing |
+| Population — covered population, age range, annual growth | M17 §5.1, **M2** | Phase 14 (covered lives); growth existing |
 | Epidemiology — prevalence, diagnosed percentage | **M2, M0** | existing |
 | Eligibility — BMI threshold, comorbidities, treatment eligibility | **M3** | existing — the seeded criteria are already this list |
 | Current care — lifestyle programme, existing medicines, bariatric surgery | **M5**, M12 | medicines existing; two non-drug comparators in Phase 12 |
@@ -394,7 +400,7 @@ earlier phase and needing no new module.
 | Healthcare costs — drug, consultations, labs, hospitalisations | **M5** | existing |
 | Healthcare costs — complication treatment | M16 §5.5 | Phase 12 |
 | Time horizon | **M1** | existing |
-| Perspective — insurer, employer, government, health system | M17 §5.1 | Phase 13 |
+| Perspective — insurer, employer, government, health system | M17 §5.1–5.2 | Phase 14 |
 
 | Required output | Home | Status |
 |---|---|---|
@@ -404,12 +410,12 @@ earlier phase and needing no new module.
 | Cumulative 3- or 5-year impact | **M7** | existing |
 | Cost per treated patient | **M7** `impact_per_patient` | existing |
 | Number of patients treated | **M7** `patients_on_new` | existing |
-| PMPM impact for the payer | M17 §5.3 | Phase 13 — M8 computes PMPY today |
+| PMPM impact for the payer | M17 §5.3 | Phase 14 — M8 computes PMPY today |
 | Expected weight-loss responders | M16 §5.2 | Phase 12 |
 | Diabetes or cardiovascular events avoided | M16 §5.3 | Phase 12 |
 | Hospital costs avoided | M16 §5.5 | Phase 12 |
-| Break-even treatment price | M17 §5.4 | Phase 13 — M8 solves to an affordability target, not to zero |
-| Budget impact under low, medium, high uptake | M17 §5.5 | Phase 13 |
+| Break-even treatment price | M17 §5.4 | Phase 14 — M8 solves to an affordability target, not to zero |
+| Budget impact under low, medium, high uptake | M17 §5.5 | Phase 14 |
 
 Twelve of the twenty-five are already built. The gap is concentrated in one place: the model
 prices care and never valued its consequences.
@@ -451,15 +457,95 @@ dimension rather than an engine contract: the engine runs unchanged, once per se
 results aggregate. That keeps `biet_engine` pure and lets each segment carry its own
 comparator mix and its own outcome profile, which the alternative could not.
 
-### M19 — Workbook Import
+---
 
-**Responsibility.** Accept a company's own inputs and market data as a spreadsheet.
+## 4C. Analyst-Fit Modules
 
-HEOR runs on Excel. A tool that requires re-typing a market model someone has already built
-does not fit the workflow it is meant to serve. Import accepts a scenario workbook and a
-competitor workbook, validates every cell against the same rules the API enforces, and
-rejects the file with a row-and-column reference rather than importing something half-right.
-Every imported value carries its sheet and row as its provenance.
+M0–M18 compute the right answer. They do not yet make it one an HEOR manager can populate
+without re-typing a model they already have, trust without knowing how old the data is, or read
+without a modeller beside them. M19–M22 close that.
+
+### Requirement coverage — HEOR review round two, 2026-08-25
+
+The second review is a usability brief rather than a methodology one, delivered with a working
+Streamlit prototype as its reference. Eight points, mapped against the build.
+
+| # | Required | Home | Status |
+|---|---|---|---|
+| 1 | HEOR manager is the primary user; usability is the priority | **M21** | Phase 17 |
+| 2 | Inputs dynamic — Excel import and editable dropdowns | **M19** §5.1, §5.7 | Phase 16 |
+| 3 | Comparator set importable and editable | **M19** §5.1, §5.6; M12 | Phase 16 |
+| 4 | Bounded database, frequently refreshed from source | **M20** §5.1–5.5 | Phase 15 |
+| 5 | Currency automated from the market | **M20** §5.6 | Phase 15 |
+| 6a | Population auto-filled from WHO and World Bank | **M20** §5.7; M2, M0 | existing resolution chain; surfaced Phase 15 |
+| 6b | Every figure explained on hover, with and without intervention | **M21** §5.2–5.3 | Phase 17 |
+| 7 | Streamlit prototype as the reference for flow | **M21** §5.1 | Phase 17 |
+| 8 | Qwen or another Chinese-provider LLM on a free tier | **M22** | Phase 18 |
+
+Point 6a is the one already largely built: §7.3's resolution chain has resolved every funnel
+input from published reference data with provenance since Phase 1. What was missing was not the
+resolution but its visibility, which is why it lands in M20 and M21 rather than in M2.
+
+The prototype supplied with the review is a useful specification of flow and a useful catalogue
+of what to avoid. Three of its behaviours are deliberately not reproduced: currency is selected
+independently of market (§6.2 and M20 §5.6 bind them); market shares that do not total 100% draw
+a warning and are then used anyway (M19 §5.3 rejects the file); and the eligible population is
+recomputed from sliders with no record of where any default came from (§7.3 and M20 §5.7).
+
+### M19 — Workbook Import and Dynamic Inputs
+
+**Responsibility.** Accept a company's own inputs, market data and comparator set as a
+spreadsheet, and make every input editable against a live registry rather than fixed to a
+seeded list.
+
+HEOR runs on Excel. A tool that requires re-typing a market model someone has already built does
+not fit the workflow it is meant to serve, and an analyst who cannot add the comparator their
+market actually uses stops at the first screen. Import accepts a scenario workbook and a
+comparator workbook, validates every cell against the same rules the API enforces, and rejects
+the file with a sheet-and-cell reference rather than importing something half-right. Every
+imported value carries its sheet and cell as its provenance, at tier D until a source column
+says otherwise — a number typed into a spreadsheet has no published basis until someone states
+one.
+
+### M20 — Live Reference Data and Market Automation
+
+**Responsibility.** Keep the database small and current, let the market choose its own currency,
+and make every population input arrive already filled in.
+
+The three are one concern. What the tool stores locally exists to serve the resolution chain and
+nothing more, so staging is pruned on a retention policy and raw extracts live outside the
+database. Every published row carries both a fetch age and a data vintage, which are different
+things: WHO's diabetes indicator fetched this morning is still a 2014 figure. A refresh
+publishes and supersedes, never mutates, so a completed run resolves to what it was computed
+from however many times the sources move afterwards. Currency follows the market rather than
+being chosen beside it, and conversion happens only at presentation, through the FX set
+snapshotted into the run.
+
+### M21 — Guided Analyst Interface
+
+**Responsibility.** Make the tool usable by an HEOR manager who has never seen it, by ordering
+the work from inputs to outputs and making every number on screen explain itself.
+
+The primary user is not a modeller. Nine stages run in the order the calculation runs, which is
+what makes the flow teachable; because M20 pre-fills the model, a first-time user reaches a
+complete, provenanced base case for their market without typing anything. Every input states
+what it is in one sentence, what value is in force, where that value came from and what it
+changes. Every headline output states both worlds — what the payer spends without the
+intervention, with it, and the difference — through a type that cannot be constructed with only
+one of them, because non-negotiable 2 is exactly what an interface erodes first.
+
+### M22 — Language Model Gateway
+
+**Responsibility.** Give §12's narrative and copilot a provider that is reachable and affordable,
+behind one interface, without letting a model near the arithmetic.
+
+Every candidate provider exposes an OpenAI-compatible endpoint, so provider, model, base URL and
+key are environment configuration and switching between them is not a code change. The boundary
+of §12.1 becomes mechanical rather than aspirational: every request carries the set of numbers
+its response is permitted to contain, and text containing any other number is discarded in
+favour of the deterministic narrative. Failover, a circuit breaker and a pre-spend quota counter
+make a free tier a supported deployment rather than a gamble, and no provider at all remains a
+supported configuration — the deterministic narrative is a complete deliverable on its own.
 
 ---
 
@@ -839,6 +925,14 @@ Rates are sourced from the Frankfurter API against a USD base and cover every cu
 | USD | 1.00000 | USA |
 
 Rates carry a fetch date and are snapshotted into every run.
+
+**Currency is a property of the market, not a user choice.** Selecting Germany selects EUR;
+selecting India selects INR. Every calculation is performed in the market's own currency, and a
+display currency — where the user chooses one — converts at presentation only, through the run's
+snapshotted rates. A total shown across markets in a single currency is a presentation artefact
+and carries the FX set's fetch date, since the same run rendered a month later would otherwise
+appear to have changed. M20 §5.6 specifies the binding; `Money` already refuses to add across
+currencies, and the binding is what stops the mismatch being constructed at all.
 
 ### 6.3 Baseline Epidemiology — Obesity
 
@@ -1493,6 +1587,11 @@ frontend/src/
 │   ├── price-solver/           # M8 reverse — corridor, binding market
 │   ├── sensitivity/            # M9 — tornado, PSA distribution
 │   ├── scenario-compare/       # M1 — side-by-side diff
+│   ├── outcomes/               # M16 — responders, events avoided, cost avoided
+│   ├── payer-view/             # M17 — perspective, PMPM, break-even, uptake bands
+│   ├── subgroups/              # M18 — allocation, segment breakdown
+│   ├── workbook-import/        # M19 — template, findings, unmatched drugs
+│   ├── guided-flow/            # M21 — the nine stages, stage completeness
 │   └── evidence-copilot/       # M10 — retrieval, narrative, citations
 └── shared/
     ├── api/                    # Generated client, query hooks
@@ -1582,6 +1681,20 @@ Every generated narrative is stored against its run identifier, so the text and 
 ### 12.5 Copilot
 
 A conversational surface over the same retrieval index, scoped to methodological questions ("how should source of business be handled under ISPOR guidance?") and to interpretation of the current scenario's results. It has read access to the active run's structured results and to the guideline index, and no ability to modify a scenario.
+
+### 12.6 Provider
+
+The model behind §12.4 and §12.5 is a deployment decision, not an architectural one. M22 puts one
+OpenAI-compatible gateway in front of every candidate — Qwen through Alibaba Model Studio,
+Qwen/DeepSeek/GLM through ModelScope, Hugging Face Inference, and the existing Anthropic path —
+selected by environment variable. Keys come from the environment and are never stored, logged or
+returned by an endpoint.
+
+The gateway is what makes §12.1's boundary mechanical. Every request carries the set of numbers
+its response is permitted to contain; a response containing any other number is discarded and the
+deterministic narrative is used instead, without retrying against a second provider. Quota is
+counted before it is spent, failover is ordered with a circuit breaker, and no provider configured
+at all is a supported state — the deterministic narrative is a complete deliverable on its own.
 
 ---
 
@@ -1688,13 +1801,25 @@ BIET/
 
 ## 15. Delivery Plan
 
-Fifteen phases. Phase boundaries are defined by demonstrable capability, not by elapsed time.
+Eighteen phases. Phase boundaries are defined by demonstrable capability, not by elapsed time.
 Phases 1–5 build the budget impact model itself. Phase 6 is competitive hardening — data
 quality and workflow fit rather than calculation. Phases 7–11 are the comparator intelligence
 layer of §4A, which removes the assumption that the analyst already knows what the asset
-competes with. Phases 12–15 are the outcomes and payer-fit layer of §4B, added after HEOR
-review: they value what the spend buys, frame it for the budget holder reading it, and
-narrow the model from a list of indications to one disease with subgroups.
+competes with. Phases 12–14 are the outcomes and payer-fit layer of §4B, added after the first
+HEOR review: they value what the spend buys, frame it for the budget holder reading it, and
+narrow the model from a list of indications to one disease with subgroups. Phases 15–18 are the
+analyst-fit layer of §4C, added after the second: the data behind every input stays current and
+says so, the inputs become the analyst's own, and the whole thing becomes readable by the person
+it was built for.
+
+**Sequencing within 12–18 is dependency-driven, and it changed after the second review.**
+Subgroups moved ahead of payer perspective because a subgroup changes the shape of a scenario,
+and every interface, import contract and payer view built against the old shape would be built
+twice. Reference-data automation precedes import, because what a value is worth has to be settled
+before a spreadsheet is allowed to overwrite it. The interface comes after all three it renders:
+building it over values that are not yet resolved, editable or explained means rebuilding it when
+they are. The language model gateway depends on nothing in the chain and is last because it is
+the only one of the seven the tool works completely without.
 
 ### Phase 1 — Data Foundation
 
@@ -1809,31 +1934,72 @@ was data quality and workflow fit, not calculation.
 
 **Exit criterion.** The result states what the spend buys — events avoided and costs avoided — and every effect traces to a named trial, with no effect asserted that was not supplied.
 
-### Phase 13 — Payer Perspective and Decision Views
+### Phase 13 — Disease Subgroups
 
-- Perspective selector: insurer, employer, government payer, health system.
-- Covered population as an input, distinct from national population.
-- PMPM alongside the existing PMPY.
-- Break-even price — the solve at which incremental impact is zero.
-- Low, medium and high uptake reported side by side.
+Moved ahead of payer perspective after the second review. A subgroup changes the shape of a
+scenario, and anything built against the old shape is built twice.
+
+- One disease — obesity — with six subgroups replacing the indication list.
+- The five adult subgroups as an exclusive partition, with obesity alone derived as the residual.
+- Paediatric obesity on its own denominator and the centile definition, not the adult BMI cut-off.
+- Per-subgroup epidemiology, eligibility, comparator mix, uptake and outcome profile.
+- Aggregation across subgroups, with each segment's contribution visible and every ratio recomputed from totals rather than averaged.
+
+**Exit criterion.** A run reports the total and the subgroup breakdown; splitting a population into segments carrying identical inputs reproduces the undifferentiated total exactly; and moving patients between subgroups changes the answer in the direction the clinical difference implies.
+
+### Phase 14 — Payer Perspective and Decision Views
+
+- Perspective selector: insurer, employer, government payer, health system, each admitting exactly the cost categories it bears.
+- Covered population as the funnel's first stage, not a national result scaled down.
+- PMPM alongside the existing PMPY, recomputed from totals and never averaged.
+- Break-even price — M8's solve against a zero target — with its four distinct outcomes.
+- Low, base and high uptake as three complete runs.
 
 **Exit criterion.** A payer can read their own denominator, their own per-member figure, and the price at which the therapy stops adding cost.
 
-### Phase 14 — Disease Subgroups
+### Phase 15 — Live Reference Data and Market Automation
 
-- One disease with clinically distinct subgroups replacing the indication list.
-- Per-subgroup epidemiology, eligibility, comparator mix, uptake and outcome profile.
-- Aggregation across subgroups, with each segment's contribution visible.
+- Freshness policy per source; fetch age and data vintage reported as the different things they are.
+- Refresh on schedule and on demand, publishing and superseding, never mutating.
+- Material moves published and flagged; a failed or partial refresh leaves prior values in force.
+- Staging retention and pruning, with runs inside the window protected.
+- Currency bound to the market; display conversion through the run's FX snapshot only.
+- Every funnel input pre-filled from published data with source, vintage, tier and resolution level.
 
-**Exit criterion.** A run reports the total and the subgroup breakdown, and moving a patient between subgroups changes the answer in the direction the clinical difference implies.
+**Exit criterion.** Selecting a market fills the model with current, labelled values; a stale one says how stale; a source outage serves the last published value and names its age; and no hard-coded fallback number exists anywhere in the resolution chain.
 
-### Phase 15 — Workbook Import and Interface
+### Phase 16 — Workbook Import and Dynamic Inputs
 
-- Scenario and competitor workbook import, validated cell by cell.
-- Every field explained in place on hover, in both the inputs and the results.
-- Interface ordered inputs first, then outputs.
+- Scenario and comparator workbooks through one parser, validated cell by cell against the API's own rules.
+- Every finding carrying a sheet and cell reference, all findings returned in one pass, any error rejecting the whole file.
+- Declared rate units per column, converted exactly once; a currency code on every money column.
+- Imported values carrying file-and-cell provenance at tier D unless a source column earns better.
+- Unmatched drug names resolved against the M12 registry, offering promotion and never writing to it directly.
+- The registry-backed editable combobox behind every dynamic field in the interface.
 
-**Exit criterion.** A market model built in Excel loads without re-typing, and a reader who has never seen the tool can name what any figure on screen means without leaving it.
+**Exit criterion.** A market model built in Excel loads without re-typing, an exported workbook re-imports to the identical scenario, and a file with ten errors returns ten messages and creates nothing.
+
+### Phase 17 — Guided Analyst Interface
+
+- Nine stages ordered as the calculation runs, each with a completeness state and free navigation.
+- A first-time user reaching a complete base case for their market without typing.
+- Every input explaining what it is, its value, its provenance and what it changes.
+- Every headline output stating both worlds — without, with, and the difference.
+- Eight headline cards by default; everything else one click away.
+- Errors in the analyst's language, naming the field to change.
+- The glossary served from the backend and shared with every export; a rendered field without an entry fails the build.
+
+**Exit criterion.** A reader who has never seen the tool can name what any figure on screen means without leaving it, and all nine stages pass WCAG 2.1 AA.
+
+### Phase 18 — Language Model Gateway
+
+- One OpenAI-compatible client over Qwen via Alibaba Model Studio, ModelScope, Hugging Face and the existing Anthropic path.
+- Provider, model, base URL and key from the environment; nothing stored, logged or returned.
+- Every response validated against its numeric context, with a fabricated figure falling through to deterministic text and not retrying elsewhere.
+- Quota counted before spending and persisted across restarts; ordered failover with a circuit breaker.
+- Narrative cached per run; `no_external_llm` disabling the gateway for a scenario.
+
+**Exit criterion.** The provider switches by environment variable alone, a fabricated figure never reaches a deliverable, and the tool produces its full output with no provider configured at all.
 
 ---
 

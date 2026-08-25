@@ -1,9 +1,10 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-25 · **Phase:** 12 of 15 — the budget impact model and the
+**Last updated:** 2026-08-25 · **Phase:** 12 of 18 — the budget impact model and the
 comparator intelligence layer are complete; the outcomes layer is being built.
 **Phases 1–11 complete**, bar one deliberate deferral (§8) · **Phase 12 under way** ·
-**Phases 13–15 specified** after HEOR review (§9) · **Deadline:** 2026-09-06
+**Phases 13–14 specified** after the first HEOR review (§9) · **Phases 15–18 specified**
+after the second (§10) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -110,11 +111,12 @@ BIET/
 ├── .env.example                 config template (no secrets)
 │
 ├── docs/
-│   ├── ARCHITECTURE.md          THE SPECIFICATION — 1,472 lines, 18 sections
+│   ├── ARCHITECTURE.md          THE SPECIFICATION — 2,116 lines, 18 sections + 4A/4B/4C
+│   ├── PROMPTS.md               one build prompt per phase, ready to hand to an engineer
 │   ├── BIET_Architecture_Specification.docx   shareable Word version
-│   └── modules/                 per-module specs M0–M10, 2,787 lines
+│   └── modules/                 per-module specs M0–M22, 6,293 lines
 │       ├── README.md            index, build order, shared contracts, golden case
-│       └── M0..M10-*.md         one spec per module
+│       └── M0..M22-*.md         one spec per module
 │
 ├── .claude/skills/
 │   ├── biet-backend/SKILL.md    how to write backend code (557 lines)
@@ -440,7 +442,8 @@ switched patient asks what the $8,800 buys, and until now this tool could not an
    different denominators and count different costs. Becomes M17, which also carries PMPM
    (M8 computes PMPY today) and break-even price (M8 solves to an affordability target, not
    to zero).
-3. **Flow reads inputs to outputs.** An interface ordering change, Phase 15.
+3. **Flow reads inputs to outputs.** An interface ordering change — originally Phase 15,
+   now Phase 17 with the rest of M21, after the second review (§10).
 
 **Phase 12 — M16, Clinical Outcomes and Avoided Events. Engine built.** The pure module is
 in `biet_engine/outcomes.py` with 20 unit tests and 5 property tests.
@@ -465,6 +468,95 @@ in `biet_engine/outcomes.py` with 20 unit tests and 5 property tests.
 from those trials, wiring the offset into M5, and the outcomes panel.
 
 504 tests, mypy --strict and ruff clean.
+
+---
+
+## 10. HEOR review round two — 2026-08-25, and the plan it produced
+
+A second review from the Global HEOR Lead, delivered the same day as the first and with a
+working Streamlit prototype attached. Where the first review was a methodology brief, this one
+is a usability brief: eight points, all of them about whether an HEOR manager can actually use
+the thing. **Nothing in it contradicts the first review.** It is the same argument carried one
+step further — a defensible number nobody can populate or read is not a deliverable.
+
+Specified, not yet built. The output of this round is documentation: six module specifications,
+a rewritten delivery plan and a build prompt per phase. No code changed.
+
+### What the eight points asked for, and where each landed
+
+| # | Point | Module | Phase |
+|---|---|---|---|
+| 1 | HEOR manager is the user; usability is the priority | M21 | 17 |
+| 2 | Dynamic inputs — Excel import and editable dropdowns | M19 | 16 |
+| 3 | Comparator set importable and editable | M19, M12 | 16 |
+| 4 | Bounded database, frequently refreshed | M20 | 15 |
+| 5 | Currency automated from country selection | M20 §5.6 | 15 |
+| 6 | Population auto-filled from WHO; hover explanation, with and without intervention | M20 §5.7, M21 §5.2–5.3 | 15, 17 |
+| 7 | The Streamlit prototype as the reference for flow | M21 §5.1 | 17 |
+| 8 | Qwen or another Chinese-provider LLM on a free tier | M22 | 18 |
+
+Point 6 splits because it is two asks in one sentence. The auto-fill half has been true since
+Phase 1 — §7.3's resolution chain has resolved every funnel input from published data with
+provenance from the beginning. What was missing was never the resolution; it was that a user
+could not see it. That is why the work lands in M20 and M21 rather than in M2.
+
+### What changed in the plan, and why
+
+**The phase order moved.** Subgroups (M18) went from Phase 14 to Phase 13, ahead of payer
+perspective. A subgroup changes the shape of a scenario, and the import contract, the payer
+views and the entire interface all read that shape — building any of them first means building
+them twice. Reference-data automation (M20) then precedes import (M19), because what a value is
+worth has to be settled before a spreadsheet is allowed to overwrite it. The interface (M21)
+comes after all three it renders. The gateway (M22) is last because it is the only one of the
+seven the tool works completely without.
+
+**Three new modules.** M20, M21 and M22 in a new §4C. M19 moved into that layer from §4B, where
+it was specified in one paragraph and now has a full spec.
+
+**Scope narrowed in §1.3.** One disease — obesity — with subgroups. Type 2 diabetes enters as
+the `obesity_t2d` subgroup rather than as a second indication. §1.4 records the exclusion of a
+disease library and why: one disease modelled with real subgroup structure is more useful to a
+payer than several modelled as averages.
+
+### Three things in the prototype deliberately not reproduced
+
+The attached Streamlit app is a good specification of flow and a useful catalogue of what to
+avoid. Its six-tab order — setup, population, comparators, new drug, uptake, results — is
+essentially M21's nine stages, and its editable comparator grid is the surface the review named
+twice. Three of its behaviours are not carried across:
+
+1. **Currency is selected independently of market.** It is a separate dropdown offering ₹, $, €,
+   £, R$ with no binding to the country chosen above it, so a German model can be denominated in
+   rupees by accident. §6.2 and M20 §5.6 bind currency to market and convert only at
+   presentation.
+2. **Market shares that do not total 100% warn and are then used anyway.** The prototype computes
+   a weighted comparator cost over shares summing to 94% and reports the result without
+   qualification. M19 §5.3 rejects the file, and the interface shows a running total rather than
+   discovering the problem at submission.
+3. **Every input is a slider with no provenance.** Prevalence defaults to 2.5% for any disease in
+   any country, and nothing records where that came from. Non-negotiable 8 is the whole
+   difference between the prototype and this tool, and M20 §5.7 is where it becomes visible.
+
+Worth saying plainly: the prototype does in 400 lines what it set out to do, and it made the
+review's points more concrete than prose could. These are notes on what a production tool owes
+that a prototype does not.
+
+### On the LLM providers
+
+Point 8 arrived with a comparison table of free tiers — ModelScope at roughly 2,000 calls a day,
+Alibaba Model Studio at roughly a million tokens per model for ninety days, Hugging Face with a
+small monthly credit. **Those figures are recorded in M22 as reported and are not verified by
+this project.** Free tiers move, and a quota number written into a specification is stale the
+moment a provider changes terms. The design does not depend on them: quota is counted before it
+is spent, exhaustion is an ordinary failover, and no provider configured at all is a supported
+state.
+
+The review's own architecture sketch put the BIA calculation outside the LLM. That is already
+non-negotiable 1 and §12.1, and it is the one point of agreement worth stating explicitly:
+`NarrativeService` today hands the model text that is already correct and validates every number
+in what comes back against the engine's own output. M22 generalises the provider and keeps that
+validator exactly where it is — in `biet_engine`, pure, called by the gateway rather than the
+other way round.
 
 ---
 
@@ -1101,3 +1193,29 @@ from then on, which is precisely the failure this system is built to avoid.
     system ingests real data, computes a defensible incremental number, exposes it
     through an API and an interface, and exports a cited document. What is left is
     presentation, not construction.
+
+18. **Phases 12–18 — the two HEOR review rounds.** Specified in full; Phase 12's engine
+    module is the only part built. The order below is dependency-driven and is explained in
+    §10; a build prompt per phase is in [docs/PROMPTS.md](docs/PROMPTS.md).
+
+    | Phase | Module | Delivers | State |
+    |---|---|---|---|
+    | 12 | M16 | Events avoided and the cost they carried | Engine built; tables, seed, M5 wiring and panel remain |
+    | 13 | M18 | One disease with subgroups | Specified |
+    | 14 | M17 | Perspective, PMPM, break-even, uptake bands | Specified |
+    | 15 | M20 | Fresh bounded data, market-bound currency, auto-filled inputs | Specified |
+    | 16 | M19 | Workbook import and editable inputs | Specified |
+    | 17 | M21 | The guided interface | Specified |
+    | 18 | M22 | Provider-agnostic LLM gateway | Specified |
+
+    **Start with Phase 12's remainder, then Phase 13.** Finishing M16 is a day's work against
+    a module that already passes its own tests, and M18 is the hinge — every phase after it
+    reads the scenario shape it defines, so anything built ahead of it is built twice.
+
+    **The one thing worth deciding before writing code:** whether the hackathon demo needs
+    Phases 15–17 more than it needs 13–14. The dependency order says subgroups first; a
+    judge watching a five-minute demo sees the interface. The order above optimises for a
+    tool that stays correct as it grows, which is the right call for a repository and might
+    be the wrong one for a deadline. If the deadline wins, build M20 and M21 against the
+    current single-population scenario shape and accept that both will need revisiting when
+    M18 lands — but decide that deliberately rather than discovering it.
