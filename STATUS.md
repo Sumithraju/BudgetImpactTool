@@ -955,7 +955,14 @@ implies before writing a new price source's transform.
     is treated as tier D *and flagged* — an admitted placeholder and an unattributed value
     score the same and are not the same problem.
 
-    478 tests (3 network-marked), 19 new.
+    **In the deliverable, not only on screen.** The ranking is a page in the PDF and a
+    slide in the deck, placed *before* the assumption register: the register says what every
+    value rests on, this says which of those are worth doing something about, and a reader
+    who stops early should have seen the shorter, more actionable list. If the ranking
+    cannot be computed the export still builds without it — the ranking is an addition to
+    the report, not the report.
+
+    478 tests (3 network-marked), 19 new. Every acceptance criterion in M11–M15 is met.
 
 ---
 

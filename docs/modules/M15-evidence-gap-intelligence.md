@@ -149,11 +149,11 @@ Slice `features/results/`, beside the tornado it reinterprets.
 
 ## 11. Acceptance criteria
 
-- [ ] Priority is influence × weakness, with the weights and bands as specified
-- [ ] A high-swing tier-D parameter outranks a high-swing tier-A one
-- [ ] A zero-swing parameter is never a priority
-- [ ] Every row states the source the value currently rests on
-- [ ] The ranking appears in the exported deliverable, not only in the interface
+- [x] Priority is influence × weakness, with the weights and bands as specified
+- [x] A high-swing tier-D parameter outranks a high-swing tier-A one
+- [x] A zero-swing parameter is never a priority
+- [x] Every row states the source the value currently rests on
+- [x] The ranking appears in the exported deliverable, not only in the interface
 
 ## 12. Assumptions & open questions
 

@@ -218,12 +218,12 @@ Slice `features/comparator-discovery/` (shared with M11).
 
 ## 11. Acceptance criteria
 
-- [ ] A user enters indication and target, and the rest of the asset arrives pre-filled
-- [ ] One record per molecule per indication, with retrieved and curated values distinguishable
-- [ ] Promotion is atomic and writes regimen and prices with source and tier on every value
-- [ ] Promotion gaps are named per market, not reported as a single boolean
-- [ ] An unpromoted comparator fails scenario build loudly and by name
-- [ ] A promoted comparator flows into M4, M5 and M7 with no new engine contract
+- [x] A user enters indication and target, and the rest of the asset arrives pre-filled
+- [x] One record per molecule per indication, with retrieved and curated values distinguishable
+- [x] Promotion is atomic and writes regimen and prices with source and tier on every value
+- [x] Promotion gaps are named per market, not reported as a single boolean
+- [x] An unpromoted comparator fails scenario build loudly and by name
+- [x] A promoted comparator flows into M4, M5 and M7 with no new engine contract
 
 ## 12. Assumptions & open questions
 

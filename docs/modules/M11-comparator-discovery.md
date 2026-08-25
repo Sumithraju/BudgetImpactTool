@@ -293,13 +293,13 @@ tested against recorded fixtures.
 
 ## 11. Acceptance criteria
 
-- [ ] A gene symbol yields a ranked, classified basket
-- [ ] Direct, therapeutic and pipeline are separated, not merged into one list
-- [ ] Every row carries a rationale a reader can check
-- [ ] Unpriced drugs are flagged, and selecting one fails loudly at build rather than silently
-- [ ] Discovery never writes a comparator into a scenario by itself
-- [ ] An upstream outage degrades to a partial basket, never to a silent empty one
-- [ ] Offline test suite stays offline
+- [x] A gene symbol yields a ranked, classified basket
+- [x] Direct, therapeutic and pipeline are separated, not merged into one list
+- [x] Every row carries a rationale a reader can check
+- [x] Unpriced drugs are flagged, and selecting one fails loudly at build rather than silently
+- [x] Discovery never writes a comparator into a scenario by itself
+- [x] An upstream outage degrades to a partial basket, never to a silent empty one
+- [x] Offline test suite stays offline
 
 ## 12. Assumptions & open questions
 

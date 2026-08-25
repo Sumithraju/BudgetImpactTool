@@ -256,12 +256,12 @@ Slice `features/comparator-discovery/`.
 
 ## 11. Acceptance criteria
 
-- [ ] Expected adverse-event cost computed from incidence and unit cost, annualised where needed
-- [ ] Every incidence carries source, vintage, evidence type, population and tier; none can be written without them
-- [ ] Asymmetric profiles warn rather than silently bias the comparison
-- [ ] The bridge sums exactly to net cost per switch, asserted as an invariant
-- [ ] The bridge reconciles to M7's budget impact with no divergence
-- [ ] Persistence is never inferred from an adverse-event profile
+- [x] Expected adverse-event cost computed from incidence and unit cost, annualised where needed
+- [x] Every incidence carries source, vintage, evidence type, population and tier; none can be written without them
+- [x] Asymmetric profiles warn rather than silently bias the comparison
+- [x] The bridge sums exactly to net cost per switch, asserted as an invariant
+- [x] The bridge reconciles to M7's budget impact with no divergence
+- [x] Persistence is never inferred from an adverse-event profile
 
 ## 12. Assumptions & open questions
 

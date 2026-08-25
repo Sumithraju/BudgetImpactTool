@@ -197,12 +197,12 @@ Slice `features/comparator-discovery/`.
 
 ## 11. Acceptance criteria
 
-- [ ] Expected entry derived from primary completion plus a stated, named regulatory lag
-- [ ] Entrants ramp from their entry year and only from their entry year
-- [ ] Incumbent shares rescale proportionally and shares sum to 1.0 at every year
-- [ ] Projection is off by default and warns by name when enabled
-- [ ] Results are reported beside the current-market base case, not instead of it
-- [ ] An unpromoted entrant cannot be modelled
+- [x] Expected entry derived from primary completion plus a stated, named regulatory lag
+- [x] Entrants ramp from their entry year and only from their entry year
+- [x] Incumbent shares rescale proportionally and shares sum to 1.0 at every year
+- [x] Projection is off by default and warns by name when enabled
+- [x] Results are reported beside the current-market base case, not instead of it
+- [x] An unpromoted entrant cannot be modelled
 
 ## 12. Assumptions & open questions
 

@@ -41,7 +41,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from ..schemas.calculation import CalculationResponse
+from ..schemas.calculation import CalculationResponse, EvidenceGapResponse
 from .narrative_service import Narrative
 
 #: Matches the interface and the published run report, so a exported deck
@@ -72,7 +72,12 @@ def _money(amount: float, currency: str) -> str:
 # --------------------------------------------------------------------------- PDF
 
 
-def build_pdf(result: CalculationResponse, narrative: Narrative, asset: str) -> bytes:
+def build_pdf(
+    result: CalculationResponse,
+    narrative: Narrative,
+    asset: str,
+    gaps: EvidenceGapResponse | None = None,
+) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
@@ -169,6 +174,45 @@ def build_pdf(result: CalculationResponse, narrative: Narrative, asset: str) -> 
         story.append(Paragraph(f"• {limitation}", small))
         story.append(Spacer(1, 3))
 
+    # --- evidence priorities (M15), before the register rather than after:
+    # the register says what every value rests on, and this says which of
+    # those are worth doing something about. A reader who stops early should
+    # have seen the shorter, more actionable list.
+    if gaps is not None and gaps.gaps:
+        story.append(Spacer(1, 10))
+        story.append(Paragraph("What to find out next", h2))
+        story.append(Paragraph(
+            "Ranked by how much each assumption moves this result multiplied by how "
+            "weakly it is founded. A large swing on a published country-specific source "
+            "is settled; a large swing on a placeholder is why this answer cannot yet be "
+            "relied on. A parameter that cannot move the result is never a priority, "
+            "however weak its source.",
+            sub,
+        ))
+        priorities = [["Priority", "Parameter", "Moves", "Tier", "Rests on"]]
+        for gap in gaps.gaps:
+            priorities.append([
+                gap.priority.upper(),
+                gap.label,
+                _money(gap.swing, gaps.currency),
+                gap.confidence_tier,
+                (gap.source[:70] + "…") if len(gap.source) > 70 else gap.source,
+            ])
+        gap_table = Table(
+            priorities, hAlign="LEFT", colWidths=[52, 105, 62, 26, 185], repeatRows=1,
+        )
+        gap_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), SURFACE_2),
+            ("TEXTCOLOR", (0, 0), (-1, 0), INK_2),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 6.6),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("GRID", (0, 0), (-1, -1), 0.3, LINE),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(gap_table)
+
     # --- assumption register, on its own page: it is the audit trail, and
     # burying it under a table would be the wrong signal about its status.
     story.append(PageBreak())
@@ -219,7 +263,12 @@ def _text_slide(prs: object, title: str, body: str) -> None:
         para.font.size = Pt(15)
 
 
-def build_pptx(result: CalculationResponse, narrative: Narrative, asset: str) -> bytes:
+def build_pptx(
+    result: CalculationResponse,
+    narrative: Narrative,
+    asset: str,
+    gaps: EvidenceGapResponse | None = None,
+) -> bytes:
     prs = Presentation()
     prs.slide_width = Inches(13.333)          # 16:9, the shape a deck is shown in
     prs.slide_height = Inches(7.5)
@@ -314,6 +363,21 @@ def build_pptx(result: CalculationResponse, narrative: Narrative, asset: str) ->
                 f"{chunk.issuing_body} — {chunk.document_title}, p.{chunk.page_number}"
             )
             para.font.size = Pt(12)
+
+    # --- evidence priorities (M15). One slide, actionable list only: a deck
+    # is where a decision gets argued, and "settled" rows are not the argument.
+    if gaps is not None:
+        actionable = [g for g in gaps.gaps if g.priority != "sufficient"]
+        if actionable:
+            _text_slide(
+                prs, "What to find out next",
+                "\n".join(
+                    f"{g.priority.upper()} — {g.label}: moves "
+                    f"{_money(g.swing, gaps.currency)}, tier {g.confidence_tier}. "
+                    f"Rests on {g.source[:90]}"
+                    for g in actionable
+                ),
+            )
 
     # --- assumption register
     slide = prs.slides.add_slide(prs.slide_layouts[1])
