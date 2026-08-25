@@ -164,15 +164,23 @@ def calculate(
     scenario_id: uuid.UUID,
     session: SessionDep,
     persist: bool = True,
+    project_landscape: bool = False,
 ) -> CalculationResponse:
     """The forward run. Persists an append-only snapshot by default, so the
     result stays reproducible; `persist=false` is for interactive
-    what-if editing, where writing a row per keystroke would be noise."""
+    what-if editing, where writing a row per keystroke would be noise.
+
+    `project_landscape=true` admits M14's pipeline entrants into the
+    world-without. It is off by default and belongs beside the current-market
+    result rather than in place of it: every entrant rests on three
+    assumptions the evidence does not supply."""
     scenarios = ScenarioService(session)
     calculations = CalculationService(session)
 
     scenario = scenarios.require(scenario_id)
-    response, engine_input, _ = calculations.calculate(scenario)
+    response, engine_input, _ = calculations.calculate(
+        scenario, project_landscape=project_landscape,
+    )
 
     if persist:
         run = scenarios.record_run(

@@ -136,14 +136,23 @@ class CalculationService:
 
     # ----------------------------------------------------------------- forward
 
-    def calculate(self, scenario: object) -> tuple[CalculationResponse, EngineInput, EngineResult]:
+    def calculate(
+        self, scenario: object, *, project_landscape: bool = False,
+    ) -> tuple[CalculationResponse, EngineInput, EngineResult]:
         """Forward run: funnel through incremental budget impact.
+
+        `project_landscape` admits M14's pipeline entrants into the
+        world-without. Off by default and never implicit: it changes what the
+        new asset is compared against, on assumptions the evidence does not
+        supply.
 
         Returns the response alongside the raw engine input and result, so a
         caller that also wants sensitivity does not rebuild and recompute.
         """
         started = time.perf_counter()
-        engine_input, resolution_warnings = self._builder.build(scenario)  # type: ignore[arg-type]
+        engine_input, resolution_warnings = self._builder.build(
+            scenario, project_landscape=project_landscape,  # type: ignore[arg-type]
+        )
         result = compute_budget_impact(engine_input)
         affordability = compute_affordability(result, engine_input)
         duration_ms = int((time.perf_counter() - started) * 1000)

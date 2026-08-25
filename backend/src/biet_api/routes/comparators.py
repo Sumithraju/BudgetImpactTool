@@ -12,6 +12,7 @@ from ..dal import get_session
 from ..schemas.comparator import AssetIntake, PromotionRequest, RegisteredAsset
 from ..services.comparator_registry_service import ComparatorRegistryService
 from ..services.comparator_service import ComparatorService
+from ..services.landscape_service import LandscapeService
 from ..services.safety_service import SafetyService
 
 router = APIRouter(prefix="/api/v1/comparators", tags=["comparators"])
@@ -117,3 +118,25 @@ def safety_comparison(
     number was computed from, so a reader can check it rather than take it.
     """
     return SafetyService(session).comparison(drug_ids, country_code)
+
+
+# --------------------------------------------------------------------------- landscape (M14)
+
+
+@router.get("/landscape")
+def landscape(
+    session: SessionDep,
+    indication_id: int,
+    launch_year: Annotated[int, Query(ge=2000, le=2100)],
+    horizon_years: Annotated[int, Query(ge=1, le=5)] = 3,
+) -> dict[str, Any]:
+    """The market an asset launching in `launch_year` would actually meet.
+
+    Reports which registered pipeline entrants are modellable and which are
+    not, with the reason for each — an entrant left out because nobody has
+    stated a plateau share is a different situation from one left out because
+    it arrives after the horizon ends.
+    """
+    return LandscapeService(session).preview(
+        indication_id, launch_year=launch_year, horizon_years=horizon_years,
+    )

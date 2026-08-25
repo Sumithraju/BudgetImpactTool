@@ -400,6 +400,46 @@ class MarketMix(BaseModel):
     warnings: tuple[Warning_, ...] = ()
 
 
+# --------------------------------------------------------------------------- M14 — Launch-Year Landscape
+
+
+class PipelineEntrant(BaseModel):
+    """A not-yet-marketed therapy expected to arrive within the horizon.
+
+    `drug_id` is required and must be promoted (M12): an entrant needs a price
+    like any other therapy, and that price will be an assumption — which is
+    exactly why it must be entered rather than invented.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    drug_id: int
+    name: str
+    sponsor: str | None = None
+    entry_year: int = Field(ge=1)            # launch-relative
+    terminal_share: Valued                   # plateau share of the addressable market
+    ramp_years: int = Field(ge=1)
+
+    @field_validator("terminal_share")
+    @classmethod
+    def _share_in_range(cls, v: Valued) -> Valued:
+        if not (0.0 < v.value < 1.0):
+            raise ValueError(
+                f"terminal_share must be in (0, 1), got {v.value!r}"
+            )
+        return v
+
+
+class LandscapeResult(BaseModel):
+    """The baseline mix an asset will actually meet, entrants included."""
+
+    model_config = ConfigDict(frozen=True)
+
+    baseline_shares: Mapping[int, tuple[float, ...]]
+    admitted: tuple[PipelineEntrant, ...]
+    warnings: tuple[Warning_, ...] = ()
+
+
 # --------------------------------------------------------------------------- M1 — Scenario Workspace
 
 

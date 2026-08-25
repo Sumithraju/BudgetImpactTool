@@ -152,3 +152,12 @@ class WarningCode(StrEnum):
     # M13. The unit management cost is an analyst construction rather than an
     # observed cost, or is missing for some events in this market.
     AE_COST_DERIVED = "AE_COST_DERIVED"
+    # M13. No unit management cost is seeded for this market at all — the
+    # events are priced at nothing, which is missing data rather than a
+    # therapy that causes none.
+    AE_COST_MISSING = "AE_COST_MISSING"
+    # M14. The world-without includes therapies that are not yet approved.
+    PIPELINE_ENTRANT_MODELLED = "PIPELINE_ENTRANT_MODELLED"
+    # M14. A registered pipeline therapy was kept out of the world-without,
+    # because it is not marketed and the scenario did not ask to project it.
+    PIPELINE_ENTRANT_EXCLUDED = "PIPELINE_ENTRANT_EXCLUDED"

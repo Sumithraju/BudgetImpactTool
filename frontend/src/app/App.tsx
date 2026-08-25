@@ -53,6 +53,10 @@ export function App() {
   const [comparatorIndication, setComparatorIndication] = useState(DEFAULT_DRAFT.indicationId);
   const [registryToken, setRegistryToken] = useState(0);
 
+  /** M14. Projecting the launch-year landscape is a scenario variant, not a
+   *  base case: every entrant admitted rests on three tier-D assumptions. */
+  const [projectLandscape, setProjectLandscape] = useState(false);
+
   useEffect(() => {
     Promise.all([api.countries(), api.indications(), api.affordabilityBands()])
       .then(([c, i, b]) => {
@@ -98,7 +102,7 @@ export function App() {
 
       // The forward result first, so the headline paints immediately; the
       // two analyses are slower and arrive after.
-      const result = await api.calculate(scenario.scenario_id, true);
+      const result = await api.calculate(scenario.scenario_id, true, projectLandscape);
       setCalculation(result);
       setOwsa(null);
       setPsa(null);
@@ -125,7 +129,7 @@ export function App() {
     } finally {
       setBusy(false);
     }
-  }, [draft, overrides]);
+  }, [draft, overrides, projectLandscape]);
 
   return (
     <div className="shell">
@@ -154,6 +158,8 @@ export function App() {
           onRun={run}
           busy={busy}
           errorField={error?.field ?? null}
+          projectLandscape={projectLandscape}
+          onProjectLandscapeChange={setProjectLandscape}
         />
 
         <main className="results">

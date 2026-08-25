@@ -56,7 +56,12 @@ class SafetyService:
 
         costs: dict[tuple[int, str], Money] = {}
         warnings: list[Warning_] = []
+        # Two different situations, deliberately not merged. A market whose
+        # unit costs are analyst constructions has priced events on a weak
+        # basis; a market with no unit costs at all has not priced them, and
+        # reporting the second as the first would overstate what is known.
         derived_markets: set[str] = set()
+        unpriced_events: dict[str, set[str]] = {}
 
         for code in country_codes:
             currency = currencies[code]
@@ -70,10 +75,9 @@ class SafetyService:
                     unit = unit_costs.get((row.ae_code, code))
                     if unit is None:
                         # An incidence with no cost in this market prices at
-                        # nothing. Skipped rather than defaulted, and the
-                        # market-level warning below says the profile is
-                        # incomplete.
-                        derived_markets.add(code)
+                        # nothing. Skipped rather than defaulted, and named
+                        # in the market-level warning below.
+                        unpriced_events.setdefault(code, set()).add(row.ae_code)
                         continue
                     if ConfidenceTier(unit.confidence_tier) in _DERIVED_TIERS:
                         derived_markets.add(code)
@@ -109,14 +113,28 @@ class SafetyService:
                 costs[(drug_id, code)] = expected_ae_cost(profile, currency)
 
         warnings.extend(self._asymmetry_warnings(drug_ids, country_codes, costs))
-        for code in sorted(derived_markets):
+        if derived_markets:
+            # One warning naming every market, not one per market saying the
+            # same thing — five identical rows is noise a reader stops
+            # reading, which defeats the purpose of raising it.
             warnings.append(Warning_(
                 code=WarningCode.AE_COST_DERIVED,
                 message=(
-                    "Adverse-event management costs for this market are analyst "
-                    "constructions rather than observed costs, or are missing for "
-                    "some events. The same class of caveat as a purchasing-power-"
-                    "derived price."
+                    "Adverse-event management costs are analyst constructions rather "
+                    f"than observed costs in {', '.join(sorted(derived_markets))}. The "
+                    "same class of caveat as a purchasing-power-derived price: the "
+                    "arithmetic behind each is stated in its source."
+                ),
+            ))
+        for code in sorted(unpriced_events):
+            names = ", ".join(sorted(unpriced_events[code]))
+            warnings.append(Warning_(
+                code=WarningCode.AE_COST_MISSING,
+                message=(
+                    f"No adverse-event management cost is seeded for {code} "
+                    f"({names}), so those events cost nothing there. That is missing "
+                    "data, not a therapy with no events — and it makes this market's "
+                    "adverse-event totals lower than the evidence supports."
                 ),
                 country_code=code,
             ))

@@ -488,3 +488,10 @@ tbody tr:last-child td { border-bottom: none; }
   font-size: 9.5px; border: 1px solid currentColor; border-radius: 2px; padding: 0 3px; }
 .tier-A { color: var(--t-A); } .tier-B { color: var(--t-B); }
 .tier-C { color: var(--t-C); } .tier-D { color: var(--t-D); }
+
+/* landscape toggle — M14 section 9 ----------------------------------- */
+.toggle { display: flex; gap: 9px; align-items: flex-start; cursor: pointer;
+  font-size: 13px; color: var(--ink-2); }
+.toggle input { margin-top: 3px; }
+.toggle small { display: block; color: var(--ink-3); font-size: 11.5px;
+  line-height: 1.45; margin-top: 3px; }

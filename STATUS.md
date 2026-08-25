@@ -1,13 +1,13 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-25 · **Phase:** 9 of 11 — the budget impact model is complete;
+**Last updated:** 2026-08-25 · **Phase:** 10 of 11 — the budget impact model is complete;
 the comparator intelligence layer is under construction.
-**Phases 1–6 complete** bar one deliberate deferral (§8) · **Phases 7–9 complete** ·
-**Phases 10–11 specified, not yet built** · **Deadline:** 2026-09-06
+**Phases 1–6 complete** bar one deliberate deferral (§8) · **Phases 7–10 complete** ·
+**Phase 11 specified, not yet built** · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
-**This machine has phases 1–9 done.** `./run.sh` brings up the API on :8077 and the
+**This machine has phases 1–10 done.** `./run.sh` brings up the API on :8077 and the
 interface on :5173; the database must already be running (§5.1). Start the API **with
 `--reload`** — a server started without it serves the code it was launched with, which
 looks exactly like a frontend bug when the contract has moved underneath it.
@@ -879,6 +879,49 @@ implies before writing a new price source's transform.
 
     `biet_engine` **0.2.0** — results move for any therapy with a profile, so runs recorded
     under 0.1.0 are not comparable. 435 tests (3 network-marked), 28 new.
+
+21. **Phase 10 — Launch-Year Competitive Landscape (M14).** Done. An asset launching in
+    four years does not meet today's market, and a budget impact computed against the
+    current mix silently assumes away every competitor approved in between.
+
+    - Expected entry is derived from a trial's primary completion plus a stated 1.5-year
+      regulatory lag, clamped at year 1 — an entrant already marketed at launch is an
+      incumbent, not an entrant.
+    - Entrants ramp linearly from their entry year; incumbents rescale **proportionally**,
+      because no public source says which incumbent an entrant displaces. Nominating one
+      would be a market-access judgement dressed as a computation.
+    - Off by default, warns by name when on, and reported beside the current-market result
+      rather than in place of it. Every entrant is three tier-D assumptions: that it is
+      approved at all, when, and at what price.
+
+    **Two real defects, both found by running it rather than by reading it.**
+
+    First: **promoting a Phase III asset put it in the current market at a full incumbent
+    share.** Promotion writes a `drugs` row, and everything in `drugs` for the indication is
+    otherwise treated as marketed — so a registered pipeline drug silently asserted it was on
+    sale today, which is exactly what M11 §5.3 separates the pipeline bucket to prevent.
+    Unapproved therapies are now excluded from the world-without unless projection is on, and
+    the exclusion is warned about (`PIPELINE_ENTRANT_EXCLUDED`) rather than silent.
+
+    Second: **removing the entrant from the incumbent set left the shares summing to 5/6.**
+    The engine refused the result, correctly — a mix that does not sum is not a market. The
+    incumbents are now renormalised before entrants take share out of them.
+
+    **Measured effect**, USA, one Phase III entrant at a 20% plateau from year 2: cumulative
+    budget impact **$2.38bn against $2.06bn** — a 13% reduction, because the new asset now
+    displaces a competitor that did not exist in the current-market baseline.
+
+    **`require_promoted` is now live.** M12's guard had no reachable caller; M14 is it. An
+    entrant with no price is skipped **by name**, as is one with no stated plateau share —
+    two different situations, two different messages, neither of them silent.
+
+    **A warning defect fixed in passing.** `AE_COST_DERIVED` was firing once per market with
+    an identical message — five identical rows a reader stops reading. It now names every
+    affected market once, and a market with *no* seeded adverse-event costs raises the
+    separate `AE_COST_MISSING` instead: priced on a weak basis and not priced at all are
+    different states, and merging them overstated what was known.
+
+    459 tests (3 network-marked), 24 new.
 
 17. **What remains outside the code.**
     - **The deck and the project report.** Hackathon deliverables in their own right,

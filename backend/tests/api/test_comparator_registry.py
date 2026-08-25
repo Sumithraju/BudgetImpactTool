@@ -414,3 +414,133 @@ def test_an_asymmetric_profile_is_warned_about(session: Session) -> None:
     codes = {w.code for w in response.warnings}
     assert "AE_PROFILE_ASYMMETRIC" in codes
     assert "AE_COST_DERIVED" in codes
+
+
+# --------------------------------------------------------------------------- M14 integration
+
+
+def _register_entrant(
+    service: ComparatorRegistryService, *, share: float = 0.20, completion_year: int = 2027,
+) -> int:
+    """A Phase III entrant, by default expected to arrive *after* launch.
+
+    Completion 2027 plus the 1.5-year regulatory lag against a 2028 launch
+    puts approval in 2029 — launch-relative year 2. A 2026 completion would
+    put it on the market before the asset even launches, which makes it an
+    incumbent rather than an entrant.
+    """
+    from datetime import date as _date
+
+    asset = service.register(_intake(
+        name=f"{PREFIX}-ENTRANT",
+        competitor_class="pipeline",
+        max_clinical_stage="PHASE_3",
+        sponsor="Test Sponsor",
+        primary_completion=_date(completion_year, 6, 1),
+        assumed_terminal_pct=share,
+    ))
+    return asset.asset_id
+
+
+def _calculate(session: Session, *, project: bool):
+    import uuid as _uuid
+
+    from biet_api.models.scenario import Scenario
+    from biet_api.services.calculation_service import CalculationService
+
+    scenario = Scenario(
+        scenario_id=_uuid.uuid4(), name=f"{PREFIX} landscape", indication_id=OBESITY,
+        asset_name="Wegovy", launch_year=2028, horizon_years=3,
+        reporting_currency="USD", country_codes=["USA"],
+    )
+    response, engine_input, _ = CalculationService(session).calculate(
+        scenario, project_landscape=project,
+    )
+    return response, engine_input
+
+
+def test_an_unapproved_therapy_stays_out_of_the_current_market(
+    service: ComparatorRegistryService, session: Session,
+) -> None:
+    """The defect this test exists for: promotion writes a `drugs` row, and
+    everything in `drugs` for the indication is otherwise treated as
+    marketed. A Phase III asset holding a full incumbent share asserts it is
+    on sale today."""
+    asset_id = _register_entrant(service)
+    service.promote(asset_id, PromotionRequest(regimen=_regimen(), prices=[_price()]))
+    session.flush()
+
+    response, engine_input = _calculate(session, project=False)
+    names = {t.name for t in engine_input.countries[0].therapies}
+    assert f"{PREFIX}-ENTRANT" not in names
+    assert "PIPELINE_ENTRANT_EXCLUDED" in {w.code for w in response.warnings}
+
+
+def test_projection_admits_the_entrant_only_from_its_entry_year(
+    service: ComparatorRegistryService, session: Session,
+) -> None:
+    asset_id = _register_entrant(service)
+    promoted = service.promote(
+        asset_id, PromotionRequest(regimen=_regimen(), prices=[_price()]),
+    )
+    session.flush()
+
+    _, engine_input = _calculate(session, project=True)
+    shares = engine_input.countries[0].baseline_shares
+    assert promoted.drug_id in shares
+
+    vector = shares[promoted.drug_id or 0]
+    assert vector[0] == pytest.approx(0.0), "not yet approved in year 1"
+    assert vector[-1] > 0.0, "on the market by the end of the horizon"
+    assert vector == tuple(sorted(vector)), "a ramp, not a step in and out"
+
+
+def test_projection_changes_the_world_without(
+    service: ComparatorRegistryService, session: Session,
+) -> None:
+    """If admitting a competitor into the baseline left the answer alone, the
+    module would be decorative."""
+    asset_id = _register_entrant(service)
+    service.promote(asset_id, PromotionRequest(regimen=_regimen(), prices=[_price()]))
+    session.flush()
+
+    current, _ = _calculate(session, project=False)
+    launch, _ = _calculate(session, project=True)
+
+    assert current.countries[0].years[-1].cost_without != pytest.approx(
+        launch.countries[0].years[-1].cost_without,
+    )
+    assert "PIPELINE_ENTRANT_MODELLED" in {w.code for w in launch.warnings}
+
+
+def test_an_unpromoted_entrant_is_skipped_by_name_not_silently(
+    service: ComparatorRegistryService, session: Session,
+) -> None:
+    """M12's guard, in the one place it is genuinely reachable."""
+    _register_entrant(service)
+    session.flush()
+
+    response, _ = _calculate(session, project=True)
+    skipped = [w for w in response.warnings if w.code == "PIPELINE_ENTRANT_SKIPPED"]
+    assert skipped
+    assert f"{PREFIX}-ENTRANT" in skipped[0].message
+    assert "not promoted" in skipped[0].message
+
+
+def test_an_entrant_without_a_plateau_share_is_skipped(
+    service: ComparatorRegistryService, session: Session,
+) -> None:
+    """Nothing in the public record supplies one, and this module will not
+    invent it."""
+    from datetime import date as _date
+
+    asset = service.register(_intake(
+        name=f"{PREFIX}-NOSHARE", competitor_class="pipeline",
+        max_clinical_stage="PHASE_3", primary_completion=_date(2026, 6, 1),
+    ))
+    service.promote(asset.asset_id, PromotionRequest(regimen=_regimen(), prices=[_price()]))
+    session.flush()
+
+    response, _ = _calculate(session, project=True)
+    skipped = [w for w in response.warnings if w.code == "PIPELINE_ENTRANT_SKIPPED"]
+    assert any("plateau share" in w.message for w in skipped)

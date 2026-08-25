@@ -28,6 +28,7 @@ from biet_engine.constants import (
 from biet_engine.cost import derive_ppp_price
 from biet_engine.exceptions import UnpricedReferenceError
 from biet_engine.fx import convert
+from biet_engine.landscape import project_landscape
 from biet_engine.models import (
     ConfidenceTier,
     CountryInput,
@@ -35,6 +36,7 @@ from biet_engine.models import (
     EngineInput,
     FunnelRates,
     Money,
+    PipelineEntrant,
     Provenance,
     Regimen,
     ResolutionLevel,
@@ -49,6 +51,7 @@ from ..constants.domain import WarningCode
 from ..models.reference import Drug, DrugPrice, EligibilityCriterion
 from ..models.scenario import Scenario
 from ..repositories.reference import ReferenceRepository
+from .landscape_service import LandscapeService
 from .resolution import (
     ReferenceValue,
     ResolutionContext,
@@ -78,8 +81,11 @@ class EngineInputBuilder:
         self._session = session
         self._reference = ReferenceRepository(session)
         self._safety = SafetyService(session)
+        self._landscape = LandscapeService(session)
 
-    def build(self, scenario: Scenario) -> tuple[EngineInput, tuple[Warning_, ...]]:
+    def build(
+        self, scenario: Scenario, *, project_landscape: bool = False,
+    ) -> tuple[EngineInput, tuple[Warning_, ...]]:
         """Resolve every value this scenario needs and freeze it.
 
         Returns:
@@ -95,7 +101,7 @@ class EngineInputBuilder:
         context = self._load_context(scenario, codes)
         resolver = ResolutionService(context)
 
-        drugs = self._reference.list_drugs_with_regimens(scenario.indication_id)
+        drugs = list(self._reference.list_drugs_with_regimens(scenario.indication_id))
         prices = self._reference.load_prices(codes, [d.drug_id for d in drugs])
         criteria_rows = self._reference.list_criteria(scenario.indication_id)
         fx_rates, fx_date = self._reference.load_fx_snapshot()
@@ -112,16 +118,57 @@ class EngineInputBuilder:
             [d.drug_id for d in drugs], codes, currencies,
         )
 
+        # M14. Off unless the caller asks: every entrant is three tier-D
+        # assumptions (approved at all, when, at what price), so admitting
+        # one belongs in a scenario variant rather than a base case.
+        entrants: list[PipelineEntrant] = []
+        entrant_warnings: list[Warning_] = []
+        pipeline_ids = self._landscape.pipeline_drug_ids(scenario.indication_id)
+
+        if project_landscape:
+            entrants, entrant_warnings = self._landscape.entrants(
+                scenario.indication_id,
+                launch_year=scenario.launch_year,
+                horizon_years=scenario.horizon_years,
+            )
+        elif pipeline_ids & {d.drug_id for d in drugs}:
+            # Promotion put these in `drugs`, and everything in `drugs` for
+            # the indication is otherwise treated as marketed. Excluded here
+            # rather than left in: an unapproved therapy holding an incumbent
+            # share asserts it is on sale today.
+            excluded = sorted(
+                d.drug_name for d in drugs if d.drug_id in pipeline_ids
+            )
+            drugs = [d for d in drugs if d.drug_id not in pipeline_ids]
+            plural = len(excluded) > 1
+            entrant_warnings.append(Warning_(
+                code=WarningCode.PIPELINE_ENTRANT_EXCLUDED,
+                message=(
+                    f"{', '.join(excluded)} "
+                    + ("are" if plural else "is")
+                    + " registered as not yet marketed and "
+                    + ("are" if plural else "is")
+                    + " therefore not in the world-without. Re-run with landscape "
+                    "projection to model "
+                    + ("them" if plural else "it")
+                    + " arriving during the horizon."
+                ),
+            ))
+
         countries = tuple(
             self._build_country(
                 code, resolver, drugs, prices, criteria_rows,
-                scenario.horizon_years, fx_rates, ae_costs,
+                scenario.horizon_years, fx_rates, ae_costs, entrants,
             )
             for code in codes
         )
 
         warnings = (
-            list(resolver.warnings) + list(ae_warnings) + _mixed_basis_warnings(countries)
+            list(resolver.warnings)
+            + list(ae_warnings)
+            + entrant_warnings
+            + _landscape_warnings(countries, entrants, scenario.horizon_years)
+            + _mixed_basis_warnings(countries)
         )
 
         return (
@@ -199,6 +246,7 @@ class EngineInputBuilder:
         horizon_years: int,
         fx_rates: dict[str, float],
         ae_costs: Mapping[tuple[int, str], Money],
+        entrants: Sequence[PipelineEntrant],
     ) -> CountryInput:
         country = next(
             (c for c in self._reference.list_countries([code])), None
@@ -245,7 +293,9 @@ class EngineInputBuilder:
             criteria=self._build_criteria(criteria_rows, resolver, code),
             therapies=therapies,
             new_therapy=new_therapy,
-            baseline_shares=self._build_baseline_shares(therapies, horizon_years),
+            baseline_shares=self._project_baseline(
+                therapies, horizon_years, entrants,
+            ),
             substitution=self._build_substitution(resolver, therapies),
         )
 
@@ -501,6 +551,49 @@ class EngineInputBuilder:
         )
 
     @staticmethod
+    def _project_baseline(
+        therapies: Sequence[TherapyInput], horizon_years: int,
+        entrants: Sequence[PipelineEntrant],
+    ) -> Mapping[int, tuple[float, ...]]:
+        """The world-without mix, with any modelled entrants admitted (M14).
+
+        Only entrants whose therapy is actually in this market's priced set
+        participate: an entrant promoted with a US price but no German one is
+        modellable in the USA and not in Germany, and admitting it in Germany
+        would give it a share and no cost.
+        """
+        baseline = EngineInputBuilder._build_baseline_shares(therapies, horizon_years)
+        priced = {t.drug_id for t in therapies}
+        here = [e for e in entrants if e.drug_id in priced]
+        if not here:
+            return baseline
+
+        # An entrant priced in this market is already in `therapies`, so the
+        # equal split gave it an incumbent share too. That row is removed and
+        # the rest renormalised: the world-without *before* any entrant
+        # arrives is the incumbent market alone, and it has to sum to 1.0
+        # before entrants take share out of it. Without the renormalisation
+        # the remainder sums to (1 - the entrant's equal share) and the
+        # engine correctly refuses the result.
+        entrant_ids = {e.drug_id for e in here}
+        incumbents = {k: v for k, v in baseline.items() if k not in entrant_ids}
+        if not incumbents:
+            # Every priced therapy is an entrant: there is no world-without
+            # to compare against, which is not a modelling situation.
+            return baseline
+
+        renormalised = {
+            drug_id: tuple(
+                share / sum(v[year] for v in incumbents.values())
+                for year, share in enumerate(shares)
+            )
+            for drug_id, shares in incumbents.items()
+        }
+        return project_landscape(
+            renormalised, here, horizon_years=horizon_years,
+        ).baseline_shares
+
+    @staticmethod
     def _build_baseline_shares(
         therapies: Sequence[TherapyInput], horizon_years: int,
     ) -> dict[int, tuple[float, ...]]:
@@ -592,6 +685,47 @@ def _scenario_valued(
                 resolution_level=ResolutionLevel.GLOBAL_DEFAULT,
             ),
         )
+
+
+def _landscape_warnings(
+    countries: Sequence[CountryInput],
+    entrants: Sequence[PipelineEntrant],
+    horizon_years: int,
+) -> list[Warning_]:
+    """One PIPELINE_ENTRANT_MODELLED per market that actually admitted one.
+
+    Raised at this level rather than inside the engine call so the message can
+    name the market: an entrant priced in the USA and not in Germany changes
+    one world-without and not the other, and a single global warning would
+    hide that.
+    """
+    if not entrants:
+        return []
+
+    out: list[Warning_] = []
+    for country in countries:
+        priced = {t.drug_id for t in country.therapies}
+        here = [e for e in entrants if e.drug_id in priced]
+        if not here:
+            continue
+        out.append(Warning_(
+            code=WarningCode.PIPELINE_ENTRANT_MODELLED,
+            message=(
+                "The world-without for this market includes therapies that are not "
+                "yet approved: "
+                + "; ".join(
+                    f"{e.name} from year {e.entry_year} rising to "
+                    f"{e.terminal_share.value:.0%}"
+                    for e in here
+                )
+                + ". Each carries three assumptions the evidence does not supply — "
+                "that it is approved at all, when, and at what price. All three are "
+                "tier D, and this result belongs beside the current-market base case "
+                "rather than in place of it."
+            ),
+            country_code=country.country_code,
+        ))
+    return out
 
 
 def _mixed_basis_warnings(countries: Sequence[CountryInput]) -> list[Warning_]:

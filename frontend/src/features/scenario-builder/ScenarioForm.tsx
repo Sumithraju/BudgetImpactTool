@@ -25,6 +25,8 @@ interface Props {
   onRun: () => void;
   busy: boolean;
   errorField: string | null;
+  projectLandscape: boolean;
+  onProjectLandscapeChange: (on: boolean) => void;
 }
 
 /** Sliders work in whole percent; state stays in fractions. The conversion
@@ -83,6 +85,8 @@ export function ScenarioForm({
   onRun,
   busy,
   errorField,
+  projectLandscape,
+  onProjectLandscapeChange,
 }: Props) {
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     onChange({ ...draft, [key]: value });
@@ -231,6 +235,29 @@ export function ScenarioForm({
           onChange={(v) => set("uptakeTerminal", v)}
           errorField={errorField}
         />
+      </section>
+
+      {/* M14 — a scenario variant, not a base case. The caveat sits at the
+          toggle rather than in a footnote, because that is where the choice
+          is actually made. */}
+      <section>
+        <h2>Launch-year market</h2>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={projectLandscape}
+            onChange={(e) => onProjectLandscapeChange(e.target.checked)}
+          />
+          <span>
+            Compare against the market at launch
+            <small>
+              Admits registered Phase II/III competitors into the world-without from the
+              year they are expected to arrive. Every entrant assumes it is approved at
+              all, when, and at what price — all tier D. Read the result beside the
+              current-market one, not instead of it.
+            </small>
+          </span>
+        </label>
       </section>
 
       <button type="button" className="run" onClick={onRun} disabled={busy}>

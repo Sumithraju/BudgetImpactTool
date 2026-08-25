@@ -441,10 +441,16 @@ export const api = {
       body: JSON.stringify({ overrides }),
     }),
 
-  calculate: (id: string, persist = false) =>
-    request<Calculation>(`/api/v1/scenarios/${id}/calculate?persist=${persist}`, {
-      method: "POST",
-    }),
+  /** `projectLandscape` admits M14's pipeline entrants into the
+   *  world-without. Off by default and never implicit — it changes what the
+   *  new asset is compared against, on assumptions the evidence does not
+   *  supply. */
+  calculate: (id: string, persist = false, projectLandscape = false) =>
+    request<Calculation>(
+      `/api/v1/scenarios/${id}/calculate?persist=${persist}` +
+        `&project_landscape=${projectLandscape}`,
+      { method: "POST" },
+    ),
 
   owsa: (id: string) => request<Owsa>(`/api/v1/scenarios/${id}/owsa`),
 

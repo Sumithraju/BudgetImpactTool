@@ -101,6 +101,20 @@ class SolverMethod(StrEnum):
 
 #: A rate/factor/probability is a fraction in this half-open-at-zero,
 #: closed-at-one interval (CLAUDE.md non-negotiable 5).
+#: M14. Interval from a trial's primary completion to approval, for a
+#: priority-review asset with a clean readout — optimistic for anything else,
+#: and a sensitivity lever rather than a fact.
+REGULATORY_LAG_YEARS: Final[float] = 1.5
+
+#: M14. Ceiling on the combined share of modelled pipeline entrants. Without
+#: it an unbounded entrant total drives incumbent shares to zero and leaves a
+#: world-without consisting entirely of drugs that do not yet exist, which is
+#: not a market and not a comparison.
+MAX_ENTRANT_TOTAL_SHARE: Final[float] = 0.60
+
+#: M14. Years from entry to plateau, when a scenario does not say.
+ENTRANT_DEFAULT_RAMP_YEARS: Final[int] = 3
+
 #: Weeks in a year, for annualising an incidence observed over a trial's
 #: exposure window (ARCHITECTURE.md section 5.10). A 68-week incidence quoted
 #: as an annual rate overstates it; a 26-week one understates it.
