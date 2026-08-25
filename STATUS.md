@@ -966,12 +966,30 @@ implies before writing a new price source's transform.
 
 ---
 
-**The comparator intelligence layer is complete.** The end-to-end path the brief asked for
-runs: enter a target and an indication → discover marketed and pipeline competitors from
-public APIs → register and price one → it enters the world-without → see the cost difference
-decomposed into price, administration, monitoring and adverse events → project the market as
-it will be at launch → and get a ranked list of what to go and find out. Every value on that
-path carries its source, its vintage and its confidence tier.
+**The comparator intelligence layer is complete.** The brief's "minimum demo story" runs
+end to end, measured at **1.4 seconds** including the live Open Targets call:
+
+```
+GLP1R + obesity  →  6 direct, 4 pipeline, 7 excluded          (discovery, live API)
+                 →  register a Phase II competitor, price it  (registry, 2 gaps named)
+                 →  it enters the world-without               (no engine change)
+                 →  current market  $2.38bn                   (world-with vs world-without)
+                    market at launch $1.95bn                  (entrant admitted from year 2)
+                 →  net cost per switch $8,351 =
+                    acquisition +8,320, adverse events +31    (the bridge)
+                 →  research priorities: treatment rate (critical),
+                    access rate (high), adult share (medium)  (evidence gaps)
+```
+
+Every value on that path carries its source, its vintage and its confidence tier — and where
+a value is an assumption rather than an observation, it says so in the output rather than in
+a footnote.
+
+**Data hygiene across all five phases.** Every figure invented to exercise a code path — the
+exenatide price in Phase 8, the entrant prices in Phases 10 and 11 — has been removed. The
+database holds 11 drugs, 16 prices and 12 adverse-event incidences, all seeded and all
+cited. A fabricated price left in `drug_prices` would silently change every obesity scenario
+from then on, which is precisely the failure this system is built to avoid.
 
 17. **What remains outside the code.**
     - **The deck and the project report.** Hackathon deliverables in their own right,
