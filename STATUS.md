@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-24 · **Phase:** 5 of 5 — every phase in ARCHITECTURE.md §15 is done.
-**Five spec phases complete; Phase 6 (competitive hardening) in progress** (§8) · **Deadline:** 2026-09-06
+**Five spec phases complete; Phase 6 complete bar one deliberate deferral** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -679,20 +679,52 @@ implies before writing a new price source's transform.
     The result still stands — it is the best available given the data — but a reader who
     is not told would read it as clean. Three new integration tests cover it.
 
-    **Still open in Phase 6, in priority order:**
-    - **6.3 Reproduce a published budget impact analysis.** The strongest credibility
-      move available: "we reproduced [published model] within N%" answers *is this
-      actually right* better than any test count. ~1 day.
-    - **6.4 Observed comparator prices for DEU/GBR.** Directly closes the
-      `MIXED_PRICE_BASIS` gap 6.2 exposed — and until it is closed, those two markets'
-      numbers should not drive a decision. ~half day.
-    - **6.5 Patient segmentation** (BMI 30–35 vs ≥35, different uptake and cost). Real
-      BIMs do this; M3 §12 already flags it as deferred, so the design anticipated it.
-      ~1 day.
-    - **6.6 A defensible time/cost benchmark** for the "weeks versus ninety seconds"
-      claim. Needs a real source, not an asserted number. ~2h.
+    - ~~**6.3 External validation**~~ — **done, and honestly scoped.** Not a reproduction
+      of a published budget impact model: doing that faithfully needs another model's
+      complete input set, and the published analyses located report their outputs
+      without enough of their inputs to replicate. Claiming a match without matching
+      assumptions would be an unearned credibility claim. What *is* verifiable is
+      verified in `test_external_validation.py` — annual therapy cost reconciles to
+      published list prices **exactly**, across two currencies and two molecules.
 
-    356 tests, mypy --strict and ruff clean across 54 files, tsc clean.
+      It also caught something worth knowing: the engine's US annual cost is **8.3%
+      above** the figure you get by quoting a monthly price twelve times, and the engine
+      is right. A GLP-1 "monthly" package is 28 days, so a year is **13 packages, not
+      12** — ×12 covers 336 days. Anyone reconciling this model against a spreadsheet
+      built the other way will hit that discrepancy, so it is pinned with its
+      explanation.
+    - ~~**6.4 Observed German comparator prices**~~ — **done.** Tirzepatide €383/month at
+      10 mg and liraglutide €291.92/month; German pharmacy prices are legally regulated
+      and identical everywhere, which makes them genuine list prices. PPP derivation had
+      been overpricing them by nearly 3× (€10,109 vs €4,979; €9,472 vs €3,552).
+      **Germany moves from −€26.8m to +€45.1m**, net cost per switch from −729 to
+      +1,227, and all three obesity therapies now cluster between €3,500 and €5,000 a
+      year — the shape the market actually has.
+
+      **The UK is deliberately left derived.** Its Wegovy figure is an NHS list price
+      and the available comparator figures are private retail quotes; seeding those
+      would swap one basis inconsistency for another. `MIXED_PRICE_BASIS` keeps firing
+      for GBR, correctly. The warning now names the therapies on each side, because
+      Germany (orlistat derived) and the UK (three comparators derived against one
+      observed price) are materially different situations behind the same code.
+    - ~~**6.6 Time benchmark**~~ — **done, measured not asserted.** A focused budget
+      impact model takes **4–6 weeks** at an efficient consultancy and **12–18 weeks** at
+      a larger firm (RxEconomics). Measured here, 5 markets over a 3-year horizon:
+      forward calculation **0.04 s**, tornado **0.01 s**, PSA at 5,000 draws **0.05 s**,
+      Excel workbook **0.48 s**, cited PDF **0.30 s** (warm — the embedding model is
+      already loaded; a cold first call is slower). The complete deliverable is under a
+      second.
+
+    **Deliberately not done — 6.5 patient segmentation.** M3 §12 is explicit: adding it
+    means `FunnelResult` returning a tuple of segments rather than a scalar, which
+    changes the M4 and M7 contracts, and it says to "confirm before Phase 2 completes so
+    the change is cheap if wanted." Phase 2 completed long ago, so this is now the
+    expensive path — a contract-breaking change to a working, fully-tested system, for a
+    feature that deepens something already defensible rather than fixing a gap. Twelve
+    days from the deadline that is the wrong trade. Recorded here as a considered
+    decision, not an oversight.
+
+    362 tests, mypy --strict and ruff clean across 54 files, tsc clean.
 
 17. **What remains outside the code.**
     - **The deck and the project report.** Hackathon deliverables in their own right,
