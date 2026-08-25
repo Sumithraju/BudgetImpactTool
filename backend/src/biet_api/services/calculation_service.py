@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from biet_engine import __version__ as engine_version
 from biet_engine.affordability import compute_affordability
+from biet_engine.cost import compute_therapy_cost
 from biet_engine.impact import compute_budget_impact
 from biet_engine.models import (
     CountryInput,
@@ -26,13 +27,17 @@ from biet_engine.models import (
     TherapyInput,
     Warning_,
 )
+from biet_engine.persistence import persistence_fraction
 from biet_engine.psa import run_psa
+from biet_engine.safety import build_cost_bridge
 from biet_engine.sensitivity import run_owsa
 
 from ..constants.domain import RunType
 from ..schemas.calculation import (
     AffordabilityRead,
+    BridgeTermRead,
     CalculationResponse,
+    CostBridgeRead,
     CountryRead,
     CriterionRead,
     FunnelStageRead,
@@ -74,6 +79,38 @@ def _warnings(items: Sequence[Warning_]) -> list[WarningRead]:
         )
         for w in items
     ]
+
+
+def _bridge(ci: CountryInput) -> CostBridgeRead:
+    """The net cost per switch, decomposed (M13 section 5.3).
+
+    Computed from the same resolved inputs M7 used, so it cannot diverge from
+    the `net_cost_per_switch` already in every year of the response — a
+    golden test asserts the two reconcile.
+    """
+    persistence = {
+        t.drug_id: persistence_fraction(t.persistence_12m.value)
+        for t in (ci.new_therapy, *ci.therapies)
+    }
+    bridge = build_cost_bridge(
+        compute_therapy_cost(ci.new_therapy, ci.country_code),
+        [compute_therapy_cost(t, ci.country_code) for t in ci.therapies],
+        substitution={k: v.value for k, v in ci.substitution.shares.items()},
+        persistence=persistence,
+        country_code=ci.country_code,
+    )
+    return CostBridgeRead(
+        terms=[
+            BridgeTermRead(
+                component=str(term.component),
+                new_therapy=term.new_therapy.amount,
+                displaced=term.displaced.amount,
+                delta=term.delta.amount,
+            )
+            for term in bridge.terms
+        ],
+        net_cost_per_switch=bridge.net_cost_per_switch.amount,
+    )
 
 
 def _therapy(t: TherapyInput, currency: str) -> TherapyRead:
@@ -178,6 +215,7 @@ class CalculationService:
             ],
             therapies=[_therapy(t, ci.currency) for t in ci.therapies],
             new_therapy=_therapy(ci.new_therapy, ci.currency),
+            cost_bridge=_bridge(ci),
             affordability=(
                 AffordabilityRead(
                     cumulative_ratio=affordability.cumulative_ratio,  # type: ignore[attr-defined]

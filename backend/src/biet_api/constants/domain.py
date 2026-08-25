@@ -68,6 +68,20 @@ class CriterionType(StrEnum):
     PRIOR_FAILURE = "prior_failure"
 
 
+class CostComponent(StrEnum):
+    """The parts an annual therapy cost is built from (M5 section 5.5).
+
+    Mirrored from `biet_engine.constants` — the engine cannot import this
+    module, and `test_constants_parity.py` guards the two from drifting.
+    """
+
+    ACQUISITION = "acquisition"
+    ADMIN = "admin"
+    MONITORING = "monitoring"
+    AE = "ae"
+    OFFSET = "offset"
+
+
 class PriceBasis(StrEnum):
     """`drug_prices.price_basis`.
 
@@ -131,3 +145,10 @@ class WarningCode(StrEnum):
     # observed price compared against PPP-derived comparators is not a
     # like-for-like comparison, and the impact can flip sign.
     MIXED_PRICE_BASIS = "MIXED_PRICE_BASIS"
+    # M13. Pricing one therapy's adverse events while leaving its comparators
+    # at zero inflates that therapy's apparent cost — or, with the sides
+    # reversed, manufactures a saving.
+    AE_PROFILE_ASYMMETRIC = "AE_PROFILE_ASYMMETRIC"
+    # M13. The unit management cost is an analyst construction rather than an
+    # observed cost, or is missing for some events in this market.
+    AE_COST_DERIVED = "AE_COST_DERIVED"

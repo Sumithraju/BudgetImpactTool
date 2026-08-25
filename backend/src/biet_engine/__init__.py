@@ -12,4 +12,8 @@ it. Any change that alters a numerical result is at minimum a minor bump.
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+# 0.2.0 — M13 added `safety.py` (expected adverse-event cost and the cost
+# bridge), and adverse-event costs are now resolved from seeded profiles
+# rather than defaulting to zero. Results move for any therapy with a
+# profile, so runs recorded under 0.1.0 are not comparable to these.
+__version__ = "0.2.0"

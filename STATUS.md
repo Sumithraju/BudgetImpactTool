@@ -1,13 +1,13 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-25 · **Phase:** 8 of 11 — the budget impact model is complete;
+**Last updated:** 2026-08-25 · **Phase:** 9 of 11 — the budget impact model is complete;
 the comparator intelligence layer is under construction.
-**Phases 1–6 complete** bar one deliberate deferral (§8) · **Phases 7–8 complete** ·
-**Phases 9–11 specified, not yet built** · **Deadline:** 2026-09-06
+**Phases 1–6 complete** bar one deliberate deferral (§8) · **Phases 7–9 complete** ·
+**Phases 10–11 specified, not yet built** · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
-**This machine has phases 1–8 done.** `./run.sh` brings up the API on :8077 and the
+**This machine has phases 1–9 done.** `./run.sh` brings up the API on :8077 and the
 interface on :5173; the database must already be running (§5.1). Start the API **with
 `--reload`** — a server started without it serves the code it was launched with, which
 looks exactly like a frontend bug when the contract has moved underneath it.
@@ -831,6 +831,54 @@ implies before writing a new price source's transform.
     407 tests (3 network-marked), 20 of them new and against a real database, since promotion
     atomicity and re-promotion-in-place cannot be observed against a fake. mypy and ruff
     clean, tsc clean.
+
+20. **Phase 9 — Safety and Adverse-Event Economics (M13).** Done. The module that lets this
+    tool put a price on a safety difference without asserting one.
+
+    - **Expected adverse-event cost** is incidence times unit management cost, summed. It
+      populates M5's `ae_cost`, which until now was a hardcoded zero.
+    - **Annualisation, which is not optional.** A trial reports over its exposure window,
+      and none of the obesity trials ran for a year. Quoting a 68-week incidence as annual
+      overstates it: semaglutide's 44.1% nausea is **35.9% a year**, tirzepatide's 31.9%
+      over 72 weeks is **24.2%**. Under constant hazard, which overstates the back half of
+      the year for events concentrated in titration — stated in the interface, not buried.
+    - **The cost bridge** decomposes M7's net cost per switch across acquisition,
+      administration, monitoring, adverse events and offsets. The terms sum to the total
+      exactly, asserted as a property over random inputs rather than trusted, and the bridge
+      reconciles to M7's budget impact in both directions. USA, Wegovy: acquisition
+      **+$8,320**, adverse events **+$31**, net **$8,351** — against M7's 8350.852552, to
+      within 2e-12.
+    - **`AE_PROFILE_ASYMMETRIC` is the honest part.** Three of the five obesity therapies
+      carry a profile; orlistat and no-pharmacotherapy do not, and are costed at zero. That
+      biases the comparison *in their favour* — their event costs are missing, not absent —
+      and the run says so rather than looking clean. The asymmetric case is the natural
+      state of the data, not an edge case.
+    - **Persistence is still not derived from tolerability.** Better tolerability plausibly
+      raises persistence, and every link in that chain is defensible, and the chain as a
+      whole is an inference. It stays a separately sourced M6 input.
+
+    **Every incidence is real and checkable.** Taken from the trial registries, not from
+    memory and not from a publication summary: STEP 1 (NCT03548935), SURMOUNT-1
+    (NCT04184622), SCALE Obesity (NCT01272219), tier A, each row carrying its trial, its
+    population and its exposure window. **This mattered.** Recall put semaglutide's nausea
+    at 44.2% (registry: 44.1%) and tirzepatide 15 mg at 33.3%; a web search returned 21.9%
+    for the same figure, quoting an n=311 subgroup. The registry says **31.9%** (201/630).
+    Two of three sources were wrong, and the one that seeds the database is the registry.
+
+    **Unit management costs are the weak half, and are labelled as such.** No trial reports
+    what an event costs to manage. Each is an analyst construction with its arithmetic
+    written into the source string — a fraction of a CPT 99213 primary-care visit (national
+    average $95.19, CMS Physician Fee Schedule 2026) plus a medication cost. The price
+    components are checkable; the consultation fractions are the assumption. All tier C, all
+    raising `AE_COST_DERIVED`.
+
+    **What the numbers actually say.** Adverse-event cost is $37–60 a year against
+    acquisition costs of $13,000–17,500. On this evidence the safety difference between
+    these therapies is economically negligible, and the tool says so rather than
+    manufacturing a story. That is the module working, not the module failing.
+
+    `biet_engine` **0.2.0** — results move for any therapy with a profile, so runs recorded
+    under 0.1.0 are not comparable. 435 tests (3 network-marked), 28 new.
 
 17. **What remains outside the code.**
     - **The deck and the project report.** Hackathon deliverables in their own right,

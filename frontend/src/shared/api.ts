@@ -72,6 +72,9 @@ export interface CountryResult {
   therapies: Therapy[];
   new_therapy: Therapy;
   affordability: Affordability | null;
+  /** Year-invariant: persistence, substitution and unit costs do not vary by
+   *  year, so one bridge explains every year's net cost per switch. */
+  cost_bridge: CostBridge | null;
 }
 
 export interface Warning {
@@ -188,6 +191,47 @@ export interface NarrativeDoc {
    *  draft that passed numeric validation. The reader is entitled to know. */
   generated_by: string;
   warnings: string[];
+}
+
+/** M13 — one component's contribution to the net cost per switch. */
+export interface BridgeTerm {
+  component: string;
+  new_therapy: number;
+  displaced: number;
+  delta: number;
+}
+
+export interface CostBridge {
+  terms: BridgeTerm[];
+  net_cost_per_switch: number;
+}
+
+/** M13 — what an expected adverse-event cost was computed from. */
+export interface EventIncidenceRead {
+  observed: number;
+  annualised: number;
+  exposure_weeks: number | null;
+  population: string | null;
+  evidence_type: string;
+  source: string;
+  source_url: string | null;
+  vintage_year: number | null;
+  confidence_tier: string;
+}
+
+export interface SafetyEventRow {
+  ae_code: string;
+  ae_label: string;
+  is_serious: boolean;
+  unit_cost: number | null;
+  unit_cost_source: string | null;
+  unit_cost_tier: string | null;
+  by_drug: Record<string, EventIncidenceRead>;
+}
+
+export interface SafetyComparison {
+  country_code: string;
+  events: SafetyEventRow[];
 }
 
 export interface CountryOption {
@@ -446,6 +490,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  safetyComparison: (countryCode: string, drugIds: number[]) => {
+    const q = new URLSearchParams({ country_code: countryCode });
+    for (const id of drugIds) q.append("drug_ids", String(id));
+    return request<SafetyComparison>(`/api/v1/comparators/safety?${q}`);
+  },
 
   resolveTarget: (symbol: string) =>
     request<ResolvedTarget>(`/api/v1/comparators/targets/${encodeURIComponent(symbol)}`),

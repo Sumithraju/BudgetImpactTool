@@ -19,9 +19,12 @@ from typing import Any
 
 import pandas as pd
 from biet_api.models import (
+    AdverseEvent,
+    AdverseEventCost,
     Country,
     Drug,
     DrugPrice,
+    DrugAdverseEvent,
     DrugRegimen,
     EligibilityCriterion,
     FunnelDefault,
@@ -377,6 +380,100 @@ def load_age_bands() -> dict[str, float]:
     return {row.country_code: float(row.age_15_17_pct) for row in frame.itertuples()}
 
 
+# --------------------------------------------------------------------------- adverse events (M13)
+
+
+def publish_adverse_events(session: Session) -> int:
+    """The event vocabulary. Shared across therapies and markets."""
+    frame = _read("adverse_events.csv")
+    if frame is None:
+        return 0
+
+    published = 0
+    for row in frame.itertuples():
+        upsert(
+            session, AdverseEvent,
+            natural_key={"ae_code": row.ae_code},
+            values={
+                "ae_label": row.ae_label,
+                "is_serious": _to_bool(row.is_serious),
+                "meddra_pt": row.meddra_pt if pd.notna(row.meddra_pt) else None,
+            },
+        )
+        published += 1
+    log.info("seed_published", extra={"file": "adverse_events.csv", "rows": published})
+    return published
+
+
+def publish_adverse_event_costs(session: Session) -> int:
+    """What managing one occurrence costs, per market."""
+    frame = _read("adverse_event_costs.csv")
+    if frame is None:
+        return 0
+
+    published = 0
+    for row in frame.itertuples():
+        upsert(
+            session, AdverseEventCost,
+            natural_key={"ae_code": row.ae_code, "country_code": row.country_code},
+            values={
+                "unit_cost_local": row.unit_cost_local,
+                "currency_code": row.currency_code,
+                "cost_year": int(row.cost_year) if pd.notna(row.cost_year) else None,
+                "source": row.source,
+                "source_url": row.source_url if pd.notna(row.source_url) else None,
+                "confidence_tier": row.confidence_tier,
+            },
+        )
+        published += 1
+    log.info("seed_published", extra={"file": "adverse_event_costs.csv", "rows": published})
+    return published
+
+
+def publish_drug_adverse_events(session: Session) -> int:
+    """Per-therapy incidences, each with the trial it was observed in.
+
+    Rejected in full if any row lacks a source or a tier. An adverse-event
+    incidence is the value in this system most likely to be repeated as fact
+    (M13 section 5.1), so an unattributed one must not reach the database at
+    all rather than arriving and being caught downstream.
+    """
+    frame = _read("drug_adverse_events.csv")
+    if frame is None:
+        return 0
+
+    for row in frame.itertuples():
+        if not str(row.source).strip() or not str(row.confidence_tier).strip():
+            raise SourceValidationError(
+                f"drug_adverse_events.csv: {row.drug_id}/{row.ae_code} has no source "
+                "or no confidence tier; an unattributed incidence is not publishable"
+            )
+
+    published = 0
+    for row in frame.itertuples():
+        upsert(
+            session, DrugAdverseEvent,
+            natural_key={"drug_id": int(row.drug_id), "ae_code": row.ae_code},
+            values={
+                "incidence": row.incidence,
+                "exposure_weeks": (
+                    int(row.exposure_weeks) if pd.notna(row.exposure_weeks) else None
+                ),
+                "population": row.population if pd.notna(row.population) else None,
+                "evidence_type": row.evidence_type,
+                "source": row.source,
+                "source_url": row.source_url if pd.notna(row.source_url) else None,
+                "vintage_year": (
+                    int(row.vintage_year) if pd.notna(row.vintage_year) else None
+                ),
+                "confidence_tier": row.confidence_tier,
+            },
+        )
+        published += 1
+    log.info("seed_published", extra={"file": "drug_adverse_events.csv", "rows": published})
+    return published
+
+
 # --------------------------------------------------------------------------- orchestration
 
 #: Publish order matters: countries/indications before anything with a foreign
@@ -389,6 +486,11 @@ SEED_PUBLISHERS = (
     publish_drug_prices,
     publish_funnel_defaults,
     publish_eligibility_criteria,
+    # After drugs and countries: every one of these has a foreign key to one
+    # or the other.
+    publish_adverse_events,
+    publish_adverse_event_costs,
+    publish_drug_adverse_events,
 )
 
 

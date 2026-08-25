@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Calculation, Owsa, Psa } from "../../shared/api";
 import { AffordabilityGauge } from "../affordability/AffordabilityGauge";
 import { PriceCorridor } from "../price-solver/PriceCorridor";
+import { CostBridge } from "./CostBridge";
 import {
   BASIS_LABELS,
   STAGE_LABELS,
@@ -144,6 +145,16 @@ export function Results({
           null
         }
       />
+
+      {/* cost bridge — M13 ------------------------------------------- */}
+      {selected.cost_bridge && (
+        <CostBridge
+          bridge={selected.cost_bridge}
+          currency={selected.currency}
+          countryCode={selected.country_code}
+          therapies={[selected.new_therapy, ...selected.therapies]}
+        />
+      )}
 
       {/* funnel ------------------------------------------------------ */}
       <section>

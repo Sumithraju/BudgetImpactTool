@@ -333,3 +333,84 @@ def test_listing_filters_by_competitor_class(service: ComparatorRegistryService)
         if a.asset_name.startswith(PREFIX)
     ]
     assert [a.asset_name for a in listed] == [f"{PREFIX}-T"]
+
+
+# --------------------------------------------------------------------------- M13 integration
+
+
+def test_the_cost_bridge_reconciles_to_the_budget_impact(session: Session) -> None:
+    """M13 section 5.4. The bridge adds no arithmetic — it re-expresses what
+    M7 already computed, so it must not diverge from it by so much as a
+    rounding step.
+
+    Reconciled in both directions: the bridge equals M7's net cost per
+    switch, and multiplying it by addressable population and uptake
+    reproduces that year's budget impact.
+    """
+    import uuid as _uuid
+
+    from biet_api.models.scenario import Scenario
+    from biet_api.services.calculation_service import CalculationService
+
+    scenario = Scenario(
+        scenario_id=_uuid.uuid4(), name=f"{PREFIX} bridge", indication_id=OBESITY,
+        asset_name="Wegovy", launch_year=2028, horizon_years=3,
+        reporting_currency="USD", country_codes=["USA"],
+    )
+    response, _, _ = CalculationService(session).calculate(scenario)
+
+    country = response.countries[0]
+    bridge = country.cost_bridge
+    assert bridge is not None
+
+    for year in country.years:
+        assert bridge.net_cost_per_switch == pytest.approx(
+            year.net_cost_per_switch, rel=1e-9,
+        ), "the bridge is year-invariant and must equal every year's figure"
+
+        switchers = year.addressable * year.uptake
+        assert bridge.net_cost_per_switch * switchers == pytest.approx(
+            year.budget_impact, rel=1e-6,
+        ), "bridge x addressable x uptake must reproduce the year's budget impact"
+
+
+def test_adverse_event_costs_reach_the_therapy_cost_stack(session: Session) -> None:
+    """Two therapies differing in adverse-event profile must produce
+    different costs — otherwise the whole module is decorative."""
+    import uuid as _uuid
+
+    from biet_api.models.scenario import Scenario
+    from biet_api.services.calculation_service import CalculationService
+
+    scenario = Scenario(
+        scenario_id=_uuid.uuid4(), name=f"{PREFIX} ae", indication_id=OBESITY,
+        asset_name="Wegovy", launch_year=2028, horizon_years=3,
+        reporting_currency="USD", country_codes=["USA"],
+    )
+    response, _, _ = CalculationService(session).calculate(scenario)
+    bridge = response.countries[0].cost_bridge
+    assert bridge is not None
+
+    ae_term = next(t for t in bridge.terms if t.component == "ae")
+    assert ae_term.new_therapy > 0, "seeded STEP 1 incidences should price above zero"
+    assert ae_term.displaced > 0, "the comparators carry profiles too"
+
+
+def test_an_asymmetric_profile_is_warned_about(session: Session) -> None:
+    """Orlistat and no-pharmacotherapy carry no profile while the incretins
+    do. Costing the ones without at zero biases the comparison in their
+    favour, and the run must say so rather than look clean."""
+    import uuid as _uuid
+
+    from biet_api.models.scenario import Scenario
+    from biet_api.services.calculation_service import CalculationService
+
+    scenario = Scenario(
+        scenario_id=_uuid.uuid4(), name=f"{PREFIX} asym", indication_id=OBESITY,
+        asset_name="Wegovy", launch_year=2028, horizon_years=3,
+        reporting_currency="USD", country_codes=["USA"],
+    )
+    response, _, _ = CalculationService(session).calculate(scenario)
+    codes = {w.code for w in response.warnings}
+    assert "AE_PROFILE_ASYMMETRIC" in codes
+    assert "AE_COST_DERIVED" in codes

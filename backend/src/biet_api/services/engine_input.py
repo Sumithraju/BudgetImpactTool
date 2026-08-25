@@ -13,7 +13,7 @@ section 5.2's rule that one query per parameter per market is a defect.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from sqlalchemy.orm import Session
 
@@ -56,6 +56,7 @@ from .resolution import (
     ResolutionService,
     UnresolvedParameterError,
 )
+from .safety_service import SafetyService
 
 #: Defaults for values M1's override vocabulary exposes but no reference
 #: table seeds. Uptake is scenario-level rather than market-level (M4
@@ -76,6 +77,7 @@ class EngineInputBuilder:
     def __init__(self, session: Session) -> None:
         self._session = session
         self._reference = ReferenceRepository(session)
+        self._safety = SafetyService(session)
 
     def build(self, scenario: Scenario) -> tuple[EngineInput, tuple[Warning_, ...]]:
         """Resolve every value this scenario needs and freeze it.
@@ -100,15 +102,27 @@ class EngineInputBuilder:
         if fx_date is None:
             raise UnresolvedParameterError("fx_rates", None)
 
+        # M13. Resolved for every therapy and market up front, in two
+        # queries, rather than per therapy inside the market loop.
+        currencies = {
+            str(c.country_code): str(c.currency_code)
+            for c in self._reference.list_countries(codes)
+        }
+        ae_costs, ae_warnings = self._safety.resolve_ae_costs(
+            [d.drug_id for d in drugs], codes, currencies,
+        )
+
         countries = tuple(
             self._build_country(
                 code, resolver, drugs, prices, criteria_rows,
-                scenario.horizon_years, fx_rates,
+                scenario.horizon_years, fx_rates, ae_costs,
             )
             for code in codes
         )
 
-        warnings = list(resolver.warnings) + _mixed_basis_warnings(countries)
+        warnings = (
+            list(resolver.warnings) + list(ae_warnings) + _mixed_basis_warnings(countries)
+        )
 
         return (
             EngineInput(
@@ -184,6 +198,7 @@ class EngineInputBuilder:
         criteria_rows: Sequence[EligibilityCriterion],
         horizon_years: int,
         fx_rates: dict[str, float],
+        ae_costs: Mapping[tuple[int, str], Money],
     ) -> CountryInput:
         country = next(
             (c for c in self._reference.list_countries([code])), None
@@ -193,7 +208,7 @@ class EngineInputBuilder:
 
         priced = tuple(
             self._build_therapy(
-                drug, code, country.currency_code, prices, resolver, fx_rates,
+                drug, code, country.currency_code, prices, resolver, fx_rates, ae_costs,
             )
             for drug in drugs
         )
@@ -339,6 +354,7 @@ class EngineInputBuilder:
         prices: dict[tuple[int, str], DrugPrice],
         resolver: ResolutionService,
         fx_rates: dict[str, float],
+        ae_costs: Mapping[tuple[int, str], Money],
     ) -> TherapyInput:
         regimen_row = drug.regimens[0] if drug.regimens else None
         if regimen_row is None:
@@ -389,7 +405,13 @@ class EngineInputBuilder:
             ),
             admin_cost=Money(amount=_ZERO_COST, currency=country_currency),
             monitoring_cost=Money(amount=_ZERO_COST, currency=country_currency),
-            ae_cost=Money(amount=_ZERO_COST, currency=country_currency),
+            # A therapy with no stored profile costs zero here, which is a
+            # stated zero rather than a claim about its safety — the
+            # AE_PROFILE_ASYMMETRIC warning is what says so when some
+            # therapies in the mix have one and others do not (M13 5.1).
+            ae_cost=ae_costs.get(
+                (drug.drug_id, code), Money(amount=_ZERO_COST, currency=country_currency),
+            ),
             offset=Money(amount=_ZERO_COST, currency=country_currency),
             persistence_12m=Valued(
                 value=float(regimen_row.persistence_12m), provenance=flat,

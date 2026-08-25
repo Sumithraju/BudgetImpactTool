@@ -20,6 +20,7 @@ from .constants import (
     SHARE_SUM_TOLERANCE,
     AffordabilityBand,
     ConfidenceTier,
+    CostComponent,
     CriterionType,
     FunnelStage,
     PriceBasis,
@@ -266,6 +267,87 @@ class TherapyCost(BaseModel):
     total: Money                             # annual cost per full treated patient-year
     price_basis: PriceBasis
     provenance: Provenance
+
+
+# --------------------------------------------------------------------------- M13 — Safety & AE Economics
+
+
+class AdverseEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    code: str                                # 'nausea', 'severe_hypoglycaemia'
+    label: str
+    is_serious: bool = False
+
+
+class EventIncidence(BaseModel):
+    """One event's rate on one therapy, with what it costs to manage.
+
+    `exposure_weeks` is carried rather than dropped because an incidence
+    without its observation window cannot be annualised (M13 section 5.2),
+    and quoting a 68-week trial rate as an annual one overstates it.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    event: AdverseEvent
+    incidence: Valued                        # fraction, as observed
+    exposure_weeks: int | None = None        # None: the source reports an annual rate
+    unit_cost: Money                         # cost of managing one occurrence
+
+    @field_validator("incidence")
+    @classmethod
+    def _incidence_in_range(cls, v: Valued) -> Valued:
+        if not (0.0 <= v.value <= 1.0):
+            raise ValueError(f"incidence must be a fraction in [0, 1], got {v.value!r}")
+        return v
+
+    @field_validator("exposure_weeks")
+    @classmethod
+    def _exposure_positive(cls, v: int | None) -> int | None:
+        if v is not None and v <= 0:
+            raise ValueError(
+                f"exposure_weeks must be > 0, got {v!r} — annualisation is undefined "
+                "over a zero-length window"
+            )
+        return v
+
+
+class SafetyProfile(BaseModel):
+    """Every priced adverse event for one therapy in one market."""
+
+    model_config = ConfigDict(frozen=True)
+
+    drug_id: int
+    country_code: str
+    events: tuple[EventIncidence, ...] = ()
+
+
+class BridgeTerm(BaseModel):
+    """One component's contribution to the net cost per patient switched."""
+
+    model_config = ConfigDict(frozen=True)
+
+    component: CostComponent
+    new_therapy: Money                       # f_n x k(n,c)
+    displaced: Money                         # sum_t sigma_t x f_t x k(t,c)
+    delta: Money                             # signed contribution
+
+
+class CostBridge(BaseModel):
+    """Net cost per switched patient, decomposed.
+
+    The answer to what a payer actually asks: not what the new drug costs,
+    but of the difference, how much is price and how much is everything else.
+    The terms sum to `net_cost_per_switch` exactly, by construction, and a
+    property test asserts it rather than trusting it (M13 section 5.3).
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    country_code: str
+    terms: tuple[BridgeTerm, ...]
+    net_cost_per_switch: Money
 
 
 # --------------------------------------------------------------------------- M4 — Uptake & Market Mix

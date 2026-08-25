@@ -22,16 +22,20 @@ from .reference import (
     FxRate,
     Indication,
 )
+from .safety import AdverseEvent, AdverseEventCost, DrugAdverseEvent
 from .scenario import ModelRun, Scenario, ScenarioOverride
 from .staging import StagingExtract
 
 __all__ = [
+    "AdverseEvent",
+    "AdverseEventCost",
     "Base",
     "ComparatorApproval",
     "ComparatorAsset",
     "Country",
     "CountryEconomics",
     "Drug",
+    "DrugAdverseEvent",
     "DrugPrice",
     "DrugRegimen",
     "EligibilityCriterion",

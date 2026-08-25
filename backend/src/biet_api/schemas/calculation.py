@@ -85,6 +85,26 @@ class AffordabilityRead(BaseModel):
     pmpy: float | None = None
 
 
+class BridgeTermRead(BaseModel):
+    """One component's contribution to the net cost per patient switched."""
+
+    component: str
+    new_therapy: float
+    displaced: float
+    delta: float
+
+
+class CostBridgeRead(BaseModel):
+    """M13 section 5.3. The terms sum to `net_cost_per_switch` exactly.
+
+    The answer to what a payer actually asks: not what the new therapy costs,
+    but of the difference, how much is price and how much is everything else.
+    """
+
+    terms: list[BridgeTermRead]
+    net_cost_per_switch: float
+
+
 class CountryRead(BaseModel):
     country_code: str
     currency: str
@@ -95,6 +115,9 @@ class CountryRead(BaseModel):
     therapies: list[TherapyRead]
     new_therapy: TherapyRead
     affordability: AffordabilityRead | None = None
+    #: Year-invariant: persistence, substitution and unit costs do not vary
+    #: by year, so one bridge explains every year's net cost per switch.
+    cost_bridge: CostBridgeRead | None = None
 
 
 class TotalsRead(BaseModel):

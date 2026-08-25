@@ -59,6 +59,21 @@ class CriterionType(StrEnum):
     PRIOR_FAILURE = "prior_failure"
 
 
+class CostComponent(StrEnum):
+    """The parts an annual therapy cost is built from (M5 section 5.5).
+
+    Named as a closed set because M13's cost bridge decomposes the net cost
+    per patient switched across exactly these, and the decomposition is only
+    exact if it covers all of them and nothing else.
+    """
+
+    ACQUISITION = "acquisition"
+    ADMIN = "admin"
+    MONITORING = "monitoring"
+    AE = "ae"
+    OFFSET = "offset"
+
+
 class PriceBasis(StrEnum):
     LIST = "list"
     NADAC = "nadac"
@@ -86,6 +101,11 @@ class SolverMethod(StrEnum):
 
 #: A rate/factor/probability is a fraction in this half-open-at-zero,
 #: closed-at-one interval (CLAUDE.md non-negotiable 5).
+#: Weeks in a year, for annualising an incidence observed over a trial's
+#: exposure window (ARCHITECTURE.md section 5.10). A 68-week incidence quoted
+#: as an annual rate overstates it; a 26-week one understates it.
+WEEKS_PER_YEAR: Final[float] = 52.0
+
 RATE_MIN: Final[float] = 0.0
 RATE_MAX: Final[float] = 1.0
 

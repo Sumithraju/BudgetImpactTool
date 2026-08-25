@@ -12,6 +12,7 @@ from ..dal import get_session
 from ..schemas.comparator import AssetIntake, PromotionRequest, RegisteredAsset
 from ..services.comparator_registry_service import ComparatorRegistryService
 from ..services.comparator_service import ComparatorService
+from ..services.safety_service import SafetyService
 
 router = APIRouter(prefix="/api/v1/comparators", tags=["comparators"])
 
@@ -99,3 +100,20 @@ def promote_asset(
     asset = ComparatorRegistryService(session).promote(asset_id, request)
     session.commit()
     return asset
+
+
+# --------------------------------------------------------------------------- safety (M13)
+
+
+@router.get("/safety")
+def safety_comparison(
+    session: SessionDep,
+    country_code: Annotated[str, Query(min_length=3, max_length=3)],
+    drug_ids: Annotated[list[int], Query()],
+) -> dict[str, Any]:
+    """Per-event incidences for a set of therapies, with their sources.
+
+    The bridge gives one adverse-event number per therapy; this is what that
+    number was computed from, so a reader can check it rather than take it.
+    """
+    return SafetyService(session).comparison(drug_ids, country_code)

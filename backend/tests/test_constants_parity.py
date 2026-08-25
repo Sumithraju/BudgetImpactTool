@@ -6,9 +6,11 @@ biet_engine/constants.py. Only this test file is allowed to import both.
 
 from __future__ import annotations
 
+from biet_api.constants.domain import CostComponent as ApiCostComponent
 from biet_api.constants.domain import CriterionType as ApiCriterionType
 from biet_api.constants.domain import FunnelStage as ApiFunnelStage
 from biet_api.constants.domain import PriceBasis as ApiPriceBasis
+from biet_engine.constants import CostComponent as EngineCostComponent
 from biet_engine.constants import CriterionType as EngineCriterionType
 from biet_engine.constants import FunnelStage as EngineFunnelStage
 from biet_engine.constants import PriceBasis as EnginePriceBasis
@@ -28,3 +30,10 @@ def test_criterion_type_members_match() -> None:
 
 def test_price_basis_members_match() -> None:
     assert _members(EnginePriceBasis) == _members(ApiPriceBasis)
+
+
+def test_cost_component_members_match() -> None:
+    """M13's bridge decomposes net cost per switch across exactly these. If
+    the two sides drift, the decomposition stops summing to its total on one
+    side of the boundary and not the other."""
+    assert _members(EngineCostComponent) == _members(ApiCostComponent)
