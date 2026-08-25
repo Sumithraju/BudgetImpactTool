@@ -36,18 +36,30 @@ ARCHITECTURE.md §4A for the requirement coverage map.
 | [M14](M14-launch-year-landscape.md) | Launch-Year Competitive Landscape | Engine + Backend | M4, M11, M12 |
 | [M15](M15-evidence-gap-intelligence.md) | Evidence-Gap Intelligence | Backend | M9, M10 |
 
-### Outcomes and payer fit (Phases 12–15)
+### Outcomes and payer fit (Phases 12–14)
 
-Added after HEOR review. M0–M15 price care; these value its consequences and
+Added after the first HEOR review. M0–M15 price care; these value its consequences and
 frame the result for the budget holder reading it. See ARCHITECTURE.md §4B for
 the requirement coverage map.
 
 | Spec | Module | Owner area | Depends on |
 |---|---|---|---|
 | [M16](M16-clinical-outcomes.md) | Clinical Outcomes & Avoided Events | Engine + Backend | M2, M5, M6, M7 |
-| M17 | Payer Perspective & Decision Views | Backend + Frontend | M7, M8, M9 |
-| M18 | Disease Subgroups | Backend | M2, M3, M16 |
-| M19 | Workbook Import | Backend | M1, M12 |
+| [M17](M17-payer-perspective.md) | Payer Perspective & Decision Views | Backend + Frontend | M2, M7, M8, M9 |
+| [M18](M18-disease-subgroups.md) | Disease Subgroups | Backend | M2, M3, M4, M16 |
+
+### Analyst fit (Phases 15–18)
+
+Added after the second HEOR review. M0–M18 compute the right answer; these make it
+one an HEOR manager can populate, trust and read. See ARCHITECTURE.md §4C for the
+requirement coverage map.
+
+| Spec | Module | Owner area | Depends on |
+|---|---|---|---|
+| [M19](M19-workbook-import.md) | Workbook Import & Dynamic Inputs | Backend | M1, M5, M12, M18 |
+| [M20](M20-live-reference-data.md) | Live Reference Data & Market Automation | Data + Backend | M0, M2, M5 |
+| [M21](M21-analyst-interface.md) | Guided Analyst Interface | Frontend + Backend | M17, M18, M19, M20 |
+| [M22](M22-llm-gateway.md) | Language Model Gateway | Backend | M10 |
 
 ## Build order
 
@@ -75,6 +87,22 @@ M12 is the hinge. Until a discovered molecule can be promoted into a priced comp
 nothing to attach a safety profile to and M14 has nothing to admit into a baseline. M15 depends on
 none of them — it needs only a sensitivity result and the tiers already on every value, so it can be
 built at any point.
+
+Outcomes, payer fit and analyst fit layer on again. M18 comes first of these because it changes the
+shape of a scenario, and anything built against the old shape would be built twice:
+
+```
+M18 ──┬── M16 (per-subgroup effects)
+      └── M17 ── M21
+M20 ──┬── M19 ── M21
+      └── M21
+M22 ── (M10)
+```
+
+M18 is this layer's hinge for the same reason M12 was the last one's. M20 is next because it decides
+what every input is worth before an interface renders it. M21 is deliberately last of the four it
+depends on — an interface built over values that are not yet resolved, editable or explained has to
+be rebuilt when they are. M22 depends on nothing in the chain and can be built at any point.
 
 ## Specification template
 
