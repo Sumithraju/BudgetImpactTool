@@ -323,3 +323,74 @@ tbody tr:last-child td { border-bottom: none; }
 .cites li span { font-family: "Source Serif 4", Georgia, serif; color: var(--ink-3); }
 .src-cell { max-width: 340px; font-size: 11.5px; color: var(--ink-3);
   white-space: normal; text-align: left !important; }
+
+/* comparator discovery — M11 section 9 ------------------------------ */
+.comparator-controls {
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
+  padding: 16px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface);
+}
+.comparator-controls label { display: flex; flex-direction: column; gap: 5px;
+  font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.comparator-controls input[type="text"],
+.comparator-controls input:not([type]), .comparator-controls select {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line-2); border-radius: 3px; padding: 7px 9px; min-width: 168px;
+}
+.comparator-controls label.checkbox { flex-direction: row; align-items: flex-start; gap: 8px;
+  text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--ink-2);
+  max-width: 270px; }
+.comparator-controls label.checkbox small { display: block; color: var(--ink-3);
+  font-size: 11.5px; line-height: 1.4; margin-top: 2px; }
+.comparator-controls button {
+  font: inherit; font-size: 14px; font-weight: 500; padding: 9px 17px; cursor: pointer;
+  border: 1px solid var(--accent); border-radius: 3px;
+  background: var(--accent); color: var(--on-accent);
+}
+.comparator-controls button:disabled { opacity: .45; cursor: default; }
+
+.comparator-meta { display: flex; flex-wrap: wrap; gap: 18px; margin: 14px 0 4px;
+  font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-3); }
+
+.warning { margin-top: 12px; padding: 11px 14px; border-radius: 3px; font-size: 13px;
+  border: 1px solid var(--t-C); border-left-width: 3px; color: var(--t-C);
+  background: var(--surface); }
+.warning strong { font-family: "IBM Plex Mono", monospace; font-size: 11px;
+  letter-spacing: .04em; margin-right: 8px; }
+
+.comparator-group { margin-top: 26px; }
+.comparator-group h3 { margin: 0; font-size: 13px; font-weight: 600; }
+.comparator-group .count { font-family: "IBM Plex Mono", monospace; font-size: 11px;
+  color: var(--ink-3); margin-left: 7px; }
+.group-blurb { margin: 4px 0 10px; font-size: 12.5px; color: var(--ink-3); max-width: 70ch; }
+.empty-row { font-size: 13px; color: var(--ink-3); font-style: italic; }
+
+.comparator-list { list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 8px; }
+.comparator-row { border: 1px solid var(--line); border-radius: 4px;
+  background: var(--surface); }
+/* Unpriced rows are visibly distinct everywhere they appear: a comparator
+   that cannot enter a calculation must not read like one that can. */
+.comparator-row.unpriced { border-style: dashed; border-color: var(--t-C); }
+.comparator-row label { display: flex; gap: 11px; padding: 12px 14px; cursor: pointer; }
+.comparator-row-body { flex: 1; min-width: 0; }
+.comparator-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.comparator-row-head strong { font-size: 14px; }
+.comparator-row-head .stage, .comparator-row-head .target {
+  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; letter-spacing: .05em;
+  color: var(--ink-3); border: 1px solid var(--line-2); border-radius: 2px; padding: 1px 5px; }
+.comparator-row-head .relevance { margin-left: auto; font-family: "IBM Plex Mono", monospace;
+  font-size: 15px; font-variant-numeric: tabular-nums; color: var(--accent); }
+.moa { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; }
+.factors { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 7px;
+  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; }
+.factor.on { color: var(--t-A); }
+.factor.off { color: var(--ink-3); }
+.rationale { margin-top: 6px; font-size: 12.5px; color: var(--ink-3);
+  font-family: "Source Serif 4", Georgia, serif; }
+.needs-pricing { margin-top: 8px; font-size: 12px; color: var(--t-C);
+  border-top: 1px solid var(--line); padding-top: 7px; }
+
+.comparator-excluded { margin-top: 22px; font-size: 12.5px; color: var(--ink-3); }
+.comparator-excluded summary { cursor: pointer; }
+.comparator-excluded ul { margin: 9px 0 0; padding-left: 20px; }

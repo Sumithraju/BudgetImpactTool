@@ -12,6 +12,7 @@ import { ScenarioForm, type Draft } from "../features/scenario-builder/ScenarioF
 import { Results } from "../features/results/Results";
 import { ScenarioCompare, type SavedRun } from "../features/scenario-compare/ScenarioCompare";
 import { Evidence } from "../features/evidence/Evidence";
+import { ComparatorDiscovery } from "../features/comparator-discovery/ComparatorDiscovery";
 
 const DEFAULT_DRAFT: Draft = {
   name: "Wegovy obesity launch",
@@ -164,6 +165,11 @@ export function App() {
               </p>
             </div>
           )}
+
+          {/* Discovery sits above the result because it answers the question
+              that comes first: what is the world-without actually made of.
+              It runs independently of a calculation. */}
+          {indications.length > 0 && <ComparatorDiscovery indications={indications} />}
 
           {calculation && (
             <>

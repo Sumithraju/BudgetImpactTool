@@ -271,6 +271,60 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+/** M11 — one discovered molecule and why it scored what it scored. */
+export interface ScoreFactor {
+  name: string;
+  weight: number;
+  matched: boolean;
+}
+
+export interface DiscoveredDrug {
+  source_id: string;
+  name: string;
+  drug_type: string | null;
+  max_clinical_stage: string;
+  mechanism_of_action: string | null;
+  action_type: string | null;
+  target_symbol: string;
+  indications: string[];
+  competitor_class: string;
+  relevance: number;
+  rationale: string;
+  seeded_drug_id: number | null;
+  /** No price and no regimen, so it cannot enter a calculation yet
+   *  (M11 section 5.7). Rendered distinctly wherever it appears. */
+  needs_pricing: boolean;
+  sources: string[];
+  pathway_ids: string[];
+  factors: ScoreFactor[];
+}
+
+export interface ComparatorWarning {
+  code: string;
+  message: string;
+}
+
+export interface ComparatorBasket {
+  target_symbol: string;
+  target_id: string;
+  indication_id: number;
+  indication_name: string;
+  mechanism: string | null;
+  pathway_ids: string[];
+  direct: DiscoveredDrug[];
+  therapeutic: DiscoveredDrug[];
+  pipeline: DiscoveredDrug[];
+  excluded: DiscoveredDrug[];
+  warnings: ComparatorWarning[];
+}
+
+export interface ResolvedTarget {
+  symbol: string;
+  target_id: string;
+  uniprot_accession: string | null;
+  pathway_ids: string[];
+}
+
 export const api = {
   countries: () => request<CountryOption[]>("/api/v1/reference/countries"),
   indications: () => request<IndicationOption[]>("/api/v1/reference/indications"),
@@ -315,4 +369,25 @@ export const api = {
     }),
   psa: (id: string, iterations = 4000) =>
     request<Psa>(`/api/v1/scenarios/${id}/psa?iterations=${iterations}`),
+
+  resolveTarget: (symbol: string) =>
+    request<ResolvedTarget>(`/api/v1/comparators/targets/${encodeURIComponent(symbol)}`),
+
+  /** Pathway expansion is opt-in because it costs several seconds of extra
+   *  round trips — it is the only way to find a competitor acting on a
+   *  different target, and not every query needs one. */
+  discover: (
+    target: string,
+    indicationId: number,
+    mechanism: string | null,
+    includePathway: boolean,
+  ) => {
+    const q = new URLSearchParams({
+      target,
+      indication_id: String(indicationId),
+      include_pathway: String(includePathway),
+    });
+    if (mechanism) q.set("mechanism", mechanism);
+    return request<ComparatorBasket>(`/api/v1/comparators/discover?${q}`);
+  },
 };

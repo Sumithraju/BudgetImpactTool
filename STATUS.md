@@ -1,12 +1,16 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-24 · **Phase:** 5 of 5 — every phase in ARCHITECTURE.md §15 is done.
-**Five spec phases complete; Phase 6 complete bar one deliberate deferral** (§8) · **Deadline:** 2026-09-06
+**Last updated:** 2026-08-25 · **Phase:** 7 of 11 — the budget impact model is complete;
+the comparator intelligence layer is under construction.
+**Phases 1–6 complete** bar one deliberate deferral (§8) · **Phase 7 complete** ·
+**Phases 8–11 specified, not yet built** · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
-**This machine has all five phases done.** `./run.sh` brings up the API on :8077 and the
-interface on :5173; the database must already be running (§5.1).
+**This machine has phases 1–7 done.** `./run.sh` brings up the API on :8077 and the
+interface on :5173; the database must already be running (§5.1). Start the API **with
+`--reload`** — a server started without it serves the code it was launched with, which
+looks exactly like a frontend bug when the contract has moved underneath it.
 
 **Phase 1 detail:** git is initialized (main, clean),
 PostgreSQL 16 + pgvector are installed on port **5433** (5432 is held by a separate EDB
@@ -725,6 +729,59 @@ implies before writing a new price source's transform.
     decision, not an oversight.
 
     362 tests, mypy --strict and ruff clean across 54 files, tsc clean.
+
+18. **Phase 7 — Comparator Discovery (M11).** Done. The first of the five comparator
+    intelligence modules specified in ARCHITECTURE.md §4A.
+
+    Discovery answers the question that precedes every budget impact: *what would these
+    patients receive if this asset did not exist?* Give it a gene symbol and an indication
+    and it returns marketed and late-stage therapies acting on that target, classified into
+    direct, therapeutic and pipeline, ranked, each with a rationale a reader can check.
+
+    - **Retrieval is Open Targets alone, not Open Targets plus ChEMBL.** The spec planned
+      both. Measured against the live endpoints, ChEMBL took **27 seconds** for a
+      single-molecule lookup and rejected the batch filter outright, while Open Targets
+      returns mechanism, action type and indications in the same sub-second call that
+      returns the candidates. Two sources are not better than one when the second is slower
+      than the timeout and supplies nothing the first does not.
+    - **Open Targets' schema has moved.** The field is `drugAndClinicalCandidates`, not the
+      `knownDrugs` that most documentation and most training data still describe;
+      `Drug.isApproved` and `maximumClinicalTrialPhase` are gone and approval is read from
+      `maxClinicalStage`. Verified against the live endpoint 2026-08-24, and the date is in
+      the source. A renamed field fails loudly; a renamed *enum value* would not.
+    - **Pathway expansion is the part that earns its keep.** Target-based retrieval on GLP1R
+      cannot see a GIPR agonist — and for an obesity asset the GIPR and GCGR co-agonists are
+      precisely the competitors that matter. Reactome's UniProt mapping gives the pathways;
+      the most specific one (fewest participants — "Glucagon-type ligand receptors", 33, not
+      "G alpha (s) signalling events", 158) is expanded into, its participants resolved in
+      one batched call and queried in one more. Opt-in, because it costs ~6 s against ~1.4 s
+      without it.
+    - **A test caught a real defect.** `"agonist" in "antagonist"` is true, so substring
+      matching classified every antagonist as an agonist — a drug doing the opposite of what
+      was asked for, promoted to direct competitor. Fixed with word boundaries. The fixture
+      that first "passed" was itself wrong: it kept an agonist mechanism string on an
+      ANTAGONIST candidate, describing a molecule that cannot exist. A test built on an
+      impossible fixture proves nothing, so the fixture now derives its mechanism text from
+      the action type.
+    - **Scoring is a weighted mean, not a fixed sum.** Market and line-of-therapy match are
+      in the brief's score but no public source supplies either, so they participate only
+      once M12 has curated them, and the score re-normalises over the factors actually in
+      play. A candidate with no stated line of therapy is not scored as a *mismatch* — that
+      would rank a well-documented poor match above a barely-documented good one.
+    - **Measured, then reverted.** Probing three pathways is three independent round trips
+      and the obvious move is to run them concurrently. Measured: median 1.42 s sequential
+      against 1.72 s concurrent, inside the run-to-run noise. Reactome does not reward the
+      machinery, so the machinery is gone and the measurement is in the comment explaining
+      why.
+
+    **Live behaviour**, GLP1R + obesity: 6 direct (semaglutide, tirzepatide, liraglutide,
+    dulaglutide, exenatide, lixisenatide), 4 pipeline (retatrutide and survodutide at Phase
+    III, efinopegdutide and avexitide), 9 excluded as indicated for another disease. Four of
+    the six direct are already priced in this system; the rest are flagged `needs_pricing`
+    and cannot enter a calculation until M12 exists to promote them.
+
+    390 tests — 387 offline, plus 3 marked `network` and deselected by default so the
+    standard run stays offline and deterministic. mypy --strict and ruff clean, tsc clean.
 
 17. **What remains outside the code.**
     - **The deck and the project report.** Hackathon deliverables in their own right,
