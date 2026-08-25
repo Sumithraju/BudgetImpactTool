@@ -147,9 +147,9 @@ export function ComparatorDiscovery({
     <section className="comparator">
       <h2>Comparator discovery</h2>
       <p className="lede">
-        What would these patients receive if this asset did not exist? Enter the target and the
-        indication; the marketed and late-stage therapies acting on it come back ranked, with the
-        reason for each.
+        The comparator set defines the world without the new asset. Enter the molecular target
+        and the indication; marketed and late-stage therapies acting on that target are
+        returned classified and ranked, each with the rationale behind its score.
       </p>
 
       <div className="comparator-controls">

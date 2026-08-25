@@ -306,6 +306,40 @@ approximation with an observed UN World Population Prospects single-year figure 
 sourced, and functions correctly without it. Not written this session; worth doing before the
 numbers go in front of anyone who'd weight the difference between tier A and B.
 
+### 5.5 Placeholder demo data — to be replaced with public sources
+
+`scripts/demo_data.py` loads an invented dataset so every screen has something to show. It is a
+stopgap, and **the intent is to replace it with the real thing from publicly available sources.**
+Until then: `python scripts/demo_data.py purge` returns the database to seeded-and-cited data,
+and `status` says what is which.
+
+Everything it writes is tier D and carries `DEMO PLACEHOLDER` in its `source`, so it surfaces as
+a placeholder through machinery that already exists — `TIER_D_INPUT` warnings, a critical M15
+ranking, and a flagged row in the assumption register of every export.
+
+**What is placeholder now, and what replaces it.** Grouped by how obtainable the real figure
+actually is, because these are not the same problem:
+
+| Placeholder | Rows | Public source that replaces it |
+|---|---:|---|
+| Prices for exenatide, lixisenatide, albiglutide | 3 | **CMS NADAC** — already the basis Saxenda uses, so the ingestion path exists. Manufacturer list-price disclosures for the branded ones |
+| Regimens (dose, frequency) for all 7 | 7 | **openFDA / DailyMed labels** — already ingested by M0; dose and schedule are on the label |
+| Adverse-event incidences | 32 | **ClinicalTrials.gov results API** — the method already worked this session for STEP 1, SURMOUNT-1 and SCALE. Verified 2026-08-25 that posted results exist in quantity for all three: exenatide **128** trials, lixisenatide **27**, albiglutide **24**. Picking the registrational one per drug is the work |
+| Adverse-event unit costs, 9 markets | 36 | **NHS National Cost Collection** (GBR), **ATIH/GHS tariffs** (FRA), **EBM/DRG catalogues** (DEU), **MHLW fee schedule** (JPN). All published and downloadable |
+| 12-month persistence for all 7 | 7 | Published retrospective claims analyses. No API — this one is a literature search, not a fetch |
+
+**Four of the seven can never be replaced by an observation, and should stop being described as
+placeholder.** Retatrutide, survodutide, danuglipron and efinopegdutide are unapproved: there is
+no price to find, in any database, because none has been struck. Their prices are assumptions
+now and will still be assumptions after every public source has been exhausted. The honest
+treatment is the one M14 §5.5 already specifies — tier D, stated as an assumption, varied in
+sensitivity analysis — not a note promising to look them up later.
+
+The same is true of their adverse-event profiles in any indication they are not yet approved in,
+and of every entrant plateau share.
+
+---
+
 ---
 
 ## 6. Action items for you
@@ -322,6 +356,13 @@ numbers go in front of anyone who'd weight the difference between tier A and B.
    same live API this pipeline already calls for other indicators. See §5.3.
 4. **Optional: source observed 15-17 population shares** for `data/seed/age_bands.csv` — see §5.4.
    Not blocking anything.
+5. **Replace the placeholder demo dataset with public sources** — see §5.5 for the table of what
+   each row needs and where it comes from. Highest value per hour is the adverse-event
+   incidences: the ClinicalTrials.gov results API already worked this session, and posted
+   results exist for all three marketed therapies (checked — 128, 27 and 24 trials
+   respectively). Lowest value is chasing prices for the four unapproved assets, which do not
+   exist anywhere.
+   **Run `python scripts/demo_data.py purge` before any number from this reaches a slide.**
 
 ---
 

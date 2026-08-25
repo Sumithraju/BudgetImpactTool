@@ -142,8 +142,12 @@ export function App() {
     <div className="shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">Budget Impact Estimation Tool</div>
-          <h1>What would launching this asset cost the payer?</h1>
+          <div className="eyebrow">BIET · Pricing &amp; Market Access</div>
+          <h1>Budget Impact Estimation</h1>
+          <p className="tagline">
+            Indication-specific, multi-market, ISPOR-aligned — every input traceable to
+            its source and its confidence tier.
+          </p>
         </div>
         <div className="topmeta">
           {calculation && (
@@ -180,8 +184,8 @@ export function App() {
           {!calculation && !error && (
             <div className="empty">
               <p>
-                Set the scenario on the left and run it. Every figure that comes back carries
-                the source it was resolved from and how much weight it deserves.
+                Define the scenario on the left and run it. Every figure returned carries the
+                source it was resolved from, its vintage and its confidence tier.
               </p>
             </div>
           )}
