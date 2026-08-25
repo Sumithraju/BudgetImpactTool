@@ -2,10 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "biet",
-      "runtimeExecutable": "./run.sh",
-      "runtimeArgs": [],
-      "port": 5173
+      "name": "biet-ui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
+      "port": 5173,
+      "autoPort": true
     }
   ]
 }
