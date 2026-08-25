@@ -1195,7 +1195,7 @@ from then on, which is precisely the failure this system is built to avoid.
     presentation, not construction.
 
 18. **Phases 12–18 — the two HEOR review rounds.** Specified in full; Phase 12's engine
-    module is the only part built. The order below is dependency-driven and is explained in
+    module and the first slice of Phase 16 are the only parts built. The order below is dependency-driven and is explained in
     §10; a build prompt per phase is in [docs/PROMPTS.md](docs/PROMPTS.md).
 
     | Phase | Module | Delivers | State |
@@ -1211,6 +1211,29 @@ from then on, which is precisely the failure this system is built to avoid.
     **Start with Phase 12's remainder, then Phase 13.** Finishing M16 is a day's work against
     a module that already passes its own tests, and M18 is the hinge — every phase after it
     reads the scenario shape it defines, so anything built ahead of it is built twice.
+
+    **Built out of order, on 2026-08-25, after the tool was seen running.** Tabs, a
+    new-intervention input and comparator import — the parts of Phases 16 and 17 an
+    analyst hits first. The interface was one scrolling column with no way to enter the
+    new therapy's own costs and no way to load a comparator set that already existed.
+
+    - `Tabs` in `shared/`, WAI-ARIA keyboard pattern, replacing the scroll with six
+      panels: Current care, Import, New intervention, Results, Evidence, Compare.
+    - `features/new-intervention/` — product, route, dose, frequency and the four annual
+      costs, totalling to a gross cost per patient that says on screen that it is *not* a
+      budget impact. Non-negotiable 2 is what an interface erodes first.
+    - `features/comparator-import/` and `POST /comparators/import` — .xlsx and .csv
+      through one parser, cell-level findings, whole-file rejection, plus a template
+      endpoint. M19 sections 5.1–5.6, minus registry writes: an imported row is validated,
+      not registered, and reaches a calculation through M12's promotion path so the
+      registry stays the single record of what a drug is.
+    - `requirements.txt` gained `python-multipart` — FastAPI cannot accept an upload
+      without it, and it was missing.
+
+    Three M19 rules are load-bearing here and are tested: every finding carries its sheet
+    and cell, all findings return in one pass, and any error rejects the whole file.
+    Columns match by label so an inserted column does not shift every value one place.
+    28 new tests; 461 passing overall.
 
     **The one thing worth deciding before writing code:** whether the hackathon demo needs
     Phases 15–17 more than it needs 13–14. The dependency order says subgroups first; a

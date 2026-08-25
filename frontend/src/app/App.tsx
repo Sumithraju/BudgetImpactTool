@@ -15,6 +15,13 @@ import { ScenarioCompare, type SavedRun } from "../features/scenario-compare/Sce
 import { Evidence } from "../features/evidence/Evidence";
 import { ComparatorDiscovery } from "../features/comparator-discovery/ComparatorDiscovery";
 import { ComparatorRegistry } from "../features/comparator-discovery/ComparatorRegistry";
+import { ComparatorImport } from "../features/comparator-import/ComparatorImport";
+import {
+  NewIntervention,
+  EMPTY_INTERVENTION,
+  type InterventionDraft,
+} from "../features/new-intervention/NewIntervention";
+import { Tabs, type TabDefinition } from "../shared/Tabs";
 
 const DEFAULT_DRAFT: Draft = {
   name: "Wegovy obesity launch",
@@ -58,6 +65,18 @@ export function App() {
   /** M14. Projecting the launch-year landscape is a scenario variant, not a
    *  base case: every entrant admitted rests on three tier-D assumptions. */
   const [projectLandscape, setProjectLandscape] = useState(false);
+
+  /** Which tab is open. Ephemeral UI state — it does not belong in the
+   *  scenario, and a run does not reset it. */
+  const [tab, setTab] = useState("comparators");
+
+  /** The new therapy's own costs. Held here rather than in the scenario
+   *  because the priced comparator the engine reads still comes from the
+   *  registry; this panel is the intake for that, not a second cost path. */
+  const [intervention, setIntervention] = useState<InterventionDraft>({
+    ...EMPTY_INTERVENTION,
+    name: DEFAULT_DRAFT.assetName,
+  });
 
   useEffect(() => {
     Promise.all([api.countries(), api.indications(), api.affordabilityBands()])
@@ -138,6 +157,80 @@ export function App() {
     }
   }, [draft, overrides, projectLandscape]);
 
+  /** The tabs, in the order the model runs: what the world without the asset
+   *  is made of, what is being introduced, then what the difference costs.
+   *  A tab whose data has not arrived says so rather than rendering empty. */
+  const tabs: TabDefinition[] = [
+    {
+      id: "comparators",
+      label: "Current care",
+      badge: indications.length > 0 ? undefined : "…",
+      content:
+        indications.length > 0 ? (
+          <>
+            <ComparatorDiscovery
+              indications={indications}
+              onIndicationChange={setComparatorIndication}
+              onRegistered={() => setRegistryToken((n) => n + 1)}
+            />
+            <ComparatorRegistry
+              indicationId={comparatorIndication}
+              countries={countries}
+              reloadToken={registryToken}
+            />
+          </>
+        ) : (
+          <div className="empty"><p>Loading reference data from the API…</p></div>
+        ),
+    },
+    {
+      id: "import",
+      label: "Import",
+      content: <ComparatorImport />,
+    },
+    {
+      id: "intervention",
+      label: "New intervention",
+      content: (
+        <NewIntervention
+          draft={intervention}
+          currency={draft.reportingCurrency}
+          onChange={setIntervention}
+        />
+      ),
+    },
+    {
+      id: "results",
+      label: "Results",
+      badge: calculation ? undefined : "—",
+      content: calculation ? (
+        <Results calculation={calculation} owsa={owsa} psa={psa} gaps={gaps} bands={bands} />
+      ) : (
+        <div className="empty">
+          <p>
+            Define the scenario on the left and run it. Every figure returned carries the
+            source it was resolved from, its vintage and its confidence tier.
+          </p>
+        </div>
+      ),
+    },
+    {
+      id: "evidence",
+      label: "Evidence",
+      content: calculation ? (
+        <Evidence scenarioId={calculation.scenario_id} />
+      ) : (
+        <div className="empty"><p>Run a scenario to generate its cited narrative.</p></div>
+      ),
+    },
+    {
+      id: "compare",
+      label: "Compare",
+      badge: saved.length || undefined,
+      content: <ScenarioCompare saved={saved} />,
+    },
+  ];
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -181,46 +274,7 @@ export function App() {
             </div>
           )}
 
-          {!calculation && !error && (
-            <div className="empty">
-              <p>
-                Define the scenario on the left and run it. Every figure returned carries the
-                source it was resolved from, its vintage and its confidence tier.
-              </p>
-            </div>
-          )}
-
-          {/* Discovery sits above the result because it answers the question
-              that comes first: what is the world-without actually made of.
-              It runs independently of a calculation. */}
-          {indications.length > 0 && (
-            <>
-              <ComparatorDiscovery
-                indications={indications}
-                onIndicationChange={setComparatorIndication}
-                onRegistered={() => setRegistryToken((n) => n + 1)}
-              />
-              <ComparatorRegistry
-                indicationId={comparatorIndication}
-                countries={countries}
-                reloadToken={registryToken}
-              />
-            </>
-          )}
-
-          {calculation && (
-            <>
-              <Results
-                calculation={calculation}
-                owsa={owsa}
-                psa={psa}
-                gaps={gaps}
-                bands={bands}
-              />
-              <Evidence scenarioId={calculation.scenario_id} />
-              <ScenarioCompare saved={saved} />
-            </>
-          )}
+          <Tabs tabs={tabs} activeId={tab} onChange={setTab} />
         </main>
       </div>
     </div>

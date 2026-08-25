@@ -4,12 +4,16 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from ..constants.comparator import CompetitorClass
+from ..constants.workbook import WorkbookColumn
 from ..dal import get_session
+from ..repositories.reference import ReferenceRepository
 from ..schemas.comparator import AssetIntake, PromotionRequest, RegisteredAsset
+from ..schemas.comparator_import import ComparatorImportResult
+from ..services.comparator_import_service import ComparatorImportService
 from ..services.comparator_registry_service import ComparatorRegistryService
 from ..services.comparator_service import ComparatorService
 from ..services.landscape_service import LandscapeService
@@ -140,3 +144,42 @@ def landscape(
     return LandscapeService(session).preview(
         indication_id, launch_year=launch_year, horizon_years=horizon_years,
     )
+
+
+@router.get("/import/template")
+def import_template() -> Response:
+    """The empty comparator file, headers in place.
+
+    Offered before the upload control, because the first question an analyst
+    has is what shape the file should be (M19 section 9).
+    """
+    header = ",".join(column.value for column in WorkbookColumn)
+    example = "Ozempic,Standard of care,DEU,EUR,40,1200,0,150,60,EMA list price,B"
+    body = f"{header}\n{example}\n"
+    return Response(
+        content=body,
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="comparators-template.csv"'},
+    )
+
+
+@router.post("/import")
+async def import_comparators(
+    session: SessionDep,
+    file: Annotated[UploadFile, File()],
+) -> ComparatorImportResult:
+    """Validate an uploaded comparator sheet — M19 sections 5.1 to 5.4.
+
+    Validation only: nothing is written. An accepted result carries the parsed
+    rows for review, and a row reaches the registry through M12's promotion
+    path, which requires a regimen and a priced source. Letting a spreadsheet
+    write to the registry directly would make it two records of what a drug is
+    rather than one (M19 section 5.6).
+    """
+    reference = ReferenceRepository(session)
+    rates, _ = reference.load_fx_snapshot()
+    service = ComparatorImportService(
+        known_markets=frozenset(reference.list_active_country_codes()),
+        known_currencies=frozenset(rates),
+    )
+    return service.parse(await file.read(), file.filename or "upload")

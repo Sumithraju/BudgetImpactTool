@@ -35,6 +35,7 @@ ruff==0.16.4
 # --- API (Phase 3) -----------------------------------------------------------
 fastapi==0.141.1
 uvicorn==0.52.4
+python-multipart==0.0.20     # FastAPI file uploads — M19 workbook import
 
 # --- evidence, narrative and export (Phase 5) --------------------------------
 anthropic==1.0.0           # optional: narrative drafting; falls back without a key
