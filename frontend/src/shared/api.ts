@@ -234,6 +234,27 @@ export interface SafetyComparison {
   events: SafetyEventRow[];
 }
 
+/** M15 — what to go and find out, ranked. */
+export interface EvidenceGap {
+  parameter_path: string;
+  label: string;
+  swing: number;
+  influence: number;
+  confidence_tier: string;
+  weakness: number;
+  priority_score: number;
+  priority: string;
+  source: string;
+  has_provenance: boolean;
+}
+
+export interface EvidenceGapReport {
+  scenario_id: string;
+  currency: string;
+  max_swing: number;
+  gaps: EvidenceGap[];
+}
+
 export interface CountryOption {
   country_code: string;
   country_name: string;
@@ -453,6 +474,9 @@ export const api = {
     ),
 
   owsa: (id: string) => request<Owsa>(`/api/v1/scenarios/${id}/owsa`),
+
+  evidenceGaps: (id: string) =>
+    request<EvidenceGapReport>(`/api/v1/scenarios/${id}/evidence-gaps`),
 
   affordabilityBands: () =>
     request<Record<string, number>>("/api/v1/reference/affordability-bands"),

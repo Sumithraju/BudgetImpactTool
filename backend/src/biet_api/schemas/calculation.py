@@ -164,6 +164,32 @@ class OwsaResponse(BaseModel):
     warnings: list[WarningRead] = Field(default_factory=list)
 
 
+class EvidenceGapRead(BaseModel):
+    parameter_path: str
+    label: str
+    swing: float
+    influence: float
+    confidence_tier: str
+    weakness: float
+    priority_score: float
+    priority: str
+    source: str
+    has_provenance: bool
+
+
+class EvidenceGapResponse(BaseModel):
+    """M15. What to go and find out, ranked.
+
+    Sensitivity says what moves the answer; tiers say what is weakly founded.
+    Only the product says what is worth acquiring evidence for.
+    """
+
+    scenario_id: uuid.UUID
+    currency: str
+    max_swing: float
+    gaps: list[EvidenceGapRead]
+
+
 class PsaResponse(BaseModel):
     scenario_id: uuid.UUID
     currency: str

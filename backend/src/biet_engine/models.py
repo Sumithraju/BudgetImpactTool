@@ -22,6 +22,7 @@ from .constants import (
     ConfidenceTier,
     CostComponent,
     CriterionType,
+    EvidencePriority,
     FunnelStage,
     PriceBasis,
     ResolutionLevel,
@@ -398,6 +399,36 @@ class MarketMix(BaseModel):
     # whenever displacement redistribution occurs, and a pure function has no
     # other channel to surface that (biet-backend skill section 8.6).
     warnings: tuple[Warning_, ...] = ()
+
+
+# --------------------------------------------------------------------------- M15 — Evidence-Gap Intelligence
+
+
+class EvidenceGap(BaseModel):
+    """One parameter, and what it is worth going and finding out about."""
+
+    model_config = ConfigDict(frozen=True)
+
+    parameter_path: str
+    label: str
+    swing: Money                             # from M9, reporting currency
+    influence: float                         # swing / max swing, [0, 1]
+    confidence_tier: ConfidenceTier
+    weakness: float                          # W(tier)
+    priority_score: float                    # influence x weakness
+    priority: EvidencePriority
+    source: str                              # what the value currently rests on
+    #: False when nothing supplied a provenance and tier D was assumed. The
+    #: distinction matters: an admitted placeholder and an unattributed value
+    #: score the same and are not the same problem.
+    has_provenance: bool = True
+
+
+class EvidenceGapReport(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    gaps: tuple[EvidenceGap, ...]            # ranked, highest priority first
+    max_swing: Money
 
 
 # --------------------------------------------------------------------------- M14 — Launch-Year Landscape

@@ -1,8 +1,9 @@
 import { useState } from "react";
-import type { Calculation, Owsa, Psa } from "../../shared/api";
+import type { Calculation, EvidenceGapReport, Owsa, Psa } from "../../shared/api";
 import { AffordabilityGauge } from "../affordability/AffordabilityGauge";
 import { PriceCorridor } from "../price-solver/PriceCorridor";
 import { CostBridge } from "./CostBridge";
+import { EvidencePriority } from "./EvidencePriority";
 import {
   BASIS_LABELS,
   STAGE_LABELS,
@@ -22,11 +23,13 @@ const Tier = ({ tier }: { tier: string }) => (
 export function Results({
   calculation,
   owsa,
+  gaps,
   psa,
   bands,
 }: {
   calculation: Calculation;
   owsa: Owsa | null;
+  gaps: EvidenceGapReport | null;
   psa: Psa | null;
   bands: Record<string, number>;
 }) {
@@ -218,6 +221,9 @@ export function Results({
           <Tornado owsa={owsa} />
         </section>
       )}
+
+      {/* evidence priority — M15, beside the tornado it reinterprets -- */}
+      {gaps && <EvidencePriority report={gaps} />}
 
       {/* psa --------------------------------------------------------- */}
       {psa && (

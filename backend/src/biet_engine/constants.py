@@ -59,6 +59,15 @@ class CriterionType(StrEnum):
     PRIOR_FAILURE = "prior_failure"
 
 
+class EvidencePriority(StrEnum):
+    """What a parameter is worth going and finding out (M15 section 5.2)."""
+
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    SUFFICIENT = "sufficient"
+
+
 class CostComponent(StrEnum):
     """The parts an annual therapy cost is built from (M5 section 5.5).
 
@@ -101,6 +110,27 @@ class SolverMethod(StrEnum):
 
 #: A rate/factor/probability is a fraction in this half-open-at-zero,
 #: closed-at-one interval (CLAUDE.md non-negotiable 5).
+#: M15. How weak a tier's evidence is, as a multiplier on influence.
+#:
+#: Tier A is 0.05 rather than 0 deliberately: a published country-specific
+#: figure can still be the thing most worth re-checking if it dominates the
+#: tornado, and a weight of zero would make that impossible to see. The gap
+#: between C and D is the widest because it is the one that matters — an
+#: analogue-derived assumption is an analysis, a placeholder is an admission.
+TIER_WEAKNESS: Final[dict[ConfidenceTier, float]] = {
+    ConfidenceTier.A: 0.05,
+    ConfidenceTier.B: 0.25,
+    ConfidenceTier.C: 0.60,
+    ConfidenceTier.D: 1.00,
+}
+
+#: M15. Priority bands on influence x weakness.
+EVIDENCE_PRIORITY_THRESHOLDS: Final[dict[EvidencePriority, float]] = {
+    EvidencePriority.CRITICAL: 0.50,
+    EvidencePriority.HIGH: 0.25,
+    EvidencePriority.MEDIUM: 0.10,
+}
+
 #: M14. Interval from a trial's primary completion to approval, for a
 #: priority-review asset with a clean readout — optimistic for anything else,
 #: and a sensitivity lever rather than a fact.

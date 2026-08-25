@@ -5,6 +5,7 @@ import {
   type Calculation,
   type CountryOption,
   type IndicationOption,
+  type EvidenceGapReport,
   type Owsa,
   type Psa,
 } from "../shared/api";
@@ -39,6 +40,7 @@ export function App() {
   const [calculation, setCalculation] = useState<Calculation | null>(null);
   const [owsa, setOwsa] = useState<Owsa | null>(null);
   const [psa, setPsa] = useState<Psa | null>(null);
+  const [gaps, setGaps] = useState<EvidenceGapReport | null>(null);
 
   /** Every run this session, so any two can be compared. Kept in memory
    *  rather than re-fetched: the scenarios are already persisted server-side
@@ -106,6 +108,7 @@ export function App() {
       setCalculation(result);
       setOwsa(null);
       setPsa(null);
+      setGaps(null);
       setSaved((current) => [
         ...current,
         {
@@ -116,12 +119,16 @@ export function App() {
         },
       ]);
 
-      const [o, p] = await Promise.all([
+      // M15's ranking needs the same sweep the tornado does, so all three
+      // are fetched together rather than the panel triggering a second one.
+      const [o, p, g] = await Promise.all([
         api.owsa(scenario.scenario_id),
         api.psa(scenario.scenario_id, 4000),
+        api.evidenceGaps(scenario.scenario_id),
       ]);
       setOwsa(o);
       setPsa(p);
+      setGaps(g);
     } catch (e) {
       const err = e as ApiError;
       setError({ message: err.message, field: err.field });
@@ -199,7 +206,13 @@ export function App() {
 
           {calculation && (
             <>
-              <Results calculation={calculation} owsa={owsa} psa={psa} bands={bands} />
+              <Results
+                calculation={calculation}
+                owsa={owsa}
+                psa={psa}
+                gaps={gaps}
+                bands={bands}
+              />
               <Evidence scenarioId={calculation.scenario_id} />
               <ScenarioCompare saved={saved} />
             </>

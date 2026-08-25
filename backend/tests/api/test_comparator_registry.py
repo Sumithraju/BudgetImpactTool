@@ -544,3 +544,72 @@ def test_an_entrant_without_a_plateau_share_is_skipped(
     response, _ = _calculate(session, project=True)
     skipped = [w for w in response.warnings if w.code == "PIPELINE_ENTRANT_SKIPPED"]
     assert any("plateau share" in w.message for w in skipped)
+
+
+# --------------------------------------------------------------------------- M15 integration
+
+
+def test_evidence_gaps_rank_differently_from_the_tornado(session: Session) -> None:
+    """M15's whole justification. If the ranking always matched the swing
+    ordering, the module would be a relabelled tornado.
+
+    On the seeded data, adult share has the second-largest swing and a tier-B
+    World Bank source, while treatment rate is derived and tier C — so the
+    evidence ranking moves adult share down and treatment rate up.
+    """
+    import uuid as _uuid
+
+    from biet_api.models.scenario import Scenario
+    from biet_api.services.evidence_gap_service import EvidenceGapService
+
+    scenario = Scenario(
+        scenario_id=_uuid.uuid4(), name=f"{PREFIX} gaps", indication_id=OBESITY,
+        asset_name="Wegovy", launch_year=2028, horizon_years=3,
+        reporting_currency="USD", country_codes=["USA"],
+    )
+    report, currency = EvidenceGapService(session).rank(scenario)
+
+    assert currency == "USD"
+    assert report.gaps, "the seeded scenario has swept parameters"
+
+    by_swing = sorted(report.gaps, key=lambda g: -g.swing.amount)
+    by_priority = list(report.gaps)
+    assert [g.parameter_path for g in by_swing] != [
+        g.parameter_path for g in by_priority
+    ], "evidence weakness must reorder the tornado, not reproduce it"
+
+
+def test_every_gap_states_its_source_and_carries_a_band(session: Session) -> None:
+    import uuid as _uuid
+
+    from biet_api.models.scenario import Scenario
+    from biet_api.services.evidence_gap_service import EvidenceGapService
+
+    scenario = Scenario(
+        scenario_id=_uuid.uuid4(), name=f"{PREFIX} gaps2", indication_id=OBESITY,
+        asset_name="Wegovy", launch_year=2028, horizon_years=3,
+        reporting_currency="USD", country_codes=["USA"],
+    )
+    report, _ = EvidenceGapService(session).rank(scenario)
+
+    for gap in report.gaps:
+        assert gap.source.strip(), "a reader needs to know what the value rests on"
+        assert 0.0 <= gap.influence <= 1.0
+        assert 0.0 <= gap.priority_score <= 1.0
+
+
+def test_a_published_prevalence_does_not_top_the_research_list(session: Session) -> None:
+    """WHO prevalence is tier A. It moves the answer, and it is not what an
+    analyst should go and re-derive."""
+    import uuid as _uuid
+
+    from biet_api.models.scenario import Scenario
+    from biet_api.services.evidence_gap_service import EvidenceGapService
+
+    scenario = Scenario(
+        scenario_id=_uuid.uuid4(), name=f"{PREFIX} gaps3", indication_id=OBESITY,
+        asset_name="Wegovy", launch_year=2028, horizon_years=3,
+        reporting_currency="USD", country_codes=["USA"],
+    )
+    report, _ = EvidenceGapService(session).rank(scenario)
+    assert report.gaps[0].parameter_path != "epidemiology.prevalence"

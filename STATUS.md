@@ -1,13 +1,12 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-25 · **Phase:** 10 of 11 — the budget impact model is complete;
-the comparator intelligence layer is under construction.
-**Phases 1–6 complete** bar one deliberate deferral (§8) · **Phases 7–10 complete** ·
-**Phase 11 specified, not yet built** · **Deadline:** 2026-09-06
+**Last updated:** 2026-08-25 · **Phase:** 11 of 11 — the budget impact model and the
+comparator intelligence layer on top of it are both complete.
+**All eleven phases complete**, bar one deliberate deferral (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
-**This machine has phases 1–10 done.** `./run.sh` brings up the API on :8077 and the
+**This machine has all eleven phases done.** `./run.sh` brings up the API on :8077 and the
 interface on :5173; the database must already be running (§5.1). Start the API **with
 `--reload`** — a server started without it serves the code it was launched with, which
 looks exactly like a frontend bug when the contract has moved underneath it.
@@ -922,6 +921,50 @@ implies before writing a new price source's transform.
     different states, and merging them overstated what was known.
 
     459 tests (3 network-marked), 24 new.
+
+22. **Phase 11 — Evidence-Gap Intelligence (M15).** Done, and the cheapest of the five to
+    build because everything it needs already existed: M9 computes how much each input moves
+    the answer, and every resolved value already carries a confidence tier. Neither alone
+    answers the question an analyst actually has after reading a tornado, which is not "what
+    is uncertain" but "what should I go and find out".
+
+    ```
+    influence = swing / max(swing)
+    priority  = influence x weakness(tier)       A 0.05 · B 0.25 · C 0.60 · D 1.00
+    ```
+
+    **On the seeded USA scenario it reorders the tornado, which is the entire point:**
+
+    | Parameter | Swing | Tier | Tornado rank | Evidence rank |
+    |---|---:|:--:|:--:|:--:|
+    | Treatment rate | €1.5bn | C | 1 | **1 — critical** |
+    | Adult share | €1.28bn | B | 2 | **3 — medium** |
+    | Access rate | €987m | C | 3 | **2 — high** |
+    | Disease prevalence | €311m | A | 4 | **5 — sufficient** |
+
+    Adult share has the second-largest swing in the model and is World Bank data. The
+    tornado nominates it second; the evidence ranking correctly demotes it, because
+    re-deriving a World Bank population series is not what will improve this answer.
+    Prevalence moves €311m and is tier-A WHO data — settled. Treatment rate is derived
+    rather than observed, and is where a week of research would actually pay.
+
+    Two deliberate design points: **tier A is weighted 0.05, not zero**, so a published
+    figure that dominates the tornado can still surface; and **a zero-swing parameter scores
+    zero however weak its source**, because time spent pinning down a value that cannot move
+    the result is time not spent on the one that can. A parameter with no provenance at all
+    is treated as tier D *and flagged* — an admitted placeholder and an unattributed value
+    score the same and are not the same problem.
+
+    478 tests (3 network-marked), 19 new.
+
+---
+
+**The comparator intelligence layer is complete.** The end-to-end path the brief asked for
+runs: enter a target and an indication → discover marketed and pipeline competitors from
+public APIs → register and price one → it enters the world-without → see the cost difference
+decomposed into price, administration, monitoring and adverse events → project the market as
+it will be at launch → and get a ranked list of what to go and find out. Every value on that
+path carries its source, its vintage and its confidence tier.
 
 17. **What remains outside the code.**
     - **The deck and the project report.** Hackathon deliverables in their own right,

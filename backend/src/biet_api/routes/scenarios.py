@@ -21,6 +21,8 @@ from ..schemas.calculation import (
     CompareRequest,
     CompareResponse,
     CorridorEntryRead,
+    EvidenceGapRead,
+    EvidenceGapResponse,
     OwsaResponse,
     PsaResponse,
     RunDetail,
@@ -40,6 +42,7 @@ from ..schemas.scenario import (
     ScenarioUpdate,
 )
 from ..services.calculation_service import CalculationService
+from ..services.evidence_gap_service import EvidenceGapService
 from ..services.scenario_service import ScenarioService
 
 router = APIRouter(prefix="/api/v1", tags=["scenarios"])
@@ -330,4 +333,37 @@ def compare(payload: CompareRequest, session: SessionDep) -> CompareResponse:
         indication_id=scenarios[0].indication_id,
         reporting_currency=scenarios[0].reporting_currency,
         results=results, diff=diff,
+    )
+
+
+@router.get("/scenarios/{scenario_id}/evidence-gaps")
+def evidence_gaps(scenario_id: uuid.UUID, session: SessionDep) -> EvidenceGapResponse:
+    """Parameters ranked by influence times evidence weakness (M15).
+
+    A tornado says which assumptions move the answer. This says which of
+    those are worth doing something about — a high-swing parameter with a
+    published country-specific source is settled, and a high-swing
+    placeholder is the reason the answer cannot yet be trusted.
+    """
+    scenario = ScenarioService(session).require(scenario_id)
+    report, currency = EvidenceGapService(session).rank(scenario)
+    return EvidenceGapResponse(
+        scenario_id=scenario_id,
+        currency=currency,
+        max_swing=report.max_swing.amount,
+        gaps=[
+            EvidenceGapRead(
+                parameter_path=g.parameter_path,
+                label=g.label,
+                swing=g.swing.amount,
+                influence=g.influence,
+                confidence_tier=str(g.confidence_tier),
+                weakness=g.weakness,
+                priority_score=g.priority_score,
+                priority=str(g.priority),
+                source=g.source,
+                has_provenance=g.has_provenance,
+            )
+            for g in report.gaps
+        ],
     )
