@@ -100,17 +100,58 @@ def test_every_resolved_value_carries_provenance(
 
 
 def test_unpriced_market_falls_back_to_ppp_derivation(
-    session: Session, scenario: Scenario,
+    session: Session,
 ) -> None:
-    """Only the USA has seeded branded prices (M0 section 5.4), so Germany's
-    must be derived — and must say so, since a derived price is a modelling
-    assumption rather than an observation (M5 section 5.3)."""
-    engine_input, _ = EngineInputBuilder(session).build(scenario)
+    """A market with no seeded price must derive one, and must say so — a
+    derived price is a modelling assumption, not an observation (M5 5.3).
+
+    USA, DEU and GBR now carry observed prices, so Japan is the market that
+    exercises this path. If Japanese prices are ever seeded, move this to
+    another unpriced market rather than deleting it.
+    """
+    row = Scenario(
+        name="ppp fixture", indication_id=1, asset_name="Test Asset",
+        launch_year=2028, horizon_years=3, reporting_currency="EUR",
+        country_codes=["USA", "JPN"],
+    )
+    session.add(row)
+    session.flush()
+
+    engine_input, _ = EngineInputBuilder(session).build(row)
     by_code = {c.country_code: c for c in engine_input.countries}
 
     assert by_code["USA"].new_therapy.price_basis is not PriceBasis.PPP_DERIVED
-    assert by_code["DEU"].new_therapy.price_basis is PriceBasis.PPP_DERIVED
-    assert "parity" in by_code["DEU"].new_therapy.price_provenance.source.lower()
+    assert by_code["JPN"].new_therapy.price_basis is PriceBasis.PPP_DERIVED
+    assert "parity" in by_code["JPN"].new_therapy.price_provenance.source.lower()
+
+
+def test_observed_price_beats_derivation_where_one_is_seeded(
+    session: Session, scenario: Scenario,
+) -> None:
+    """Germany now has an observed list price, so it should not be deriving
+    one. (The UK likewise, but this fixture's markets are DEU and USA.)"""
+    engine_input, _ = EngineInputBuilder(session).build(scenario)
+    by_code = {c.country_code: c for c in engine_input.countries}
+
+    assert by_code["DEU"].new_therapy.price_basis is PriceBasis.LIST
+
+
+def test_market_mixing_observed_and_derived_prices_is_flagged(
+    session: Session, scenario: Scenario,
+) -> None:
+    """The comparison stops being like-for-like the moment one therapy in a
+    market is observed and another is derived: the derived side inherits the
+    reference market's price level, and the impact can flip sign. The result
+    still stands, but the reader has to be told."""
+    _, warnings = EngineInputBuilder(session).build(scenario)
+
+    flagged = {
+        w.country_code for w in warnings if w.code == "MIXED_PRICE_BASIS"
+    }
+    # DEU has an observed Wegovy price but PPP-derived comparators.
+    assert "DEU" in flagged
+    # The USA is observed throughout, so there is nothing to flag.
+    assert "USA" not in flagged
 
 
 def test_default_criterion_stack_has_no_enabled_correlated_pair(

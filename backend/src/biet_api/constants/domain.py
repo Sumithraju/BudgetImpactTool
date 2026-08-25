@@ -127,3 +127,7 @@ class WarningCode(StrEnum):
     # literal strings on `Warning_`, since it cannot import this module.
     TIER_D_INPUT = "TIER_D_INPUT"
     UNPRICED_MARKET = "UNPRICED_MARKET"
+    # Raised when one market's therapies do not share a price basis — an
+    # observed price compared against PPP-derived comparators is not a
+    # like-for-like comparison, and the impact can flip sign.
+    MIXED_PRICE_BASIS = "MIXED_PRICE_BASIS"

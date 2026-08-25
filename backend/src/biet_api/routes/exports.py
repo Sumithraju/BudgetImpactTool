@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from ..dal import get_session
 from ..schemas.calculation import AssumptionRead, CitationRead, NarrativeResponse
 from ..services.calculation_service import CalculationService
+from ..services.excel_service import build_workbook
 from ..services.export_service import build_pdf, build_pptx
 from ..services.narrative_service import NarrativeService
 from ..services.scenario_service import ScenarioService
@@ -27,6 +28,7 @@ SessionDep = Annotated[Session, Depends(get_session)]
 
 PDF_MEDIA = "application/pdf"
 PPTX_MEDIA = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+XLSX_MEDIA = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 def _safe_filename(name: str, extension: str) -> str:
@@ -117,6 +119,26 @@ def export_pptx(scenario_id: uuid.UUID, session: SessionDep) -> Response:
             "Content-Disposition": (
                 f"attachment; filename=\"{filename}\"; "
                 f"filename*=UTF-8''{quote(filename)}"
+            )
+        },
+    )
+
+
+@router.get("/scenarios/{scenario_id}/export.xlsx")
+def export_xlsx(scenario_id: uuid.UUID, session: SessionDep) -> Response:
+    """The workbook. Live formulas, not a pasted grid — health economics runs
+    on Excel, and a model that cannot be re-checked in a spreadsheet is not
+    usable in the workflow it is built for."""
+    response, narr, asset = _build(session, scenario_id)
+    payload = build_workbook(response, narr, asset)          # type: ignore[arg-type]
+    filename = _safe_filename(asset, "xlsx")
+    return Response(
+        content=payload,
+        media_type=XLSX_MEDIA,
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename=\"{filename}\"; "
+                f"filename*=UTF-8\'\'{quote(filename)}"
             )
         },
     )

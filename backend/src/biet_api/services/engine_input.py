@@ -45,6 +45,7 @@ from biet_engine.models import (
     Warning_,
 )
 
+from ..constants.domain import WarningCode
 from ..models.reference import Drug, DrugPrice, EligibilityCriterion
 from ..models.scenario import Scenario
 from ..repositories.reference import ReferenceRepository
@@ -107,6 +108,8 @@ class EngineInputBuilder:
             for code in codes
         )
 
+        warnings = list(resolver.warnings) + _mixed_basis_warnings(countries)
+
         return (
             EngineInput(
                 scenario_id=scenario.scenario_id,
@@ -119,7 +122,7 @@ class EngineInputBuilder:
                 uptake=self._build_uptake(resolver, scenario.horizon_years),
                 countries=countries,
             ),
-            resolver.warnings,
+            tuple(warnings),
         )
 
     # ----------------------------------------------------------------- context
@@ -567,3 +570,38 @@ def _scenario_valued(
                 resolution_level=ResolutionLevel.GLOBAL_DEFAULT,
             ),
         )
+
+
+def _mixed_basis_warnings(countries: Sequence[CountryInput]) -> list[Warning_]:
+    """Flag a market whose therapies do not share one price basis.
+
+    This is not cosmetic. A market where the new asset carries an observed
+    price while its comparators are PPP-derived from a different market is
+    not making a like-for-like comparison: the derived side inherits the
+    reference market's price level, and US list prices for this class sit
+    far above European ones. The resulting budget impact can even flip sign.
+
+    The calculation is still the best available given the data, so this
+    qualifies the result rather than blocking it — but a reader who is not
+    told will read a mixed-basis number as if it were clean.
+    """
+    warnings: list[Warning_] = []
+    for country in countries:
+        bases = {t.price_basis for t in (country.new_therapy, *country.therapies)}
+        derived = {b for b in bases if b is PriceBasis.PPP_DERIVED}
+        observed = bases - derived
+        if derived and observed:
+            warnings.append(Warning_(
+                code=WarningCode.MIXED_PRICE_BASIS.value,
+                message=(
+                    f"{country.country_code} mixes observed and PPP-derived prices "
+                    f"({', '.join(sorted(b.value for b in observed))} vs "
+                    f"{PriceBasis.PPP_DERIVED.value}). Derived prices inherit the "
+                    f"reference market's price level, so this comparison is not "
+                    f"like-for-like and the impact may be over- or understated. "
+                    f"Seed observed prices for the comparators before relying on "
+                    f"this market."
+                ),
+                country_code=country.country_code,
+            ))
+    return warnings

@@ -1,7 +1,7 @@
 # BIET — Current Status
 
 **Last updated:** 2026-08-24 · **Phase:** 5 of 5 — every phase in ARCHITECTURE.md §15 is done.
-**All five phases complete** (§8) · **Deadline:** 2026-09-06
+**Five spec phases complete; Phase 6 (competitive hardening) in progress** (§8) · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
@@ -651,7 +651,50 @@ implies before writing a new price source's transform.
 
     354 tests, mypy --strict and ruff clean across 53 files, tsc clean.
 
-16. **What remains — none of it engineering.**
+16. **Phase 6 — competitive hardening.** Not in ARCHITECTURE.md §15; added after assessing
+    what separates this from a commercial budget-impact tool. The engine was already
+    rigorous — the gap was data quality and workflow fit, not calculation.
+
+    - ~~**6.1 Excel export**~~ — **done.** Five sheets with **live formulas**, not a
+      pasted grid: change a factor on the Funnel sheet and every stage below it
+      recalculates; budget impact is `=cost_with − cost_without` in the cell, so the
+      incremental rule is visible rather than asserted. Assumption register on its own
+      sheet with tier colour-coding and an autofilter. HEOR runs on Excel; a model that
+      cannot be re-checked in a spreadsheet does not fit the workflow it is built for.
+    - ~~**6.2 Observed prices for DEU and GBR**~~ — **done.** Germany €301.91 per 28-day
+      package (Novo Nordisk launch price, corroborated at ~$328/month by Peterson-KFF)
+      and the UK £175.80/month NHS list. Both tier B, both stated in native currency,
+      both with their caveats written into the source string — the German figure is a
+      launch price rather than a verified Lauer-Taxe entry, and the UK figure is not
+      verified against the Drug Tariff. Two markets moved off PPP derivation.
+
+    **What 6.2 surfaced, and why it mattered more than the prices themselves.** With a
+    real German price in place, Germany and the UK flipped to *negative* budget impact —
+    a saving. That is not a bug and not quite a finding: Wegovy now carries an observed
+    European price while every comparator in that market is still PPP-derived from
+    inflated US list prices. Daily liraglutide derived from a US anchor looks far more
+    expensive than weekly semaglutide at its real European price, so displacing it
+    "saves" money. **The comparison is not like-for-like.** The system now raises
+    `MIXED_PRICE_BASIS` naming any market whose therapies do not share one price basis.
+    The result still stands — it is the best available given the data — but a reader who
+    is not told would read it as clean. Three new integration tests cover it.
+
+    **Still open in Phase 6, in priority order:**
+    - **6.3 Reproduce a published budget impact analysis.** The strongest credibility
+      move available: "we reproduced [published model] within N%" answers *is this
+      actually right* better than any test count. ~1 day.
+    - **6.4 Observed comparator prices for DEU/GBR.** Directly closes the
+      `MIXED_PRICE_BASIS` gap 6.2 exposed — and until it is closed, those two markets'
+      numbers should not drive a decision. ~half day.
+    - **6.5 Patient segmentation** (BMI 30–35 vs ≥35, different uptake and cost). Real
+      BIMs do this; M3 §12 already flags it as deferred, so the design anticipated it.
+      ~1 day.
+    - **6.6 A defensible time/cost benchmark** for the "weeks versus ninety seconds"
+      claim. Needs a real source, not an asserted number. ~2h.
+
+    356 tests, mypy --strict and ruff clean across 54 files, tsc clean.
+
+17. **What remains outside the code.**
     - **The deck and the project report.** Hackathon deliverables in their own right,
       and mostly writing. The PPTX export is a starting point for the deck; the two
       published artifacts and this document cover much of the report's substance.

@@ -40,3 +40,4 @@ uvicorn==0.52.4
 anthropic==1.0.0           # optional: narrative drafting; falls back without a key
 reportlab==5.0.1           # PDF export
 python-pptx==1.0.2         # PowerPoint export
+openpyxl==3.1.5            # Excel export — the format HEOR actually works in

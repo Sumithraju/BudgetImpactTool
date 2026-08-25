@@ -305,7 +305,7 @@ export const api = {
 
   /** Export URLs are hrefs, not fetches — letting the browser navigate keeps
    *  the Content-Disposition filename, which a blob download would discard. */
-  exportUrl: (id: string, format: "pdf" | "pptx") =>
+  exportUrl: (id: string, format: "pdf" | "pptx" | "xlsx") =>
     `/api/v1/scenarios/${id}/export.${format}`,
 
   compare: (scenarioIds: string[]) =>

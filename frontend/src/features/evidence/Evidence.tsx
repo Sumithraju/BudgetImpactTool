@@ -45,6 +45,10 @@ export function Evidence({ scenarioId }: { scenarioId: string }) {
           Download PDF
           <em>narrative, citations, assumption register</em>
         </a>
+        <a className="export-btn" href={api.exportUrl(scenarioId, "xlsx")}>
+          Download workbook
+          <em>Excel, live formulas</em>
+        </a>
         <a className="export-btn" href={api.exportUrl(scenarioId, "pptx")}>
           Download deck
           <em>PowerPoint, 16:9</em>
