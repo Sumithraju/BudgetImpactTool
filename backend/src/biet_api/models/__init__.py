@@ -8,6 +8,7 @@ invisible to migrations.
 from __future__ import annotations
 
 from .base import Base
+from .comparator import ComparatorApproval, ComparatorAsset
 from .knowledge import GuidelineChunk, GuidelineDocument
 from .reference import (
     Country,
@@ -26,6 +27,8 @@ from .staging import StagingExtract
 
 __all__ = [
     "Base",
+    "ComparatorApproval",
+    "ComparatorAsset",
     "Country",
     "CountryEconomics",
     "Drug",

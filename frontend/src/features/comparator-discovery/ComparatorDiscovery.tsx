@@ -11,7 +11,7 @@
 import { useCallback, useState } from "react";
 import {
   api,
-  ApiError,
+  type ApiError,
   type ComparatorBasket,
   type DiscoveredDrug,
   type IndicationOption,
@@ -21,6 +21,10 @@ interface Props {
   indications: IndicationOption[];
   /** Lifted so the scenario builder can consume the selection. */
   onSelectionChange?: (selected: DiscoveredDrug[]) => void;
+  /** Called after a molecule is registered, so the registry reloads. */
+  onRegistered?: () => void;
+  /** Reported upward so the registry knows which indication to show. */
+  onIndicationChange?: (indicationId: number) => void;
 }
 
 const GROUPS = [
@@ -41,7 +45,12 @@ const GROUPS = [
   },
 ];
 
-export function ComparatorDiscovery({ indications, onSelectionChange }: Props) {
+export function ComparatorDiscovery({
+  indications,
+  onSelectionChange,
+  onRegistered,
+  onIndicationChange,
+}: Props) {
   const [target, setTarget] = useState("GLP1R");
   const [indicationId, setIndicationId] = useState(indications[0]?.indication_id ?? 1);
   const [mechanism, setMechanism] = useState("agonist");
@@ -51,6 +60,47 @@ export function ComparatorDiscovery({ indications, onSelectionChange }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Source ids currently being registered, so a row can show its own
+   *  progress without a spinner over the whole basket. */
+  const [registering, setRegistering] = useState<Set<string>>(new Set());
+  const [registered, setRegistered] = useState<Set<string>>(new Set());
+
+  const register = useCallback(
+    async (drug: DiscoveredDrug) => {
+      setRegistering((c) => new Set(c).add(drug.source_id));
+      setError(null);
+      try {
+        await api.registerAsset({
+          source_id: drug.source_id,
+          asset_name: drug.name,
+          indication_id: indicationId,
+          target_symbol: drug.target_symbol,
+          mechanism_of_action: drug.mechanism_of_action,
+          action_type: drug.action_type,
+          pathway_ids: drug.pathway_ids,
+          drug_type: drug.drug_type,
+          max_clinical_stage: drug.max_clinical_stage,
+          competitor_class: drug.competitor_class,
+          relevance: drug.relevance,
+          rationale: drug.rationale,
+          // The retrieval is the source, and it is dated by the server.
+          source: drug.sources.join("+") || "open_targets",
+          confidence_tier: "B",
+        });
+        setRegistered((c) => new Set(c).add(drug.source_id));
+        onRegistered?.();
+      } catch (e) {
+        setError((e as ApiError).message);
+      } finally {
+        setRegistering((c) => {
+          const next = new Set(c);
+          next.delete(drug.source_id);
+          return next;
+        });
+      }
+    },
+    [indicationId, onRegistered],
+  );
 
   const discover = useCallback(async () => {
     setBusy(true);
@@ -115,7 +165,10 @@ export function ComparatorDiscovery({ indications, onSelectionChange }: Props) {
           Indication
           <select
             value={indicationId}
-            onChange={(e) => setIndicationId(Number(e.target.value))}
+            onChange={(e) => {
+              setIndicationId(Number(e.target.value));
+              onIndicationChange?.(Number(e.target.value));
+            }}
           >
             {indications.map((i) => (
               <option key={i.indication_id} value={i.indication_id}>
@@ -182,6 +235,9 @@ export function ComparatorDiscovery({ indications, onSelectionChange }: Props) {
               drugs={basket[key]}
               selected={selected}
               onToggle={toggle}
+              onRegister={register}
+              registering={registering}
+              registered={registered}
             />
           ))}
 
@@ -211,12 +267,18 @@ function Group({
   drugs,
   selected,
   onToggle,
+  onRegister,
+  registering,
+  registered,
 }: {
   title: string;
   blurb: string;
   drugs: DiscoveredDrug[];
   selected: Set<string>;
   onToggle: (drug: DiscoveredDrug) => void;
+  onRegister: (drug: DiscoveredDrug) => void;
+  registering: Set<string>;
+  registered: Set<string>;
 }) {
   return (
     <div className="comparator-group">
@@ -234,6 +296,9 @@ function Group({
               drug={drug}
               checked={selected.has(drug.source_id)}
               onToggle={onToggle}
+              onRegister={onRegister}
+              busy={registering.has(drug.source_id)}
+              done={registered.has(drug.source_id)}
             />
           ))}
         </ul>
@@ -246,10 +311,16 @@ function Row({
   drug,
   checked,
   onToggle,
+  onRegister,
+  busy,
+  done,
 }: {
   drug: DiscoveredDrug;
   checked: boolean;
   onToggle: (drug: DiscoveredDrug) => void;
+  onRegister: (drug: DiscoveredDrug) => void;
+  busy: boolean;
+  done: boolean;
 }) {
   return (
     <li className={drug.needs_pricing ? "comparator-row unpriced" : "comparator-row"}>
@@ -282,6 +353,22 @@ function Row({
               enter a calculation until both are supplied.
             </div>
           )}
+
+          <div className="row-actions">
+            <button
+              type="button"
+              className="ghost"
+              disabled={busy || done}
+              onClick={(e) => {
+                // The row's label toggles the checkbox; registering is a
+                // different act and must not also tick the box.
+                e.preventDefault();
+                onRegister(drug);
+              }}
+            >
+              {done ? "In registry" : busy ? "Registering…" : "Add to registry"}
+            </button>
+          </div>
         </div>
       </label>
     </li>

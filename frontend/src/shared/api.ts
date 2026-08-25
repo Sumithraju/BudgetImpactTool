@@ -325,6 +325,64 @@ export interface ResolvedTarget {
   pathway_ids: string[];
 }
 
+/** M12 — the registry record for one molecule in one indication. */
+export interface MarketApproval {
+  country_code: string;
+  approval_year: number | null;
+  is_reimbursed: boolean | null;
+  source: string;
+  confidence_tier: string;
+}
+
+export interface RegisteredAsset {
+  asset_id: number;
+  source_id: string;
+  asset_name: string;
+  indication_id: number;
+  target_symbol: string;
+  mechanism_of_action: string | null;
+  action_type: string | null;
+  pathway_ids: string[];
+  max_clinical_stage: string;
+  competitor_class: string;
+  relevance: number;
+  rationale: string;
+  brand_name: string | null;
+  manufacturer: string | null;
+  line_of_therapy: string | null;
+  sponsor: string | null;
+  expected_entry_year: number | null;
+  is_new_asset: boolean;
+  drug_id: number | null;
+  is_promoted: boolean;
+  /** Named per market — "price:DEU", not a single boolean. */
+  missing_for_promotion: string[];
+  source: string;
+  confidence_tier: string;
+  approvals: MarketApproval[];
+}
+
+export interface PromotionRequest {
+  regimen: {
+    dose_amount: number;
+    dose_unit: string;
+    units_per_admin: number;
+    admins_per_year: number;
+    wastage_pct: number;
+    persistence_12m: number;
+    source: string;
+    confidence_tier: string;
+  };
+  prices: {
+    country_code: string;
+    price_local: number;
+    currency_code: string;
+    price_basis: string;
+    source: string;
+    confidence_tier: string;
+  }[];
+}
+
 export const api = {
   countries: () => request<CountryOption[]>("/api/v1/reference/countries"),
   indications: () => request<IndicationOption[]>("/api/v1/reference/indications"),
@@ -369,6 +427,25 @@ export const api = {
     }),
   psa: (id: string, iterations = 4000) =>
     request<Psa>(`/api/v1/scenarios/${id}/psa?iterations=${iterations}`),
+
+  listAssets: (indicationId: number) =>
+    request<RegisteredAsset[]>(
+      `/api/v1/comparators/assets?indication_id=${indicationId}`,
+    ),
+
+  /** Idempotent on (source_id, indication_id): registering a molecule
+   *  discovery returned twice is ordinary, not a conflict. */
+  registerAsset: (intake: unknown) =>
+    request<RegisteredAsset>("/api/v1/comparators/assets", {
+      method: "POST",
+      body: JSON.stringify(intake),
+    }),
+
+  promoteAsset: (assetId: number, body: PromotionRequest) =>
+    request<RegisteredAsset>(`/api/v1/comparators/assets/${assetId}/promote`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   resolveTarget: (symbol: string) =>
     request<ResolvedTarget>(`/api/v1/comparators/targets/${encodeURIComponent(symbol)}`),

@@ -394,3 +394,49 @@ tbody tr:last-child td { border-bottom: none; }
 .comparator-excluded { margin-top: 22px; font-size: 12.5px; color: var(--ink-3); }
 .comparator-excluded summary { cursor: pointer; }
 .comparator-excluded ul { margin: 9px 0 0; padding-left: 20px; }
+
+/* comparator registry — M12 section 9 -------------------------------- */
+.registry-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+.registry-table th { text-align: left; font-size: 10.5px; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--ink-3); font-weight: 600;
+  border-bottom: 1px solid var(--line-2); padding: 6px 10px 6px 0; }
+.registry-table td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line);
+  vertical-align: top; }
+/* Same signal as the discovery list: a comparator that cannot enter a
+   calculation must never read like one that can. */
+.registry-table tr.unpromoted td { border-left: 2px solid var(--t-C); padding-left: 8px; }
+.registry-table .brand { color: var(--ink-3); font-weight: 400; }
+.registry-table .sub { font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+  color: var(--ink-3); margin-top: 2px; }
+.registry-table .ok { color: var(--t-A); }
+.registry-table .gap { color: var(--t-C); }
+.registry-table button, .row-actions button {
+  font: inherit; font-size: 12px; padding: 5px 11px; cursor: pointer;
+  border: 1px solid var(--line-2); border-radius: 3px;
+  background: var(--surface); color: var(--ink-2); }
+.registry-table button:hover, .row-actions button:hover:not(:disabled) {
+  border-color: var(--accent); color: var(--accent); }
+.row-actions { margin-top: 9px; }
+.row-actions button:disabled { opacity: .5; cursor: default; }
+
+.promotion-form { margin-top: 18px; padding: 18px; border: 1px solid var(--accent);
+  border-radius: 4px; background: var(--surface); }
+.promotion-form h3 { margin: 0 0 4px; font-size: 14px; }
+.promotion-form .sub { font-size: 12.5px; color: var(--ink-3); margin: 0 0 14px;
+  max-width: 68ch; }
+.promotion-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 13px; }
+.promotion-grid label { display: flex; flex-direction: column; gap: 5px; font-size: 11px;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+.promotion-grid input, .promotion-grid select {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line-2); border-radius: 3px; padding: 7px 9px; }
+.promotion-actions { display: flex; align-items: center; gap: 12px; margin-top: 16px;
+  flex-wrap: wrap; }
+.promotion-actions button { font: inherit; font-size: 14px; padding: 8px 16px;
+  cursor: pointer; border-radius: 3px; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--on-accent); }
+.promotion-actions button:disabled { opacity: .45; cursor: default; }
+.promotion-actions button.ghost { background: var(--surface); color: var(--ink-2);
+  border-color: var(--line-2); }
+.promotion-actions .sub { font-size: 12px; color: var(--ink-3); max-width: 44ch; margin: 0; }

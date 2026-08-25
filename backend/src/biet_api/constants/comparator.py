@@ -18,6 +18,20 @@ class CompetitorClass(StrEnum):
     EXCLUDED = "excluded"        # retrieved but not a plausible comparator
 
 
+class LineOfTherapy(StrEnum):
+    """Where in the treatment sequence a therapy sits.
+
+    Curated in M12, never retrieved: no public target database records it,
+    and it is one of the two things that decide whether a mechanistically
+    similar drug is actually a comparator (M11 section 5.4).
+    """
+
+    FIRST = "first"
+    SECOND = "second"
+    THIRD_PLUS = "third_plus"
+    ANY = "any"
+
+
 class ClinicalStage(StrEnum):
     APPROVAL = "APPROVAL"
     PHASE_4 = "PHASE_4"

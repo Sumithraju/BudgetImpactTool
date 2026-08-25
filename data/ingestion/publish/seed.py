@@ -32,7 +32,7 @@ from sqlalchemy.orm import Session
 from ..config import settings
 from ..constants import COUNTRY_CURRENCY, TARGET_COUNTRIES
 from ..errors import SourceValidationError
-from .upsert import upsert
+from .upsert import resync_sequence, upsert
 
 log = logging.getLogger(__name__)
 
@@ -115,6 +115,9 @@ def publish_indications(session: Session) -> int:
             },
         )
         published += 1
+    # indications.csv carries its own primary keys, so the sequence never
+    # advanced past them. See `resync_sequence`.
+    resync_sequence(session, "indications", "indication_id")
     log.info("seed_published", extra={"file": "indications.csv", "rows": published})
     return published
 
@@ -143,6 +146,9 @@ def publish_drugs(session: Session) -> int:
             },
         )
         published += 1
+    # As above: drugs.csv carries its own `drug_id`, so without this the
+    # first drug the application inserts collides with a seeded one.
+    resync_sequence(session, "drugs", "drug_id")
     log.info("seed_published", extra={"file": "drugs.csv", "rows": published})
     return published
 

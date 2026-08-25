@@ -1,13 +1,13 @@
 # BIET — Current Status
 
-**Last updated:** 2026-08-25 · **Phase:** 7 of 11 — the budget impact model is complete;
+**Last updated:** 2026-08-25 · **Phase:** 8 of 11 — the budget impact model is complete;
 the comparator intelligence layer is under construction.
-**Phases 1–6 complete** bar one deliberate deferral (§8) · **Phase 7 complete** ·
-**Phases 8–11 specified, not yet built** · **Deadline:** 2026-09-06
+**Phases 1–6 complete** bar one deliberate deferral (§8) · **Phases 7–8 complete** ·
+**Phases 9–11 specified, not yet built** · **Deadline:** 2026-09-06
 
 Read this first when resuming. It is the handoff document; everything else is reference.
 
-**This machine has phases 1–7 done.** `./run.sh` brings up the API on :8077 and the
+**This machine has phases 1–8 done.** `./run.sh` brings up the API on :8077 and the
 interface on :5173; the database must already be running (§5.1). Start the API **with
 `--reload`** — a server started without it serves the code it was launched with, which
 looks exactly like a frontend bug when the contract has moved underneath it.
@@ -782,6 +782,55 @@ implies before writing a new price source's transform.
 
     390 tests — 387 offline, plus 3 marked `network` and deselected by default so the
     standard run stays offline and deterministic. mypy --strict and ruff clean, tsc clean.
+
+19. **Phase 8 — Comparator Registry and Asset Intake (M12).** Done. The hinge of the
+    comparator layer: discovery returns molecules, M5 needs prices and regimens, and no
+    public target database carries one. `comparator_assets` is where the two meet.
+
+    - **Promotion is the act that makes a molecule usable.** One transaction writes the
+      `drugs`, `drug_regimens` and `drug_prices` rows, or none of them. A comparator with a
+      regimen and no price is not usable, and a half-promoted asset that *looks* promoted is
+      worse than one that plainly is not.
+    - **The guard, and why it is not a warning.** `require_promoted` raises
+      `ComparatorNotPricedError` naming the asset. Silently dropping an unpromoted comparator
+      would mean its cost is never subtracted from the world-without, and budget impact would
+      be overstated by exactly the cost of the care the new therapy displaces — a wrong number
+      that looks entirely reasonable. Tested; **called by M14 in Phase 10**, since a scenario
+      does not yet name its comparator basket explicitly.
+    - **Gaps are named per market.** `missing_for_promotion` returns `["price:DEU"]`, not a
+      boolean, so the interface says "needs a German price" rather than "not ready". Only
+      markets the asset is actually approved in are expected to have one — demanding a price
+      everywhere would flag a US-only therapy as incomplete for nine markets it will never be
+      sold in.
+    - **No new engine contract, exactly as specified.** A promoted comparator carries an
+      `indication_id`, and `list_drugs_with_regimens` already selects on that. Verified end
+      to end through the browser: exenatide, discovered from Open Targets, registered and
+      priced in the interface, appeared in the USA world-without on the next calculation with
+      no engine change at all.
+
+    **A latent defect surfaced, and it was not in this module.** Promotion failed on
+    `drugs_pkey`. `drugs.csv` and `indications.csv` carry their own primary keys — the price,
+    regimen and epidemiology files reference them, so a stable key is what lets those files be
+    edited independently — but an insert with an explicit id **does not advance the
+    sequence**. `drugs` was at `seq=1, max=11`; `indications` at `seq=0, max=2`. Every other
+    seeded table lets the sequence assign and was fine.
+
+    Promotion was simply the first code path that ever inserted a drug row, so it was the
+    first thing to hit it. It would have failed identically for any future feature that
+    writes reference data, with a duplicate-key error naming a primary key the caller never
+    supplied — about as far from its cause as an error can get. Fixed in both directions: the
+    publish stage now resyncs as it goes (`resync_sequence`), and migration `6418e7ab2864`
+    repairs databases built before it did. Its `downgrade` is deliberately empty; re-breaking
+    a database is worse than doing nothing.
+
+    **Data hygiene.** The end-to-end check needed an exenatide price, and the figure used was
+    invented for the test. It has been removed along with the asset, drug, regimen and price
+    rows it created — a fabricated $425 unit price left in `drug_prices` would have silently
+    changed every obesity scenario from then on.
+
+    407 tests (3 network-marked), 20 of them new and against a real database, since promotion
+    atomicity and re-promotion-in-place cannot be observed against a fake. mypy and ruff
+    clean, tsc clean.
 
 17. **What remains outside the code.**
     - **The deck and the project report.** Hackathon deliverables in their own right,

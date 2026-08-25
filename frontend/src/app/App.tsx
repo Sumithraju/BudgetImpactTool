@@ -13,6 +13,7 @@ import { Results } from "../features/results/Results";
 import { ScenarioCompare, type SavedRun } from "../features/scenario-compare/ScenarioCompare";
 import { Evidence } from "../features/evidence/Evidence";
 import { ComparatorDiscovery } from "../features/comparator-discovery/ComparatorDiscovery";
+import { ComparatorRegistry } from "../features/comparator-discovery/ComparatorRegistry";
 
 const DEFAULT_DRAFT: Draft = {
   name: "Wegovy obesity launch",
@@ -45,6 +46,12 @@ export function App() {
   const [saved, setSaved] = useState<SavedRun[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ message: string; field: string | null } | null>(null);
+
+  /** Which indication the comparator panels are looking at, and a token the
+   *  discovery panel bumps when it registers something so the registry
+   *  reloads — neither component owning the other's state. */
+  const [comparatorIndication, setComparatorIndication] = useState(DEFAULT_DRAFT.indicationId);
+  const [registryToken, setRegistryToken] = useState(0);
 
   useEffect(() => {
     Promise.all([api.countries(), api.indications(), api.affordabilityBands()])
@@ -169,7 +176,20 @@ export function App() {
           {/* Discovery sits above the result because it answers the question
               that comes first: what is the world-without actually made of.
               It runs independently of a calculation. */}
-          {indications.length > 0 && <ComparatorDiscovery indications={indications} />}
+          {indications.length > 0 && (
+            <>
+              <ComparatorDiscovery
+                indications={indications}
+                onIndicationChange={setComparatorIndication}
+                onRegistered={() => setRegistryToken((n) => n + 1)}
+              />
+              <ComparatorRegistry
+                indicationId={comparatorIndication}
+                countries={countries}
+                reloadToken={registryToken}
+              />
+            </>
+          )}
 
           {calculation && (
             <>

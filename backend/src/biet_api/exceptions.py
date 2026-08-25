@@ -54,6 +54,18 @@ class ParameterOutOfRangeError(ValidationError):
     code = ErrorCode.PARAMETER_OUT_OF_RANGE
 
 
+class ComparatorNotPricedError(ValidationError):
+    """A scenario names a comparator that has no price or regimen (M12 section 5.6).
+
+    Raised rather than dropping the comparator from the market mix. A
+    comparator absent from the world-without never has its cost subtracted,
+    so budget impact is overstated by exactly the cost of the care the new
+    therapy displaces — a wrong number that looks entirely reasonable.
+    """
+
+    code = ErrorCode.COMPARATOR_NOT_PRICED
+
+
 class ConflictError(BietError):
     """The operation conflicts with the current state."""
 
