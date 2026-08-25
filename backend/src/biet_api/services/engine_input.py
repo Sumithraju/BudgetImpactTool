@@ -587,21 +587,29 @@ def _mixed_basis_warnings(countries: Sequence[CountryInput]) -> list[Warning_]:
     """
     warnings: list[Warning_] = []
     for country in countries:
-        bases = {t.price_basis for t in (country.new_therapy, *country.therapies)}
-        derived = {b for b in bases if b is PriceBasis.PPP_DERIVED}
-        observed = bases - derived
-        if derived and observed:
-            warnings.append(Warning_(
-                code=WarningCode.MIXED_PRICE_BASIS.value,
-                message=(
-                    f"{country.country_code} mixes observed and PPP-derived prices "
-                    f"({', '.join(sorted(b.value for b in observed))} vs "
-                    f"{PriceBasis.PPP_DERIVED.value}). Derived prices inherit the "
-                    f"reference market's price level, so this comparison is not "
-                    f"like-for-like and the impact may be over- or understated. "
-                    f"Seed observed prices for the comparators before relying on "
-                    f"this market."
-                ),
-                country_code=country.country_code,
-            ))
+        therapies = (country.new_therapy, *country.therapies)
+        derived = [t for t in therapies if t.price_basis is PriceBasis.PPP_DERIVED]
+        observed = [t for t in therapies if t.price_basis is not PriceBasis.PPP_DERIVED]
+        if not (derived and observed):
+            continue
+
+        # Name the therapies rather than only the market. Whether a mixed
+        # basis matters depends entirely on *which* side is derived — a
+        # derived orlistat next to observed GLP-1s barely moves the answer,
+        # while a derived primary comparator can flip its sign. The reader
+        # can only make that call if the warning says which.
+        warnings.append(Warning_(
+            code=WarningCode.MIXED_PRICE_BASIS.value,
+            message=(
+                f"{country.country_code} mixes observed and PPP-derived prices. "
+                f"Derived: {', '.join(sorted(t.name for t in derived))}. "
+                f"Observed: {', '.join(sorted(t.name for t in observed))}. "
+                f"A derived price inherits the reference market's price level, so "
+                f"this comparison is not like-for-like; how much that matters "
+                f"depends on how large a share of the mix the derived therapies "
+                f"carry. Seed observed prices for them before this market drives "
+                f"a decision."
+            ),
+            country_code=country.country_code,
+        ))
     return warnings
