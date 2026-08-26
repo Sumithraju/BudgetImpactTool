@@ -655,3 +655,21 @@ tbody tr:last-child td { border-bottom: none; }
   cursor: pointer; font-size: 12.5px; color: var(--ink-2); padding: 4px 0;
 }
 .twoworld-table summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* subgroups --------------------------------------------------------- */
+.subgroups { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.subgroup-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.subgroup-table th {
+  text-align: left; font-weight: 600; font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-3);
+  padding: 6px 10px; border-bottom: 1px solid var(--line);
+}
+.subgroup-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.subgroup-table tfoot td { border-bottom: 0; border-top: 2px solid var(--line-2); }
+.subgroup-table .num { text-align: right; font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.subgroup-name { display: block; font-weight: 600; }
+.subgroup-table .derived {
+  white-space: nowrap; font-size: 11px; color: var(--ink-3);
+  border: 1px dashed var(--line-2); border-radius: 4px; padding: 1px 6px;
+}

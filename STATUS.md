@@ -1213,8 +1213,8 @@ from then on, which is precisely the failure this system is built to avoid.
     reads the scenario shape it defines, so anything built ahead of it is built twice.
 
     **Built out of order, on 2026-08-25, after the tool was seen running.** Tabs, a
-    new-intervention input and comparator import — the parts of Phases 16 and 17 an
-    analyst hits first. The interface was one scrolling column with no way to enter the
+    new-intervention input, comparator import, the two-world chart and the subgroup
+    split — the parts of Phases 13, 16 and 17 an analyst hits first. The interface was one scrolling column with no way to enter the
     new therapy's own costs and no way to load a comparator set that already existed.
 
     - `Tabs` in `shared/`, WAI-ARIA keyboard pattern, replacing the scroll with six
@@ -1234,6 +1234,35 @@ from then on, which is precisely the failure this system is built to avoid.
     and cell, all findings return in one pass, and any error rejects the whole file.
     Columns match by label so an inserted column does not shift every value one place.
     28 new tests; 461 passing overall.
+
+    **M18's first slice — the subgroup split in the funnel.** `biet_engine/subgroups.py`
+    with `allocate_shares` and `split_stage`, both pure, plus the `Subgroup` enum and
+    `SUBGROUP_PRIORITY`. 18 tests.
+
+    The design point that carries it: the five adult subgroups **partition** the obesity
+    population by priority order, so a patient with obesity, diabetes and hypertension is
+    counted once, in the highest-risk group they qualify for. Adding raw comorbidity
+    prevalences would count them three times, and that is the mistake the priority rule
+    exists to prevent. Obesity alone is the derived residual and cannot be supplied —
+    permitting both invites a set that does not sum to one. Paediatric obesity is disjoint
+    from the partition, carries its own denominator, and uses the 95th BMI centile rather
+    than the adult BMI-30 cut-off.
+
+    Segment patients reconcile to the stage total exactly; a breakdown that does not
+    reconcile to the figure it breaks down is worse than no breakdown, and a test asserts it.
+
+    **Shares are tier C and global, not country-specific, and the interface says so.**
+    Co-prevalence within an obese population is published for T2D and hypertension in most
+    markets, thinner for dyslipidaemia, and thin everywhere for established CVD within
+    obesity specifically. Seeding at tier A would be a lie and per-market from figures that
+    do not exist would be worse. M15 will rank this split as one of the least certain things
+    in the model, which is correct.
+
+    **Not yet done for M18:** the service-layer loop that runs the engine once per segment
+    and aggregates. The split is currently descriptive — it divides the funnel and reports
+    who the patients are; it does not yet give each segment its own comparator mix, uptake
+    or outcome profile, which is where the subgroup structure changes the *answer* rather
+    than the *description*.
 
     **The one thing worth deciding before writing code:** whether the hackathon demo needs
     Phases 15–17 more than it needs 13–14. The dependency order says subgroups first; a

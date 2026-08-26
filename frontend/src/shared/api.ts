@@ -345,6 +345,19 @@ export interface ComparatorImportResult {
   share_totals: Record<string, number>;
 }
 
+/** M18 — one obesity subgroup in the taxonomy. */
+export interface SubgroupOption {
+  code: string;
+  label: string;
+  definition: string;
+  /** Null for the derived residual and for the disjoint paediatric segment. */
+  default_share: number | null;
+  is_residual: boolean;
+  is_disjoint: boolean;
+  source: string;
+  confidence_tier: string;
+}
+
 /** The API's error envelope — one shape for every non-2xx response. */
 interface ApiErrorBody {
   error: { code: string; message: string; field?: string | null };
@@ -631,4 +644,6 @@ export const api = {
   },
 
   comparatorTemplateUrl: () => "/api/v1/comparators/import/template",
+
+  subgroups: () => request<SubgroupOption[]>("/api/v1/reference/subgroups"),
 };

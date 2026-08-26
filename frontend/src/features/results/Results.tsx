@@ -5,6 +5,7 @@ import { PriceCorridor } from "../price-solver/PriceCorridor";
 import { CostBridge } from "./CostBridge";
 import { EvidencePriority } from "./EvidencePriority";
 import { TwoWorldChart, type TwoWorldSeries } from "../../shared/charts/TwoWorldChart";
+import { SubgroupBreakdown } from "../subgroups/SubgroupBreakdown";
 import {
   BASIS_LABELS,
   STAGE_LABELS,
@@ -219,6 +220,10 @@ export function Results({
             );
           })}
         </div>
+        <SubgroupBreakdown
+          diseased={selected.funnel.find((s) => s.stage === "diseased")?.value ?? 0}
+        />
+
         <details className="sources">
           <summary>Where these came from</summary>
           <ul>

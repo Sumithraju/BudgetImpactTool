@@ -120,6 +120,21 @@ class CountryRead(BaseModel):
     cost_bridge: CostBridgeRead | None = None
 
 
+class SubgroupOption(BaseModel):
+    """One subgroup for the picker — M18 section 8."""
+
+    code: str
+    label: str
+    definition: str
+    #: None for the residual and for the disjoint paediatric segment, neither
+    #: of which is supplied as part of the adult partition.
+    default_share: float | None
+    is_residual: bool
+    is_disjoint: bool
+    source: str
+    confidence_tier: str
+
+
 class TotalsRead(BaseModel):
     by_year: list[float]
     cumulative: float

@@ -29,6 +29,7 @@ from .constants import (
     ResolutionLevel,
     ResponseThreshold,
     SolverMethod,
+    Subgroup,
     UptakeCurve,
 )
 from .exceptions import CurrencyMismatchError
@@ -145,6 +146,37 @@ class FunnelResult(BaseModel):
     @property
     def addressable(self) -> float:
         return self.stages[-1].value
+
+
+class SubgroupShare(BaseModel):
+    """One subgroup's share of the adult diseased population — M18 section 5.2."""
+
+    model_config = ConfigDict(frozen=True)
+
+    subgroup: Subgroup
+    share: Valued
+
+
+class SubgroupSegment(BaseModel):
+    """A subgroup's share and the patients it accounts for at one stage."""
+
+    model_config = ConfigDict(frozen=True)
+
+    subgroup: Subgroup
+    share: float
+    patients: float
+    #: True where the share was derived as the residual rather than supplied.
+    is_residual: bool
+    provenance: Provenance
+
+
+class SubgroupAllocation(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    stage: FunnelStage
+    total: float
+    segments: tuple[SubgroupSegment, ...]
+    warnings: tuple[Warning_, ...] = ()
 
 
 # --------------------------------------------------------------------------- M3 — Eligibility & Segmentation

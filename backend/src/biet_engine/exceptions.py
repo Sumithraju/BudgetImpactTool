@@ -102,3 +102,13 @@ class UnpricedReferenceError(EngineError):
     result as if it were grounded."""
 
     code = "UNPRICED_REFERENCE"
+
+
+class SubgroupAllocationError(EngineError):
+    """Subgroup shares do not describe a partition of the diseased population.
+
+    Raised when the supplied comorbidity shares reach or exceed 1.0, leaving
+    no residual for obesity alone, or when a share is outside [0, 1].
+    """
+
+    code = "SUBGROUP_ALLOCATION_INVALID"
