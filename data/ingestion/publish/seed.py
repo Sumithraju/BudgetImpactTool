@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,7 @@ from biet_api.models import (
     EligibilityCriterion,
     EventCost,
     FunnelDefault,
+    FxRate,
     Indication,
     ResponseProfile,
     SubgroupCountryRate,
@@ -40,7 +42,13 @@ from biet_api.models import (
 from sqlalchemy.orm import Session
 
 from ..config import settings
-from ..constants import COUNTRY_CURRENCY, TARGET_COUNTRIES
+from ..constants import (
+    BASE_CURRENCY,
+    COUNTRY_CURRENCY,
+    MIN_FX_CURRENCIES,
+    REQUIRED_CURRENCIES,
+    TARGET_COUNTRIES,
+)
 from ..errors import SourceValidationError
 from .upsert import resync_sequence, upsert
 
@@ -848,11 +856,81 @@ def publish_response_profiles(session: Session) -> int:
     return published
 
 
+# --------------------------------------------------------------------------- fx_rates.csv
+
+
+def publish_fx_rates(session: Session) -> int:
+    """A dated FX baseline, so a first run can convert currencies offline.
+
+    FX is otherwise supplied only by the live Frankfurter fetcher, which means
+    a Docker first boot — `--seed-only`, deliberately offline so a machine with
+    no internet can still start — left `fx_rates` empty. Every scenario
+    reporting in anything but USD then failed with "no FX rate for reporting
+    currency 'EUR'; available: []", which reads as a broken install rather than
+    as data that was never loaded.
+
+    These are real ECB reference rates, snapshotted on the date in the file
+    rather than invented, and they are a floor and not a fixture: a live run
+    publishes fresher rates under a new `fetched_date`, and because that date
+    is half the natural key the newer set is added alongside rather than
+    overwriting this one. M7 snapshots whichever set it used into the run, so a
+    result always says which rates produced it.
+
+    Validated on the same invariants the live fetcher enforces, because a seed
+    that quietly omitted a currency would fail later, further from the cause.
+    """
+    frame = _read("fx_rates.csv")
+    if frame is None:
+        return 0
+
+    seen: dict[str, float] = {}
+    for row in frame.itertuples():
+        rate = float(row.rate_per_usd)
+        if rate <= 0:
+            raise SourceValidationError(
+                f"fx_rates.csv: non-positive rate for {row.currency_code}",
+                currency=row.currency_code,
+            )
+        seen[str(row.currency_code)] = rate
+
+    missing = REQUIRED_CURRENCIES - set(seen)
+    if missing:
+        raise SourceValidationError(
+            f"fx_rates.csv: missing rates for {sorted(missing)}",
+            missing=sorted(missing),
+        )
+    if len(seen) < MIN_FX_CURRENCIES:
+        raise SourceValidationError(
+            f"fx_rates.csv: only {len(seen)} currencies, need {MIN_FX_CURRENCIES}"
+        )
+    if seen.get(BASE_CURRENCY) != 1.0:
+        # Without it, M7 has no pivot and every conversion needs a special case.
+        raise SourceValidationError(
+            f"fx_rates.csv: {BASE_CURRENCY} identity row must be exactly 1.0"
+        )
+
+    published = 0
+    for row in frame.itertuples():
+        upsert(
+            session, FxRate,
+            natural_key={
+                "currency_code": row.currency_code,
+                "fetched_date": date.fromisoformat(str(row.fetched_date)),
+            },
+            values={"rate_per_usd": float(row.rate_per_usd)},
+        )
+        published += 1
+    log.info("seed_published", extra={"file": "fx_rates.csv", "rows": published})
+    return published
+
+
 # --------------------------------------------------------------------------- orchestration
 
 #: Publish order matters: countries/indications before anything with a foreign
 #: key to them; drugs before drug_regimens/drug_prices.
 SEED_PUBLISHERS = (
+    # No foreign keys, and every currency conversion depends on it.
+    publish_fx_rates,
     publish_countries,
     publish_indications,
     publish_drugs,

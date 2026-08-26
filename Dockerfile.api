@@ -4,8 +4,15 @@
 FROM python:3.12-slim AS base
 
 # psycopg's binary wheel needs libpq at runtime; nothing else here compiles.
+#
+# ca-certificates is named explicitly rather than left to arrive as a
+# dependency of curl. The API makes outbound HTTPS calls while serving a
+# request — comparator discovery reads Open Targets and Reactome — and without
+# a trust store every one of them fails at the TLS handshake, which surfaces
+# to the reader as "we could not reach the drug database". That is too obscure
+# a failure to leave resting on another package's dependency list.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq5 curl \
+    && apt-get install -y --no-install-recommends libpq5 curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONUNBUFFERED=1 \

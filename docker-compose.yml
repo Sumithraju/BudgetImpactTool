@@ -6,6 +6,27 @@
 # the API, so that a failed migration fails visibly and does not leave an API
 # running against a schema it does not match.
 
+# Outbound access, shared by the two services that need it.
+#
+# The API is not self-contained at request time: comparator discovery calls
+# Open Targets and Reactome while serving a request, and ingestion calls the
+# reference sources. Behind a corporate proxy, both fail — and discovery
+# reports that failure as "we could not reach the drug database", which reads
+# like an outage at the source rather than a proxy the container cannot see.
+#
+# Left empty by default and passed straight through from the host, so an unset
+# variable stays unset: httpx ignores an empty proxy value and connects
+# directly, so this costs nothing on a machine with no proxy.
+x-outbound: &outbound
+  # httpx, in the API, reads the standard names — and only reads them at all
+  # because the client leaves its transport to httpx (see comparator.py).
+  HTTP_PROXY: ${HTTP_PROXY:-}
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  NO_PROXY: ${NO_PROXY:-}
+  # data/ingestion/config.py reads the BIET_-prefixed pair instead.
+  BIET_HTTP_PROXY: ${BIET_HTTP_PROXY:-}
+  BIET_HTTPS_PROXY: ${BIET_HTTPS_PROXY:-}
+
 services:
   db:
     # pgvector's own image: the guideline-citation search needs the extension,
@@ -34,6 +55,7 @@ services:
       context: .
       dockerfile: Dockerfile.api
     environment:
+      <<: *outbound
       BIET_DATABASE_URL: postgresql+psycopg://biet:biet@db:5432/biet
     depends_on:
       db:
@@ -51,6 +73,7 @@ services:
       context: .
       dockerfile: Dockerfile.api
     environment:
+      <<: *outbound
       BIET_DATABASE_URL: postgresql+psycopg://biet:biet@db:5432/biet
     depends_on:
       db:

@@ -112,3 +112,26 @@ PATHWAY_PROBE_LIMIT: Final[int] = 5
 PATHWAY_EXPANSION_MAX_TARGETS: Final[int] = 20
 
 DISCOVERY_TIMEOUT_S: Final[float] = 25.0
+
+#: Every network call in discovery is an idempotent read, so a transient
+#: failure is worth retrying rather than reporting. The common failure here
+#: is not the service being down — it is a single connection reset or a
+#: brief 5xx on the way to a healthy endpoint, which is precisely what a
+#: user is doing by hand when they follow "try again in a moment".
+#: Two retries cost at most ~1.5 s on the way to an error that was going to
+#: be shown anyway, and well under the request timeout.
+DISCOVERY_RETRY_ATTEMPTS: Final[int] = 3
+DISCOVERY_RETRY_BACKOFF_S: Final[float] = 0.5
+
+#: Status codes worth a second attempt. A 4xx other than 429 is a statement
+#: about the request itself, which will not read differently on repeat.
+DISCOVERY_RETRY_STATUSES: Final[frozenset[int]] = frozenset(
+    {408, 429, 500, 502, 503, 504},
+)
+
+#: Connections are pooled and reused across requests. Before this, every
+#: discovery built its own client and paid a fresh TLS handshake to a remote
+#: public API — the single most likely place for the transient connect error
+#: that surfaced as "we could not reach the drug database".
+DISCOVERY_MAX_CONNECTIONS: Final[int] = 10
+DISCOVERY_KEEPALIVE_EXPIRY_S: Final[float] = 30.0

@@ -17,7 +17,11 @@ from sqlalchemy.orm import Session
 from ..constants.comparator import PATHWAY_EXPANSION_MAX_TARGETS, CompetitorClass
 from ..exceptions import UpstreamUnavailableError, ValidationError
 from ..models.reference import Drug, Indication
-from ..repositories.comparator import ComparatorRepository, UnknownTargetError
+from ..repositories.comparator import (
+    ComparatorRepository,
+    SchemaRejectedError,
+    UnknownTargetError,
+)
 from .comparator_classify import (
     Candidate,
     Classified,
@@ -53,10 +57,21 @@ class ComparatorService:
             ensembl_id, symbol = self._repo.resolve_target(target)
         except UnknownTargetError as exc:
             raise ValidationError(str(exc), target=target) from exc
+        except SchemaRejectedError as exc:
+            # Answered and refused, which no amount of trying again resolves.
+            log.exception("target_resolution_rejected target=%s", target)
+            raise UpstreamUnavailableError(
+                f"The drug database refused our lookup of {target}. This "
+                "usually means the source changed its format. Discovery is "
+                "unavailable until it is updated — everything else in the "
+                "tool still works.",
+                target=target,
+            ) from exc
         except httpx.HTTPError as exc:
             raise UpstreamUnavailableError(
-                f"We could not reach the drug database to look up {target}. "
-                "This is usually temporary — try again in a moment.",
+                f"We could not reach the drug database to look up {target}, "
+                "and retrying did not help. The source may be having an "
+                "outage — everything else in the tool still works.",
                 target=target,
             ) from exc
 
@@ -179,6 +194,12 @@ class ComparatorService:
             ensembl_id, approved = repo.resolve_target(symbol)
         except UnknownTargetError as exc:
             raise ValidationError(str(exc), target=symbol) from exc
+        except SchemaRejectedError as exc:
+            raise UpstreamUnavailableError(
+                f"Open Targets refused our lookup of {symbol!r}; its schema "
+                "has most likely changed",
+                target=symbol,
+            ) from exc
         except httpx.HTTPError as exc:
             raise UpstreamUnavailableError(
                 f"could not reach Open Targets to resolve {symbol!r}", target=symbol,
@@ -190,7 +211,7 @@ class ComparatorService:
             accession = repo.uniprot_accession(ensembl_id)
             if accession is not None:
                 pathways = repo.reactome_pathways(accession)
-        except httpx.HTTPError:
+        except (httpx.HTTPError, SchemaRejectedError):
             # Resolution succeeded; only the enrichment failed. Returning the
             # identifiers without pathways is the useful half of the answer.
             log.warning("pathway_lookup_failed", extra={"target": approved})
@@ -227,7 +248,7 @@ class ComparatorService:
                     ),
                 }
             return self._repo.reactome_pathways(accession), None
-        except httpx.HTTPError:
+        except (httpx.HTTPError, SchemaRejectedError):
             log.warning("reactome_unavailable", extra={"target": symbol})
             return (), {
                 "code": "PARTIAL_DISCOVERY",
@@ -263,7 +284,7 @@ class ComparatorService:
             return self._repo.open_targets_candidates(
                 *resolved.values(), pathway_ids=pathway_ids,
             ), None
-        except httpx.HTTPError:
+        except (httpx.HTTPError, SchemaRejectedError):
             log.warning("pathway_expansion_failed", extra={"pathways": pathway_ids})
             return [], {
                 "code": "PARTIAL_DISCOVERY",
