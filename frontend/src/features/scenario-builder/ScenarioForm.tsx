@@ -209,6 +209,20 @@ export function ScenarioForm({
         </p>
       </section>
 
+      {/* Who the patients are, before what fraction of them reach treatment.
+          Both are population inputs, so they sit together — and this one is
+          above the rates rather than below them, because a sidebar that
+          scrolls hides whatever is last. */}
+      {subgroupOptions.length > 0 && (
+        <section>
+          <SubgroupShareEditor
+            options={subgroupOptions}
+            shares={subgroupShares}
+            onChange={onSubgroupSharesChange}
+          />
+        </section>
+      )}
+
       <section>
         <h2>Assumptions</h2>
         <RateSlider
@@ -252,19 +266,6 @@ export function ScenarioForm({
           errorField={errorField}
         />
       </section>
-
-      {/* The split of the disease population. An input rather than a result:
-          it is the analyst's assumption about who their patients are, and the
-          seeded default is a starting point rather than an answer. */}
-      {subgroupOptions.length > 0 && (
-        <section>
-          <SubgroupShareEditor
-            options={subgroupOptions}
-            shares={subgroupShares}
-            onChange={onSubgroupSharesChange}
-          />
-        </section>
-      )}
 
       {/* M14 — a scenario variant, not a base case. The caveat sits at the
           toggle rather than in a footnote, because that is where the choice

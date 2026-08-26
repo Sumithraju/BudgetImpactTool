@@ -89,16 +89,24 @@ export function App() {
   const [subgroupShares, setSubgroupShares] = useState<SubgroupShares>({});
 
   useEffect(() => {
-    Promise.all([
-      api.countries(),
-      api.indications(),
-      api.affordabilityBands(),
-      api.subgroups(),
-    ])
-      .then(([c, i, b, s]) => {
+    Promise.all([api.countries(), api.indications(), api.affordabilityBands()])
+      .then(([c, i, b]) => {
         setCountries(c);
         setIndications(i);
         setBands(b);
+      })
+      .catch((e: ApiError) =>
+        setError({ message: `Could not reach the API — ${e.message}`, field: null }),
+      );
+
+    // Fetched on its own rather than in the batch above. The taxonomy is
+    // served from constants and needs no database, so it can succeed when the
+    // reference tables cannot be read — and a `Promise.all` would have taken
+    // it down with them, hiding the subgroup panel for a reason that has
+    // nothing to do with subgroups.
+    api
+      .subgroups()
+      .then((s) => {
         setSubgroupOptions(s);
         setSubgroupShares(
           Object.fromEntries(
@@ -108,9 +116,7 @@ export function App() {
           ),
         );
       })
-      .catch((e: ApiError) =>
-        setError({ message: `Could not reach the API — ${e.message}`, field: null }),
-      );
+      .catch(() => setSubgroupOptions([]));
   }, []);
 
   /** Overrides are only sent for fields the user actually touched: a null
