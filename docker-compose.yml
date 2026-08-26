@@ -1,0 +1,76 @@
+# One command to a working instance: `docker compose up --build`.
+#
+# Three services. `db` holds the data, `migrate` brings the schema and the
+# reference data up to date and then exits, and `api` and `ui` serve. The
+# migration is a separate one-shot service rather than an entrypoint script on
+# the API, so that a failed migration fails visibly and does not leave an API
+# running against a schema it does not match.
+
+services:
+  db:
+    # pgvector's own image: the guideline-citation search needs the extension,
+    # and building it into the base postgres image at start-up is slower and
+    # fails in less obvious ways.
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: biet
+      POSTGRES_PASSWORD: biet
+      POSTGRES_DB: biet
+    volumes:
+      - biet-db:/var/lib/postgresql/data
+    ports:
+      # Exposed so you can point psql or a GUI at it. 5433 on the host to avoid
+      # colliding with a PostgreSQL you may already run on 5432.
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U biet -d biet"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      BIET_DATABASE_URL: postgresql+psycopg://biet:biet@db:5432/biet
+    depends_on:
+      db:
+        condition: service_healthy
+    # Schema first, then the curated reference data. `--seed-only` is offline:
+    # it reads the CSVs already in the image and makes no network call, so a
+    # first run works on a machine with no internet.
+    command: >-
+      sh -c "cd /app/backend && alembic upgrade head &&
+             cd /app && python -m data.ingestion.run --seed-only"
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      BIET_DATABASE_URL: postgresql+psycopg://biet:biet@db:5432/biet
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8077:8077"
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "5173:5173"
+    restart: unless-stopped
+
+volumes:
+  biet-db:

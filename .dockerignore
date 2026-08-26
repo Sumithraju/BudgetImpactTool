@@ -1,0 +1,23 @@
+# Everything that would bloat the build context or leak a secret.
+.git/
+.venv/
+venv/
+node_modules/
+frontend/node_modules/
+frontend/dist/
+BI_REPO/
+data/raw/
+data/corpus/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+htmlcov/
+.DS_Store
+.idea/
+.vscode/
+# Never bake real configuration into an image.
+.env

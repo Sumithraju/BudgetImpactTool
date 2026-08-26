@@ -1,0 +1,44 @@
+# BIET — Python dependencies (Phase 1: data foundation)
+# Install:  python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+
+# --- ingestion ---------------------------------------------------------------
+httpx==0.28.1
+pandas==3.0.5
+
+# --- engine ------------------------------------------------------------------
+numpy==2.5.2               # M9 PSA vectorisation; pinned as a direct dependency
+                           # now rather than relied on incidentally via pandas
+
+# --- validation & config -----------------------------------------------------
+pydantic==2.13.4
+pydantic-settings==2.15.0
+
+# --- persistence -------------------------------------------------------------
+SQLAlchemy==2.0.52
+psycopg[binary]==3.3.4
+alembic==1.19.1
+pgvector==0.5.0            # VECTOR column type for the guideline corpus
+
+# --- guideline corpus (data/ingestion/publish/corpus.py) ---------------------
+fastembed==0.8.0           # local embedding model (BAAI/bge-small-en-v1.5), no API key
+pypdf==6.16.2               # PDF text extraction
+
+# --- testing -----------------------------------------------------------------
+pytest==9.1.1
+pytest-cov==7.1.0
+hypothesis==6.152.4        # Phase 2 — engine property tests
+
+# --- quality gates (biet-backend skill section 9) -----------------------------
+mypy==2.3.1                # --strict must pass on biet_engine
+ruff==0.16.4
+
+# --- API (Phase 3) -----------------------------------------------------------
+fastapi==0.141.1
+uvicorn==0.52.4
+
+# --- evidence, narrative and export (Phase 5) --------------------------------
+reportlab==5.0.1           # PDF export
+python-pptx==1.0.2         # PowerPoint export
+openpyxl==3.1.5            # Excel export — the format HEOR actually works in
+# Multipart form parsing, for M19's workbook upload endpoint.
+python-multipart==0.0.32

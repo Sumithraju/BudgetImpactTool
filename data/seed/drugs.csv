@@ -1,0 +1,14 @@
+drug_id,drug_name,generic_name,company,drug_class,route,indication_id,is_comparator
+1,Wegovy,semaglutide 2.4 mg,Novo Nordisk,GLP-1 receptor agonist,subcutaneous,1,true
+2,Zepbound,tirzepatide,Eli Lilly,GIP/GLP-1 receptor agonist,subcutaneous,1,true
+3,Saxenda,liraglutide 3.0 mg,Novo Nordisk,GLP-1 receptor agonist,subcutaneous,1,true
+4,Orlistat,orlistat,Generic (multiple manufacturers),lipase inhibitor,oral,1,true
+5,No pharmacotherapy,,,none,n/a,1,true
+6,Ozempic,semaglutide,Novo Nordisk,GLP-1 receptor agonist,subcutaneous,2,true
+7,Mounjaro,tirzepatide,Eli Lilly,GIP/GLP-1 receptor agonist,subcutaneous,2,true
+8,Trulicity,dulaglutide,Eli Lilly,GLP-1 receptor agonist,subcutaneous,2,true
+9,Metformin,metformin,Generic (multiple manufacturers),biguanide,oral,2,true
+10,Insulin glargine (basal),insulin glargine,Generic (multiple manufacturers),basal insulin analog,subcutaneous,2,true
+11,Insulin aspart (rapid-acting),insulin aspart,Generic (multiple manufacturers),rapid-acting insulin analog,subcutaneous,2,true
+12,Structured lifestyle programme,,Non-drug (behavioural),lifestyle intervention,programme,1,true
+13,Bariatric surgery,,Non-drug (surgical),metabolic surgery,procedure,1,true

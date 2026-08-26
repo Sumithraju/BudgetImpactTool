@@ -1,0 +1,26 @@
+# The interface, built once and served as static files.
+#
+# Two stages on purpose: the build stage needs Node and 300 MB of node_modules,
+# and the runtime needs neither. What ships is nginx plus a few hundred KB of
+# compiled assets.
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+# Lockfile first, for the same layer-caching reason as the API image.
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+FROM nginx:1.27-alpine AS runtime
+
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 5173
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
+    CMD wget -qO- http://localhost:5173/ >/dev/null || exit 1

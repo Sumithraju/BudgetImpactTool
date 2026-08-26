@@ -1,0 +1,4 @@
+ndc,drug_id,units_per_presentation,presentations_per_year,concentration_per_ml,dose_unit,source
+955172901,10,10,8.76,100,units,"NADAC NDC 955172901 (Insulin Glargine U-100, 10 mL vial); annual volume assumes a typical basal dose of ~24 units/day (~0.3 units/kg/day for a 70-80kg adult, consistent with ADA Standards of Care titration guidance) = 8.76 x 10 mL vials/year"
+73070010011,11,10,6.57,100,units,"NADAC NDC 73070010011 (Insulin Aspart U-100, 10 mL vial); annual volume assumes a typical mealtime bolus total of ~18 units/day (3 meals, basal-bolus regimen per ADA Standards of Care) = 6.57 x 10 mL vials/year"
+480366722,3,3,60.83,6,mg,"NADAC NDC 480366722 (Liraglutide 18 mg/3 mL, 3-pak, i.e. 6 mg/mL); annual volume assumes the Saxenda maintenance dose of 3.0 mg/day = 0.5 mL/day = 60.83 x 3 mL pens/year"
