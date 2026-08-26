@@ -730,3 +730,48 @@ tbody tr:last-child td { border-bottom: none; }
 .share-findings li { color: var(--ink-2); }
 .share-findings .finding-error { color: var(--b-critical); }
 .share-findings .finding-warning { color: var(--b-moderate); }
+
+/* responsive ---------------------------------------------------------
+   A grid or flex item defaults to `min-width: auto`, which means it will
+   not shrink below its content's intrinsic width. With a 720px-min table
+   inside, that made the whole page wider than the viewport and pushed a
+   horizontal scrollbar onto the document instead of onto the table's own
+   `.tablewrap`. Zeroing it is what lets every overflow container below
+   actually do its job. */
+.layout > *, .results, .panel, .tabs, .tabpanel, .tabpanel > * { min-width: 0; }
+
+/* Wide screens: the old 940px cap predates the subgroup table's seven
+   columns. Prose stays readable because paragraphs carry their own ch cap. */
+.results { max-width: 1180px; }
+
+@media (max-width: 900px) {
+  .results { padding: 20px 16px 60px; }
+  .results section { margin-top: 28px; }
+  .tabstrip { position: static; }        /* sticky offset is meaningless once stacked */
+}
+
+@media (max-width: 560px) {
+  .topbar { padding: 16px; }
+  .results { padding: 16px 12px 48px; }
+  .tab { padding: 10px 11px 8px; font-size: 13px; }
+  .share-row { flex-wrap: wrap; }
+  .intervention-total .figure { font-size: 19px; }
+}
+
+/* Never wider than the window it is placed in. */
+.hint-bubble { max-width: calc(100vw - 24px); }
+.twoworld-tip { max-width: min(320px, calc(100vw - 32px)); }
+
+/* Below the stacking breakpoint the chart's fixed viewBox squeezes labels
+   to unreadable; letting it scroll inside its own box keeps the marks
+   legible rather than technically visible. */
+@media (max-width: 640px) {
+  .twoworld { overflow-x: auto; }
+  .twoworld-svg { min-width: 480px; }
+}
+
+/* The table already scrolls inside `.tablewrap`, so squeezing the name and
+   definition into a ribbon buys nothing — it just makes them unreadable.
+   Give the first column room and let the table be the thing that scrolls. */
+.subgroup-table th:first-child, .subgroup-table td:first-child { min-width: 260px; }
+.findings-table th:last-child, .findings-table td:last-child { min-width: 280px; }
