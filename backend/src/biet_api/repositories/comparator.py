@@ -27,13 +27,20 @@ fallback if Open Targets ever drops `mechanismsOfAction`.
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+import threading
+import time
+from collections.abc import Callable, Sequence
 from http import HTTPStatus
 from typing import Any
 
 import httpx
 
 from ..constants.comparator import (
+    DISCOVERY_KEEPALIVE_EXPIRY_S,
+    DISCOVERY_MAX_CONNECTIONS,
+    DISCOVERY_RETRY_ATTEMPTS,
+    DISCOVERY_RETRY_BACKOFF_S,
+    DISCOVERY_RETRY_STATUSES,
     DISCOVERY_TIMEOUT_S,
     HUMAN_TAXON_ID,
     OPEN_TARGETS_URL,
@@ -105,12 +112,57 @@ class UnknownTargetError(Exception):
         super().__init__(f"no target matches {symbol!r}")
 
 
+class SchemaRejectedError(Exception):
+    """The endpoint answered, and refused the query.
+
+    Kept distinct from a transport failure because the remedy is distinct.
+    A rejected query means the source's schema moved and this module has to
+    be updated; it will not come right on its own, so it is neither retried
+    nor reported to the reader as a temporary outage.
+    """
+
+
+_client_lock = threading.Lock()
+_shared: httpx.Client | None = None
+
+
+def _shared_client() -> httpx.Client:
+    """One pooled client for the process.
+
+    Previously every request built its own client, so every discovery paid a
+    fresh TLS handshake to a remote public API — slower, and the single most
+    likely place for the transient connect error that reached the reader as
+    "we could not reach the drug database". A pooled connection is reused and
+    does not re-run that handshake. `httpx.Client` is thread-safe for sending
+    requests, which is what FastAPI's threadpool asks of it.
+    """
+    global _shared
+    if _shared is None:
+        with _client_lock:
+            if _shared is None:
+                _shared = httpx.Client(
+                    timeout=DISCOVERY_TIMEOUT_S,
+                    headers={"User-Agent": "BIET/1.0 (budget impact estimation)"},
+                    limits=httpx.Limits(
+                        max_connections=DISCOVERY_MAX_CONNECTIONS,
+                        max_keepalive_connections=DISCOVERY_MAX_CONNECTIONS,
+                        keepalive_expiry=DISCOVERY_KEEPALIVE_EXPIRY_S,
+                    ),
+                    # No explicit `transport=`, deliberately. httpx only reads
+                    # HTTP_PROXY/HTTPS_PROXY/NO_PROXY from the environment when
+                    # the transport is left to it — `allow_env_proxies` is
+                    # `trust_env and transport is None`. Passing a transport to
+                    # get its connect-level retries would silently strip proxy
+                    # support from every deployment behind one, which is
+                    # exactly where "we could not reach the drug database" is
+                    # most likely. `_send` already retries connect failures.
+                )
+    return _shared
+
+
 class ComparatorRepository:
     def __init__(self, client: httpx.Client | None = None) -> None:
-        self._client = client or httpx.Client(
-            timeout=DISCOVERY_TIMEOUT_S,
-            headers={"User-Agent": "BIET/1.0 (budget impact estimation)"},
-        )
+        self._client = client or _shared_client()
 
     # ----------------------------------------------------------------- targets
 
@@ -152,10 +204,13 @@ class ComparatorRepository:
         from Reactome is an ordinary state, and M11 section 5.9 requires
         pathway failure to degrade rather than fail the request.
         """
-        response = self._client.get(
-            REACTOME_MAPPING_URL.format(accession=accession),
-            params={"species": HUMAN_TAXON_ID},
-            headers={"Accept": "application/json"},
+        response = self._send(
+            "reactome_mapping",
+            lambda: self._client.get(
+                REACTOME_MAPPING_URL.format(accession=accession),
+                params={"species": HUMAN_TAXON_ID},
+                headers={"Accept": "application/json"},
+            ),
         )
         if response.status_code == HTTPStatus.NOT_FOUND:
             return ()
@@ -193,9 +248,12 @@ class ComparatorRepository:
 
     def pathway_participants(self, st_id: str) -> tuple[str, ...]:
         """Gene symbols of the proteins participating in a pathway."""
-        response = self._client.get(
-            REACTOME_PARTICIPANTS_URL.format(st_id=st_id),
-            headers={"Accept": "application/json"},
+        response = self._send(
+            "reactome_participants",
+            lambda: self._client.get(
+                REACTOME_PARTICIPANTS_URL.format(st_id=st_id),
+                headers={"Accept": "application/json"},
+            ),
         )
         if response.status_code == HTTPStatus.NOT_FOUND:
             return ()
@@ -296,16 +354,64 @@ class ComparatorRepository:
 
     # ----------------------------------------------------------------- internals
 
+    def _send(
+        self, endpoint: str, build: Callable[[], httpx.Response],
+    ) -> httpx.Response:
+        """Perform one idempotent read, retrying only what a retry can fix.
+
+        Every call in this module is a read, so repeating one is safe. What
+        is worth repeating is narrow: a transport error, or one of the
+        server-side statuses in `DISCOVERY_RETRY_STATUSES`. Any other status
+        is a statement about the request itself and is handed back at once
+        rather than after three identical round trips — a 404 from Reactome
+        means "not annotated", and its caller wants that answer immediately.
+
+        This is the fix for the reader being told to "try again in a moment".
+        A single connection reset is the ordinary way these calls fail, and
+        retrying it here is the same act the reader was being asked to
+        perform by hand — only faster, and without the error.
+        """
+        for attempt in range(1, DISCOVERY_RETRY_ATTEMPTS + 1):
+            final = attempt == DISCOVERY_RETRY_ATTEMPTS
+            try:
+                response = build()
+            except httpx.TransportError as exc:
+                if final:
+                    raise
+                reason = type(exc).__name__
+            else:
+                if response.status_code not in DISCOVERY_RETRY_STATUSES:
+                    return response
+                if final:
+                    response.raise_for_status()
+                reason = str(response.status_code)
+
+            delay = DISCOVERY_RETRY_BACKOFF_S * attempt
+            log.warning(
+                "discovery_retry endpoint=%s reason=%s attempt=%d/%d sleep=%.1fs",
+                endpoint, reason, attempt, DISCOVERY_RETRY_ATTEMPTS, delay,
+            )
+            time.sleep(delay)
+
+        # Unreachable: the final attempt either returns or raises.
+        raise RuntimeError(f"{endpoint}: retry loop exhausted")
+
     def _graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
-        response = self._client.post(
-            OPEN_TARGETS_URL, json={"query": query, "variables": variables},
+        body = {"query": query, "variables": variables}
+        response = self._send(
+            "open_targets", lambda: self._client.post(OPEN_TARGETS_URL, json=body),
         )
         response.raise_for_status()
         payload = response.json()
         if payload.get("errors"):
             # A GraphQL error is a 200 with an `errors` array — raising here
             # is what stops a schema change reading as "no competitors".
-            raise httpx.HTTPError(
+            #
+            # Deliberately outside the retry above, and its own type. The
+            # query was refused, not lost: three more identical round trips
+            # would be refused identically, and calling that a temporary
+            # outage points whoever reads it away from the actual cause.
+            raise SchemaRejectedError(
                 f"Open Targets rejected the query: {payload['errors'][0].get('message')}"
             )
         return dict(payload.get("data") or {})

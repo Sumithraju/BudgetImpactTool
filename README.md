@@ -66,6 +66,13 @@ When it settles, open:
 - **App** — http://localhost:5173
 - **API docs** — http://localhost:8077/docs
 
+The seeded reference data loads offline, but comparator discovery is live: it
+calls Open Targets and Reactome while serving the request. If the container
+cannot reach them, discovery reports that it could not reach the drug database
+while the rest of the tool carries on working. Behind a corporate proxy, set
+`HTTPS_PROXY` (and `NO_PROXY` for `db`) in the shell you run Compose from —
+`docker-compose.yml` passes both through to the API and the migration step.
+
 To stop:
 
 ```bash
