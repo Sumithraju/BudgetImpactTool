@@ -16,6 +16,13 @@ from sqlalchemy.orm import Session
 
 from biet_engine import __version__ as engine_version
 from biet_engine.affordability import compute_affordability
+from biet_engine.constants import (
+    SUBGROUP_PRIORITY,
+    SUPPLIED_SUBGROUPS,
+    ConfidenceTier,
+    ResolutionLevel,
+    Subgroup,
+)
 from biet_engine.cost import compute_therapy_cost
 from biet_engine.impact import compute_budget_impact
 from biet_engine.models import (
@@ -24,15 +31,19 @@ from biet_engine.models import (
     EngineInput,
     EngineResult,
     Provenance,
+    SubgroupShare,
     TherapyInput,
+    Valued,
     Warning_,
 )
 from biet_engine.persistence import persistence_fraction
 from biet_engine.psa import run_psa
 from biet_engine.safety import build_cost_bridge
 from biet_engine.sensitivity import run_owsa
+from biet_engine.subgroups import aggregate_segments, allocate_shares
 
 from ..constants.domain import RunType
+from ..constants.subgroups import DEFAULT_SUBGROUP_SHARES, SUBGROUP_LABELS
 from ..schemas.calculation import (
     AffordabilityRead,
     BridgeTermRead,
@@ -45,6 +56,8 @@ from ..schemas.calculation import (
     OwsaResponse,
     ProvenanceRead,
     PsaResponse,
+    SegmentedCalculationResponse,
+    SegmentRead,
     TherapyRead,
     TotalsRead,
     WarningRead,
@@ -55,6 +68,39 @@ from .engine_input import EngineInputBuilder
 #: Buckets for the PSA histogram. Enough shape to read the skew, few enough
 #: that the payload stays small — the interface never plots raw samples.
 PSA_HISTOGRAM_BINS = 36
+
+#: Provenance for a share arriving from the interface rather than the seed.
+_SEGMENT_PROVENANCE = Provenance(
+    source="scenario subgroup split",
+    confidence_tier=ConfidenceTier.C,
+    resolution_level=ResolutionLevel.SCENARIO_OVERRIDE,
+)
+
+
+def _scaled(base: EngineInput, share: float) -> EngineInput:
+    """The same scenario, restricted to one subgroup's slice of the disease.
+
+    Scaling prevalence is the whole mechanism: `diseased = population x adult
+    share x prevalence`, so multiplying prevalence by the segment's share
+    yields exactly that segment's diseased count and leaves every rate beneath
+    it — diagnosis, treatment, eligibility, access — free to differ per
+    segment later without touching the engine.
+    """
+    return base.model_copy(update={
+        "countries": tuple(
+            country.model_copy(update={
+                "prevalence": country.prevalence.model_copy(update={
+                    "value": country.prevalence.value * share,
+                    "low": None if country.prevalence.low is None
+                           else country.prevalence.low * share,
+                    "high": None if country.prevalence.high is None
+                            else country.prevalence.high * share,
+                })
+            })
+            for country in base.countries
+        )
+    })
+
 
 DEFAULT_PSA_ITERATIONS = 5_000
 DEFAULT_PSA_SEED = 20_260_906
@@ -176,11 +222,92 @@ class CalculationService:
                 cumulative=result.totals.cumulative.amount,
                 peak_year=result.totals.peak_year,
                 currency=result.totals.cumulative.currency,
+                without_by_year=[m.amount for m in result.totals.without_by_year],
+                with_by_year=[m.amount for m in result.totals.with_by_year],
             ),
             warnings=_warnings(list(resolution_warnings) + list(result.warnings)),
             duration_ms=duration_ms,
         )
         return response, engine_input, result
+
+    def calculate_segments(
+        self,
+        scenario: object,
+        shares: dict[Subgroup, float] | None = None,
+        *,
+        project_landscape: bool = False,
+    ) -> SegmentedCalculationResponse:
+        """Run the scenario once per subgroup and aggregate — M18 section 5.3.
+
+        The engine is called unchanged, once per segment. A subgroup is a
+        *scenario dimension*: scaling a market's prevalence by the segment's
+        share scales the `diseased` stage and nothing else, which is exactly
+        what a subgroup is — a slice of the people who have the disease,
+        running through the same funnel beneath it. That is what lets
+        `biet_engine` stay pure and keeps `compute_budget_impact`'s signature
+        untouched.
+
+        A segment with a zero share is skipped rather than run: it would
+        contribute nothing and its empty funnel would raise on its way there.
+        """
+        started = time.perf_counter()
+        supplied = shares or dict(DEFAULT_SUBGROUP_SHARES)
+        allocation, allocation_warnings = allocate_shares([
+            SubgroupShare(
+                subgroup=subgroup,
+                share=Valued(value=share, provenance=_SEGMENT_PROVENANCE),
+            )
+            for subgroup, share in supplied.items()
+            if subgroup in SUPPLIED_SUBGROUPS
+        ])
+
+        base, resolution_warnings = self._builder.build(
+            scenario, project_landscape=project_landscape,  # type: ignore[arg-type]
+        )
+
+        runs = []
+        for subgroup in SUBGROUP_PRIORITY:
+            share = allocation[subgroup]
+            if share <= 0.0:
+                continue
+            runs.append((subgroup, share, compute_budget_impact(_scaled(base, share))))
+
+        aggregate = aggregate_segments(runs)
+        duration_ms = int((time.perf_counter() - started) * 1000)
+
+        return SegmentedCalculationResponse(
+            scenario_id=base.scenario_id,
+            engine_version=engine_version,
+            reporting_currency=base.reporting_currency,
+            launch_year=base.launch_year,
+            horizon_years=base.horizon_years,
+            totals=TotalsRead(
+                by_year=[m.amount for m in aggregate.totals.by_year],
+                cumulative=aggregate.totals.cumulative.amount,
+                peak_year=aggregate.totals.peak_year,
+                currency=aggregate.totals.cumulative.currency,
+                without_by_year=[m.amount for m in aggregate.totals.without_by_year],
+                with_by_year=[m.amount for m in aggregate.totals.with_by_year],
+            ),
+            segments=[
+                SegmentRead(
+                    code=c.subgroup.value,
+                    label=SUBGROUP_LABELS[c.subgroup],
+                    share=c.share,
+                    cumulative_impact=c.cumulative_impact.amount,
+                    share_of_total_impact=c.share_of_total_impact,
+                    addressable_final_year=c.addressable_final_year,
+                    patients_on_new_final_year=c.patients_on_new_final_year,
+                )
+                for c in aggregate.contributions
+            ],
+            warnings=_warnings(
+                list(resolution_warnings)
+                + list(allocation_warnings)
+                + list(aggregate.warnings)
+            ),
+            duration_ms=duration_ms,
+        )
 
     def _country(
         self,

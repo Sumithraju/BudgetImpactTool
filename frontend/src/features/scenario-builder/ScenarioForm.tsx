@@ -1,5 +1,11 @@
-import type { CountryOption, IndicationOption } from "../../shared/api";
+import type { CountryOption, IndicationOption, SubgroupOption } from "../../shared/api";
 import { formatPercent } from "../../shared/format";
+import { GLOSSARY } from "../../shared/glossary";
+import { Hint } from "../../shared/Hint";
+import {
+  SubgroupShareEditor,
+  type SubgroupShares,
+} from "../subgroups/SubgroupShareEditor";
 
 export interface Draft {
   name: string;
@@ -27,6 +33,9 @@ interface Props {
   errorField: string | null;
   projectLandscape: boolean;
   onProjectLandscapeChange: (on: boolean) => void;
+  subgroupOptions: SubgroupOption[];
+  subgroupShares: SubgroupShares;
+  onSubgroupSharesChange: (shares: SubgroupShares) => void;
 }
 
 /** Sliders work in whole percent; state stays in fractions. The conversion
@@ -51,6 +60,10 @@ function RateSlider({
     <div className={`field ${errorField === path ? "field-error" : ""}`}>
       <div className="field-head">
         <label htmlFor={path}>{label}</label>
+        {/* The slider already carries the override vocabulary's dotted path,
+            which is the glossary's key — so the explanation attaches itself
+            rather than being wired per call site. */}
+        {GLOSSARY[path] && <Hint content={GLOSSARY[path]} label={label} />}
         <span className={overridden ? "val val-set" : "val"}>
           {overridden ? formatPercent(value) : fallback}
         </span>
@@ -87,6 +100,9 @@ export function ScenarioForm({
   errorField,
   projectLandscape,
   onProjectLandscapeChange,
+  subgroupOptions,
+  subgroupShares,
+  onSubgroupSharesChange,
 }: Props) {
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     onChange({ ...draft, [key]: value });
@@ -192,6 +208,20 @@ export function ScenarioForm({
           purchasing-power parity and labelled as derived.
         </p>
       </section>
+
+      {/* Who the patients are, before what fraction of them reach treatment.
+          Both are population inputs, so they sit together — and this one is
+          above the rates rather than below them, because a sidebar that
+          scrolls hides whatever is last. */}
+      {subgroupOptions.length > 0 && (
+        <section>
+          <SubgroupShareEditor
+            options={subgroupOptions}
+            shares={subgroupShares}
+            onChange={onSubgroupSharesChange}
+          />
+        </section>
+      )}
 
       <section>
         <h2>Assumptions</h2>

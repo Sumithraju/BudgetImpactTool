@@ -14,7 +14,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
+from biet_engine.constants import Subgroup
+
 from ..dal import get_session
+from ..exceptions import ValidationError
 from ..models.scenario import Scenario
 from ..schemas.calculation import (
     CalculationResponse,
@@ -28,6 +31,7 @@ from ..schemas.calculation import (
     RunDetail,
     RunRead,
     ScenarioDiffEntry,
+    SegmentedCalculationResponse,
     SolveRequest,
     SolveResponse,
     WarningRead,
@@ -160,6 +164,48 @@ def archive_scenario(scenario_id: uuid.UUID, session: SessionDep) -> None:
 
 
 # --------------------------------------------------------------------------- calculation
+
+
+@router.post(
+    "/scenarios/{scenario_id}/calculate/segments",
+    response_model=SegmentedCalculationResponse,
+)
+def calculate_segments(
+    scenario_id: uuid.UUID,
+    session: SessionDep,
+    shares: dict[str, float] | None = None,
+    project_landscape: bool = False,
+) -> SegmentedCalculationResponse:
+    """The forward run, once per disease subgroup, aggregated — M18 section 5.3.
+
+    `shares` maps a subgroup code to its share of the diseased population, as
+    a fraction. Omit it and the seeded defaults apply. Obesity alone is derived
+    from the rest and is ignored if supplied, because the residual is
+    arithmetic rather than an input.
+
+    Not persisted: this is a breakdown of a scenario, not a second scenario.
+    The plain `/calculate` run remains the record.
+    """
+    scenarios = ScenarioService(session)
+    calculations = CalculationService(session)
+    scenario = scenarios.require(scenario_id)
+
+    resolved: dict[Subgroup, float] | None = None
+    if shares:
+        resolved = {}
+        for code, share in shares.items():
+            try:
+                subgroup = Subgroup(code)
+            except ValueError:
+                raise ValidationError(
+                    f"{code!r} is not a subgroup this tool models.",
+                    field="shares",
+                ) from None
+            resolved[subgroup] = share
+
+    return calculations.calculate_segments(
+        scenario, resolved, project_landscape=project_landscape,
+    )
 
 
 @router.post("/scenarios/{scenario_id}/calculate", response_model=CalculationResponse)

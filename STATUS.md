@@ -1195,7 +1195,7 @@ from then on, which is precisely the failure this system is built to avoid.
     presentation, not construction.
 
 18. **Phases 12–18 — the two HEOR review rounds.** Specified in full; Phase 12's engine
-    module is the only part built. The order below is dependency-driven and is explained in
+    module and the first slice of Phase 16 are the only parts built. The order below is dependency-driven and is explained in
     §10; a build prompt per phase is in [docs/PROMPTS.md](docs/PROMPTS.md).
 
     | Phase | Module | Delivers | State |
@@ -1211,6 +1211,75 @@ from then on, which is precisely the failure this system is built to avoid.
     **Start with Phase 12's remainder, then Phase 13.** Finishing M16 is a day's work against
     a module that already passes its own tests, and M18 is the hinge — every phase after it
     reads the scenario shape it defines, so anything built ahead of it is built twice.
+
+    **Built out of order, on 2026-08-25, after the tool was seen running.** Tabs, a
+    new-intervention input, comparator import, the two-world chart and the subgroup
+    split — the parts of Phases 13, 16 and 17 an analyst hits first. The interface was one scrolling column with no way to enter the
+    new therapy's own costs and no way to load a comparator set that already existed.
+
+    - `Tabs` in `shared/`, WAI-ARIA keyboard pattern, replacing the scroll with six
+      panels: Current care, Import, New intervention, Results, Evidence, Compare.
+    - `features/new-intervention/` — product, route, dose, frequency and the four annual
+      costs, totalling to a gross cost per patient that says on screen that it is *not* a
+      budget impact. Non-negotiable 2 is what an interface erodes first.
+    - `features/comparator-import/` and `POST /comparators/import` — .xlsx and .csv
+      through one parser, cell-level findings, whole-file rejection, plus a template
+      endpoint. M19 sections 5.1–5.6, minus registry writes: an imported row is validated,
+      not registered, and reaches a calculation through M12's promotion path so the
+      registry stays the single record of what a drug is.
+    - `requirements.txt` gained `python-multipart` — FastAPI cannot accept an upload
+      without it, and it was missing.
+
+    Three M19 rules are load-bearing here and are tested: every finding carries its sheet
+    and cell, all findings return in one pass, and any error rejects the whole file.
+    Columns match by label so an inserted column does not shift every value one place.
+    28 new tests; 461 passing overall.
+
+    **M18's first slice — the subgroup split in the funnel.** `biet_engine/subgroups.py`
+    with `allocate_shares` and `split_stage`, both pure, plus the `Subgroup` enum and
+    `SUBGROUP_PRIORITY`. 18 tests.
+
+    The design point that carries it: the five adult subgroups **partition** the obesity
+    population by priority order, so a patient with obesity, diabetes and hypertension is
+    counted once, in the highest-risk group they qualify for. Adding raw comorbidity
+    prevalences would count them three times, and that is the mistake the priority rule
+    exists to prevent. Obesity alone is the derived residual and cannot be supplied —
+    permitting both invites a set that does not sum to one. Paediatric obesity is disjoint
+    from the partition, carries its own denominator, and uses the 95th BMI centile rather
+    than the adult BMI-30 cut-off.
+
+    Segment patients reconcile to the stage total exactly; a breakdown that does not
+    reconcile to the figure it breaks down is worse than no breakdown, and a test asserts it.
+
+    **Shares are tier C and global, not country-specific, and the interface says so.**
+    Co-prevalence within an obese population is published for T2D and hypertension in most
+    markets, thinner for dyslipidaemia, and thin everywhere for established CVD within
+    obesity specifically. Seeding at tier A would be a lie and per-market from figures that
+    do not exist would be worse. M15 will rank this split as one of the least certain things
+    in the model, which is correct.
+
+    **M18 completed.** `CalculationService.calculate_segments` runs the engine once per
+    segment and `aggregate_segments` combines the results;
+    `POST /scenarios/{id}/calculate/segments` exposes it and the breakdown table gains
+    treated patients, budget impact and share of total per subgroup.
+
+    The mechanism is one line: scaling a market's prevalence by the segment's share scales
+    the `diseased` stage and nothing else, because `diseased = population x adult share x
+    prevalence`. So a subgroup really is a *scenario dimension* — the engine runs unchanged,
+    `compute_budget_impact` keeps its signature, and every rate beneath the split is free to
+    differ per segment later without touching `biet_engine`.
+
+    The acceptance test is the one the design is exposed to: **a uniform split reproduces the
+    undifferentiated total exactly**, to 1e-9, in both the engine and the service. Ratios are
+    recomputed from aggregated totals rather than averaged across segments, and a mixed-sign
+    set (one segment cost-saving, another cost-adding) warns that share-of-total is a signed
+    contribution rather than a proportion.
+
+    **Still per-disease, not yet per-segment:** each segment currently inherits the scenario's
+    comparator mix, uptake curve and outcome profile. The structure to vary them exists — that
+    is what scaling prevalence rather than patching the funnel buys — but the resolution chain
+    does not yet read per-subgroup overrides, so a segment's *displaced cost* is still the
+    disease average. M18 section 5.3 names the comparator mix as where this matters most.
 
     **The one thing worth deciding before writing code:** whether the hackathon demo needs
     Phases 15–17 more than it needs 13–14. The dependency order says subgroups first; a

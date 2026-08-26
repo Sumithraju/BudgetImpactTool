@@ -16,4 +16,4 @@ from __future__ import annotations
 # bridge), and adverse-event costs are now resolved from seeded profiles
 # rather than defaulting to zero. Results move for any therapy with a
 # profile, so runs recorded under 0.1.0 are not comparable to these.
-__version__ = "0.2.0"
+__version__ = "0.5.0"

@@ -120,11 +120,57 @@ class CountryRead(BaseModel):
     cost_bridge: CostBridgeRead | None = None
 
 
+class SegmentRead(BaseModel):
+    """One subgroup's contribution to the scenario — M18 section 5.4."""
+
+    code: str
+    label: str
+    share: float
+    cumulative_impact: float
+    #: Signed. Not a proportion when segments pull in opposite directions.
+    share_of_total_impact: float
+    addressable_final_year: float
+    patients_on_new_final_year: float
+
+
+class SegmentedCalculationResponse(BaseModel):
+    """The scenario run once per subgroup and aggregated."""
+
+    scenario_id: uuid.UUID
+    engine_version: str
+    reporting_currency: str
+    launch_year: int
+    horizon_years: int
+    totals: TotalsRead
+    segments: list[SegmentRead]
+    warnings: list[WarningRead]
+    duration_ms: int | None = None
+
+
+class SubgroupOption(BaseModel):
+    """One subgroup for the picker — M18 section 8."""
+
+    code: str
+    label: str
+    definition: str
+    #: None for the residual and for the disjoint paediatric segment, neither
+    #: of which is supplied as part of the adult partition.
+    default_share: float | None
+    is_residual: bool
+    is_disjoint: bool
+    source: str
+    confidence_tier: str
+
+
 class TotalsRead(BaseModel):
     by_year: list[float]
     cumulative: float
     peak_year: int
     currency: str
+    #: The world without the asset and the world with it, per year, in the
+    #: reporting currency. `by_year` is their difference.
+    without_by_year: list[float] = []
+    with_by_year: list[float] = []
 
 
 class CalculationResponse(BaseModel):

@@ -209,15 +209,27 @@ def compute_budget_impact(inputs: EngineInput) -> EngineResult:
         all_warnings.extend(warnings)
 
     by_year_totals: list[Money] = []
+    without_totals: list[Money] = []
+    with_totals: list[Money] = []
     for index in range(inputs.horizon_years):
-        year_total = Money(amount=0.0, currency=inputs.reporting_currency)
+        zero = Money(amount=0.0, currency=inputs.reporting_currency)
+        year_total, year_without, year_with = zero, zero, zero
         for country_result in country_results:
-            converted = convert(
-                country_result.years[index].budget_impact,
-                inputs.reporting_currency, inputs.fx_rates,
+            year = country_result.years[index]
+            # All three convert through the same snapshot, so the identity
+            # with - without = impact survives aggregation exactly.
+            year_total = year_total + convert(
+                year.budget_impact, inputs.reporting_currency, inputs.fx_rates,
             )
-            year_total = year_total + converted
+            year_without = year_without + convert(
+                year.cost_without, inputs.reporting_currency, inputs.fx_rates,
+            )
+            year_with = year_with + convert(
+                year.cost_with, inputs.reporting_currency, inputs.fx_rates,
+            )
         by_year_totals.append(year_total)
+        without_totals.append(year_without)
+        with_totals.append(year_with)
 
     cumulative = Money(amount=0.0, currency=inputs.reporting_currency)
     for total in by_year_totals:
@@ -231,6 +243,12 @@ def compute_budget_impact(inputs: EngineInput) -> EngineResult:
         reporting_currency=inputs.reporting_currency,
         fx_snapshot_date=inputs.fx_snapshot_date,
         countries=tuple(country_results),
-        totals=Totals(by_year=tuple(by_year_totals), cumulative=cumulative, peak_year=peak_year),
+        totals=Totals(
+            by_year=tuple(by_year_totals),
+            cumulative=cumulative,
+            peak_year=peak_year,
+            without_by_year=tuple(without_totals),
+            with_by_year=tuple(with_totals),
+        ),
         warnings=tuple(all_warnings),
     )

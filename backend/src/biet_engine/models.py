@@ -29,6 +29,7 @@ from .constants import (
     ResolutionLevel,
     ResponseThreshold,
     SolverMethod,
+    Subgroup,
     UptakeCurve,
 )
 from .exceptions import CurrencyMismatchError
@@ -145,6 +146,37 @@ class FunnelResult(BaseModel):
     @property
     def addressable(self) -> float:
         return self.stages[-1].value
+
+
+class SubgroupShare(BaseModel):
+    """One subgroup's share of the adult diseased population — M18 section 5.2."""
+
+    model_config = ConfigDict(frozen=True)
+
+    subgroup: Subgroup
+    share: Valued
+
+
+class SubgroupSegment(BaseModel):
+    """A subgroup's share and the patients it accounts for at one stage."""
+
+    model_config = ConfigDict(frozen=True)
+
+    subgroup: Subgroup
+    share: float
+    patients: float
+    #: True where the share was derived as the residual rather than supplied.
+    is_residual: bool
+    provenance: Provenance
+
+
+class SubgroupAllocation(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    stage: FunnelStage
+    total: float
+    segments: tuple[SubgroupSegment, ...]
+    warnings: tuple[Warning_, ...] = ()
 
 
 # --------------------------------------------------------------------------- M3 — Eligibility & Segmentation
@@ -666,9 +698,16 @@ class Totals(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    by_year: tuple[Money, ...]               # Total(y)
+    by_year: tuple[Money, ...]               # Total(y) — the incremental figure
     cumulative: Money
     peak_year: int                           # argmax Total(y); ties resolve to the earliest
+
+    #: The two worlds the incremental figure is the difference of, converted
+    #: and summed the same way. Carried explicitly because a reader asked to
+    #: fund an increment will ask what it is an increment *over*, and
+    #: recomputing it downstream from a bare difference is not possible.
+    without_by_year: tuple[Money, ...] = ()
+    with_by_year: tuple[Money, ...] = ()
 
 
 class EngineResult(BaseModel):
@@ -680,6 +719,31 @@ class EngineResult(BaseModel):
     countries: tuple[CountryResult, ...]
     totals: Totals                           # reporting currency
     warnings: tuple[Warning_, ...]
+
+
+class SegmentContribution(BaseModel):
+    """What one subgroup contributed to the aggregate — M18 section 5.4."""
+
+    model_config = ConfigDict(frozen=True)
+
+    subgroup: Subgroup
+    share: float
+    cumulative_impact: Money
+    #: Signed. Negative where the segment is cost-saving, and it can exceed 1
+    #: when segments pull in opposite directions — see `MIXED_SIGN_SEGMENTS`.
+    share_of_total_impact: float
+    addressable_final_year: float
+    patients_on_new_final_year: float
+
+
+class SubgroupAggregate(BaseModel):
+    """The scenario total, and which segment drove it."""
+
+    model_config = ConfigDict(frozen=True)
+
+    totals: Totals
+    contributions: tuple[SegmentContribution, ...]
+    warnings: tuple[Warning_, ...] = ()
 
 
 # --------------------------------------------------------------------------- M8 — Affordability & Price Solver

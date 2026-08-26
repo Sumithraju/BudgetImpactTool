@@ -180,3 +180,75 @@ def test_horizon_one_cumulative_equals_year_one() -> None:
     assert result.countries[0].cumulative_budget_impact.amount == pytest.approx(
         result.countries[0].years[0].budget_impact.amount
     )
+
+
+# --------------------------------------------------------- the two worlds
+
+
+def test_totals_carry_both_worlds_and_their_difference_is_the_impact() -> None:
+    """`with - without = impact` must survive aggregation exactly.
+
+    All three convert through the same FX snapshot, so the identity that
+    holds per market per year holds after summing across markets. A reader
+    asked to fund an increment will ask what it is an increment over, and a
+    total that does not reconcile to its own two worlds is not defensible.
+    """
+    inputs = make_engine_input(
+        countries=(_golden_country(),), horizon_years=1, reporting_currency="EUR",
+        fx_rates={"EUR": 1.0, "USD": 0.86386},
+        uptake=make_uptake_input(vector=(0.05,)),
+    )
+
+    totals = compute_budget_impact(inputs).totals
+
+    assert len(totals.without_by_year) == len(totals.by_year) == 1
+    assert totals.with_by_year[0].amount - totals.without_by_year[0].amount == pytest.approx(
+        totals.by_year[0].amount, rel=1e-9
+    )
+
+
+def test_both_worlds_are_reported_in_the_reporting_currency() -> None:
+    """Not in the market's own currency — these are cross-market sums."""
+    inputs = make_engine_input(
+        countries=(_golden_country(),), horizon_years=1, reporting_currency="USD",
+        fx_rates={"EUR": 1.0, "USD": 0.86386},
+        uptake=make_uptake_input(vector=(0.05,)),
+    )
+
+    totals = compute_budget_impact(inputs).totals
+
+    assert totals.without_by_year[0].currency == "USD"
+    assert totals.with_by_year[0].currency == "USD"
+
+
+def test_zero_uptake_leaves_the_two_worlds_identical() -> None:
+    """Nothing switches, so the world with the asset is the world without it —
+    and the increment is zero because the two worlds coincide, not because a
+    subtraction happened to cancel."""
+    inputs = make_engine_input(
+        countries=(_golden_country(),), horizon_years=1, reporting_currency="EUR",
+        fx_rates={"EUR": 1.0, "USD": 0.86386},
+        uptake=make_uptake_input(vector=(0.0,)),
+    )
+
+    totals = compute_budget_impact(inputs).totals
+
+    assert totals.with_by_year[0].amount == pytest.approx(totals.without_by_year[0].amount)
+    assert totals.by_year[0].amount == pytest.approx(0.0, abs=1e-6)
+
+
+def test_the_world_without_the_asset_does_not_move_with_uptake() -> None:
+    """Uptake changes what the payer spends, not what they would have spent."""
+    def totals_at(uptake: float):
+        return compute_budget_impact(
+            make_engine_input(
+                countries=(_golden_country(),), horizon_years=1, reporting_currency="EUR",
+                fx_rates={"EUR": 1.0, "USD": 0.86386},
+                uptake=make_uptake_input(vector=(uptake,)),
+            )
+        ).totals
+
+    low, high = totals_at(0.05), totals_at(0.40)
+
+    assert low.without_by_year[0].amount == pytest.approx(high.without_by_year[0].amount)
+    assert high.with_by_year[0].amount > low.with_by_year[0].amount

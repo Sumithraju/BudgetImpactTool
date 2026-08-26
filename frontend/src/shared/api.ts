@@ -93,7 +93,16 @@ export interface Calculation {
   launch_year: number;
   horizon_years: number;
   countries: CountryResult[];
-  totals: { by_year: number[]; cumulative: number; peak_year: number; currency: string };
+  totals: {
+    by_year: number[];
+    cumulative: number;
+    peak_year: number;
+    currency: string;
+    /** The two worlds `by_year` is the difference of, in the reporting
+     *  currency. Empty on a run made before these were carried. */
+    without_by_year: number[];
+    with_by_year: number[];
+  };
   warnings: Warning[];
   duration_ms: number | null;
 }
@@ -288,6 +297,115 @@ export interface Scenario {
   is_baseline: boolean;
   is_archived: boolean;
   overrides: OverrideItem[];
+}
+
+/** M19 — comparator workbook import. */
+export type FindingSeverity = "error" | "warning";
+
+export interface CellRef {
+  sheet: string;
+  cell: string;
+  column_label: string | null;
+  row_number: number | null;
+}
+
+export interface ImportFinding {
+  severity: FindingSeverity;
+  code: string;
+  message: string;
+  ref: CellRef | null;
+  supplied: string | null;
+  expected: string | null;
+}
+
+export interface ImportedComparator {
+  name: string;
+  therapy_type: string | null;
+  country_code: string;
+  currency_code: string;
+  /** A fraction, already divided by 100 at the import boundary. */
+  market_share: number;
+  drug_cost: number;
+  admin_cost: number;
+  monitoring_cost: number;
+  ae_cost: number;
+  total_cost: number;
+  source: string;
+  confidence_tier: string;
+  origin: string;
+}
+
+export interface ImportedSubgroupShare {
+  code: string;
+  /** A fraction, already divided by 100 at the import boundary. */
+  share: number;
+  source: string;
+  confidence_tier: string;
+  origin: string;
+}
+
+export interface SubgroupImportResult {
+  accepted: boolean;
+  filename: string;
+  sheet: string;
+  rows_read: number;
+  findings: ImportFinding[];
+  shares: ImportedSubgroupShare[];
+  residual_share: number;
+}
+
+export interface ComparatorImportResult {
+  accepted: boolean;
+  filename: string;
+  sheet: string;
+  rows_read: number;
+  findings: ImportFinding[];
+  comparators: ImportedComparator[];
+  share_totals: Record<string, number>;
+}
+
+/** M18 — one subgroup's contribution to the scenario. */
+export interface Segment {
+  code: string;
+  label: string;
+  share: number;
+  cumulative_impact: number;
+  /** Signed. Not a proportion when segments pull in opposite directions. */
+  share_of_total_impact: number;
+  addressable_final_year: number;
+  patients_on_new_final_year: number;
+}
+
+export interface SegmentedCalculation {
+  scenario_id: string;
+  engine_version: string;
+  reporting_currency: string;
+  launch_year: number;
+  horizon_years: number;
+  totals: {
+    by_year: number[];
+    cumulative: number;
+    peak_year: number;
+    currency: string;
+    without_by_year: number[];
+    with_by_year: number[];
+  };
+  segments: Segment[];
+  warnings: Warning[];
+  duration_ms: number | null;
+}
+
+/** M18 — one obesity subgroup in the taxonomy. */
+export interface SubgroupOption {
+  code: string;
+  label: string;
+  definition: string;
+  /** Null for the derived residual and for the disjoint paediatric segment. */
+  default_share: number | null;
+  is_residual: boolean;
+  is_disjoint: boolean;
+  source: string;
+  confidence_tier: string;
 }
 
 /** The API's error envelope — one shape for every non-2xx response. */
@@ -546,5 +664,72 @@ export const api = {
     });
     if (mechanism) q.set("mechanism", mechanism);
     return request<ComparatorBasket>(`/api/v1/comparators/discover?${q}`);
+  },
+
+  /** Multipart, so this cannot go through `request` — a JSON content-type
+   *  header would stop the browser writing the multipart boundary. The error
+   *  envelope is still parsed the same way. */
+  importComparators: async (file: File): Promise<ComparatorImportResult> => {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch("/api/v1/comparators/import", {
+      method: "POST",
+      body: form,
+    });
+    if (!response.ok) {
+      let body: ApiErrorBody | null = null;
+      try {
+        body = (await response.json()) as ApiErrorBody;
+      } catch {
+        // A non-JSON error body has no envelope to read.
+      }
+      throw new ApiError(
+        body?.error.code ?? "HTTP_" + response.status,
+        body?.error.message ?? response.statusText,
+        body?.error.field ?? null,
+        body?.request_id ?? "unknown",
+      );
+    }
+    return (await response.json()) as ComparatorImportResult;
+  },
+
+  comparatorTemplateUrl: () => "/api/v1/comparators/import/template",
+
+  subgroups: () => request<SubgroupOption[]>("/api/v1/reference/subgroups"),
+
+  subgroupTemplateUrl: () => "/api/v1/reference/subgroups/template",
+
+  /** The same scenario, run once per subgroup and aggregated. Shares are
+   *  fractions keyed by subgroup code; omit them for the seeded defaults. */
+  calculateSegments: (scenarioId: string, shares: Record<string, number>) =>
+    request<SegmentedCalculation>(
+      `/api/v1/scenarios/${scenarioId}/calculate/segments`,
+      { method: "POST", body: JSON.stringify(shares) },
+    ),
+
+  /** Multipart, so it bypasses `request`'s JSON content-type — see
+   *  `importComparators` for why. */
+  importSubgroups: async (file: File): Promise<SubgroupImportResult> => {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch("/api/v1/reference/subgroups/import", {
+      method: "POST",
+      body: form,
+    });
+    if (!response.ok) {
+      let body: ApiErrorBody | null = null;
+      try {
+        body = (await response.json()) as ApiErrorBody;
+      } catch {
+        // A non-JSON error body has no envelope to read.
+      }
+      throw new ApiError(
+        body?.error.code ?? "HTTP_" + response.status,
+        body?.error.message ?? response.statusText,
+        body?.error.field ?? null,
+        body?.request_id ?? "unknown",
+      );
+    }
+    return (await response.json()) as SubgroupImportResult;
   },
 };

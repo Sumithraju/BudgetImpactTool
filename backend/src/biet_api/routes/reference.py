@@ -2,15 +2,39 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from biet_engine.constants import (
+    DISJOINT_SUBGROUPS,
+    SUBGROUP_PRIORITY,
+    SUPPLIED_SUBGROUPS,
+    Subgroup,
+)
+
+from ..constants.subgroups import (
+    DEFAULT_SUBGROUP_SHARES,
+    SUBGROUP_DEFINITIONS,
+    SUBGROUP_LABELS,
+    SUBGROUP_SHARE_SOURCE,
+    SUBGROUP_SHARE_TIER,
+)
+from ..constants.workbook import SubgroupColumn
 from ..dal import get_session
 from ..models.reference import Country, Drug, Indication
-from ..schemas.calculation import CountryOption, DrugOption, IndicationOption
+from ..schemas.calculation import (
+    CountryOption,
+    DrugOption,
+    IndicationOption,
+    SubgroupOption,
+)
+from ..schemas.comparator_import import SubgroupImportResult
+from ..services.subgroup_import_service import SubgroupImportService
 
 router = APIRouter(prefix="/api/v1/reference", tags=["reference"])
 
@@ -81,3 +105,68 @@ def affordability_bands() -> dict[str, float]:
     from biet_engine.constants import AFFORDABILITY_THRESHOLDS
 
     return {band.value: threshold for band, threshold in AFFORDABILITY_THRESHOLDS.items()}
+
+
+@router.get("/subgroups", response_model=list[SubgroupOption])
+def list_subgroups() -> list[SubgroupOption]:
+    """The obesity subgroup taxonomy and its seeded shares — M18 section 8.
+
+    Shares are the fraction of the adult obesity population whose highest
+    priority qualifying condition is that one, so the four supplied ones sum to
+    less than 1 and obesity alone is the residual. Every share is tier C and
+    global rather than country-specific; the payload says so rather than
+    leaving a reader to assume otherwise.
+    """
+    return [
+        SubgroupOption(
+            code=subgroup.value,
+            label=SUBGROUP_LABELS[subgroup],
+            definition=SUBGROUP_DEFINITIONS[subgroup],
+            default_share=DEFAULT_SUBGROUP_SHARES.get(subgroup),
+            is_residual=subgroup is Subgroup.OBESITY_ALONE,
+            is_disjoint=subgroup in DISJOINT_SUBGROUPS,
+            source=SUBGROUP_SHARE_SOURCE,
+            confidence_tier=SUBGROUP_SHARE_TIER,
+        )
+        for subgroup in (*SUBGROUP_PRIORITY, Subgroup.PAEDIATRIC_OBESITY)
+    ]
+
+
+@router.get("/subgroups/template")
+def subgroup_template() -> Response:
+    """The subgroup share sheet with the four suppliable rows pre-filled.
+
+    Pre-filled rather than empty because the seeded defaults are a better
+    starting point than a blank grid, and because a row's presence tells the
+    analyst which subgroups are theirs to set — obesity alone and the
+    paediatric segment are deliberately absent.
+    """
+    header = ",".join(c.value for c in SubgroupColumn)
+    # csv.writer, not an f-string: the seeded source text contains a comma,
+    # and hand-joining fields produces a template that is not valid CSV.
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    for subgroup in SUPPLIED_SUBGROUPS:
+        writer.writerow([
+            subgroup.value,
+            f"{DEFAULT_SUBGROUP_SHARES[subgroup] * 100:g}",
+            SUBGROUP_SHARE_SOURCE,
+            SUBGROUP_SHARE_TIER,
+        ])
+    rows = buffer.getvalue().rstrip("\r\n")
+    return Response(
+        content=f"{header}\n{rows}\n",
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="subgroup-shares.csv"'},
+    )
+
+
+@router.post("/subgroups/import")
+async def import_subgroups(file: Annotated[UploadFile, File()]) -> SubgroupImportResult:
+    """Validate an uploaded subgroup share sheet — M18 section 5.2.
+
+    Validation only. The accepted shares go back to the caller, which holds
+    them as scenario-local overrides; nothing here writes reference data.
+    """
+    service = SubgroupImportService()
+    return service.parse(await file.read(), file.filename or "upload")

@@ -50,6 +50,45 @@ class FunnelStage(StrEnum):
     ADDRESSABLE = "addressable"
 
 
+class Subgroup(StrEnum):
+    """One disease, clinically distinct populations inside it — M18 section 5.1.
+
+    The five adult subgroups **partition** the adult obesity population: a
+    patient belongs to exactly one. Paediatric obesity is disjoint from that
+    partition and carries its own denominator.
+    """
+
+    OBESITY_ESTABLISHED_CVD = "obesity_established_cvd"
+    OBESITY_T2D = "obesity_t2d"
+    OBESITY_HYPERTENSION = "obesity_hypertension"
+    OBESITY_DYSLIPIDAEMIA = "obesity_dyslipidaemia"
+    OBESITY_ALONE = "obesity_alone"
+    PAEDIATRIC_OBESITY = "paediatric_obesity"
+
+
+#: Allocation order — M18 section 5.2. Highest clinical risk first.
+#:
+#: A patient with obesity, type 2 diabetes and hypertension appears in every
+#: prevalence statistic for all three; adding those prevalences counts them
+#: three times. Each patient is allocated to the *first* subgroup here whose
+#: definition they meet, which is what makes the five mutually exclusive.
+SUBGROUP_PRIORITY: Final[tuple[Subgroup, ...]] = (
+    Subgroup.OBESITY_ESTABLISHED_CVD,
+    Subgroup.OBESITY_T2D,
+    Subgroup.OBESITY_HYPERTENSION,
+    Subgroup.OBESITY_DYSLIPIDAEMIA,
+    Subgroup.OBESITY_ALONE,
+)
+
+#: The four whose share is supplied. `OBESITY_ALONE` is the derived residual
+#: and cannot be supplied — letting both be given invites a set that does not
+#: sum to one.
+SUPPLIED_SUBGROUPS: Final[tuple[Subgroup, ...]] = SUBGROUP_PRIORITY[:-1]
+
+#: Not part of the adult partition, so never in its sum.
+DISJOINT_SUBGROUPS: Final[frozenset[Subgroup]] = frozenset({Subgroup.PAEDIATRIC_OBESITY})
+
+
 class CriterionType(StrEnum):
     BMI = "bmi"
     COMORBIDITY = "comorbidity"

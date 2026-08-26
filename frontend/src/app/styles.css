@@ -533,3 +533,245 @@ tbody tr:last-child td { border-bottom: none; }
   font-size: 13.5px; line-height: 1.45; color: var(--ink-3);
 }
 @media (max-width: 700px) { .topbar .tagline { display: none; } }
+
+/* tabs ------------------------------------------------------------- */
+.tabs { display: flex; flex-direction: column; gap: 18px; }
+.tabstrip {
+  display: flex; gap: 2px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--line); background: var(--surface);
+  position: sticky; top: 0; z-index: 5; padding: 0 2px;
+}
+.tab {
+  appearance: none; background: none; border: 0; cursor: pointer;
+  padding: 11px 15px 9px; font: inherit; font-size: 13.5px; color: var(--ink-2);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+}
+.tab:hover { color: var(--ink); background: var(--surface-2); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tab-active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.tab-badge {
+  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--ink-3);
+  background: var(--surface-2); border-radius: 9px; padding: 1px 6px;
+}
+.tab-active .tab-badge { background: var(--accent-soft); color: var(--accent); }
+.tabpanel { display: flex; flex-direction: column; gap: 18px; }
+.tabpanel:focus { outline: none; }
+.tabpanel:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+/* new intervention ------------------------------------------------- */
+.intervention-grid {
+  display: grid; gap: 14px; margin: 12px 0 6px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+.intervention-grid input, .intervention-grid select {
+  width: 100%; padding: 7px 9px; font: inherit; font-size: 14px;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line-2); border-radius: 6px;
+}
+.intervention-grid input:focus-visible, .intervention-grid select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+.intervention-total {
+  display: flex; flex-direction: column; gap: 3px; margin-top: 16px;
+  padding: 14px 16px; border: 1px solid var(--line);
+  border-left: 3px solid var(--accent); border-radius: 8px; background: var(--surface-2);
+}
+.intervention-total .figure { font-size: 22px; letter-spacing: -.01em; }
+
+/* import ----------------------------------------------------------- */
+.import-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 14px 0 6px; }
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.import-verdict {
+  margin: 16px 0 10px; padding: 11px 14px; border-radius: 8px; font-size: 14px;
+  border: 1px solid var(--line); border-left-width: 3px;
+}
+.import-verdict.ok { border-left-color: var(--b-low); background: var(--surface-2); }
+.import-verdict.bad { border-left-color: var(--b-critical); background: var(--surface-2); }
+.findings-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.findings-table caption { text-align: left; padding-bottom: 8px; }
+.findings-table th {
+  text-align: left; font-weight: 600; font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-3);
+  padding: 6px 10px; border-bottom: 1px solid var(--line);
+}
+.findings-table td {
+  padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top;
+}
+.findings-table td .field-foot { display: block; }
+.finding-error td:first-child { color: var(--b-critical); font-weight: 600; }
+.finding-warning td:first-child { color: var(--b-moderate); font-weight: 600; }
+
+/* two-world chart --------------------------------------------------
+   Series colours are validated against the surface they sit on, in both
+   modes — lightness band, chroma floor, CVD separation, normal-vision
+   floor and contrast. Dark is its own pair of steps, not a flip. */
+:root {
+  --series-without: #a85a28;
+  --series-with: #0097a7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --series-without: #c87a35;
+    --series-with: #1fa8b5;
+  }
+}
+
+.twoworld { margin: 0; display: flex; flex-direction: column; gap: 10px; position: relative; }
+.twoworld-svg { width: 100%; height: auto; overflow: visible; }
+.twoworld-legend {
+  display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2);
+}
+.twoworld-legend span { display: inline-flex; align-items: center; gap: 7px; }
+.swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.swatch-without { background: var(--series-without); }
+.swatch-with { background: var(--series-with); }
+
+.twoworld-grid { stroke: var(--line); stroke-width: 1; }
+.twoworld-bar { transition: opacity .12s ease; }
+.bar-without { fill: var(--series-without); }
+.bar-with { fill: var(--series-with); }
+.twoworld-bar.is-hovered { opacity: .78; }
+
+/* Text wears text tokens, never the series colour. */
+.twoworld-axis {
+  font-family: "IBM Plex Mono", monospace; font-size: 10.5px; fill: var(--ink-2);
+}
+.twoworld-axis-dim { fill: var(--ink-3); font-size: 9.5px; }
+.twoworld-delta {
+  font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600;
+  fill: var(--ink);
+}
+
+.twoworld-tip {
+  position: absolute; top: 0; right: 0; display: flex; flex-direction: column; gap: 1px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 7px;
+  padding: 8px 11px; font-size: 12.5px; box-shadow: var(--shadow); pointer-events: none;
+}
+.twoworld-table summary {
+  cursor: pointer; font-size: 12.5px; color: var(--ink-2); padding: 4px 0;
+}
+.twoworld-table summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* subgroups --------------------------------------------------------- */
+.subgroups { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.subgroup-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.subgroup-table th {
+  text-align: left; font-weight: 600; font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-3);
+  padding: 6px 10px; border-bottom: 1px solid var(--line);
+}
+.subgroup-table td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.subgroup-table tfoot td { border-bottom: 0; border-top: 2px solid var(--line-2); }
+.subgroup-table .num { text-align: right; font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+.subgroup-name { display: block; font-weight: 600; }
+.subgroup-table .derived {
+  white-space: nowrap; font-size: 11px; color: var(--ink-3);
+  border: 1px dashed var(--line-2); border-radius: 4px; padding: 1px 6px;
+}
+
+/* hints ------------------------------------------------------------- */
+.hint-wrap { position: relative; display: inline-flex; align-items: center; gap: 5px; }
+.hint-trigger {
+  appearance: none; border: 1px solid var(--line-2); background: var(--surface);
+  color: var(--ink-3); border-radius: 50%; width: 15px; height: 15px; padding: 0;
+  font-size: 10px; line-height: 1; cursor: help; flex: none;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+}
+.hint-trigger:hover, .hint-trigger:focus-visible { color: var(--accent); border-color: var(--accent); }
+.hint-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hint-bubble {
+  /* Fixed, not absolute: the sidebar scrolls, and an ancestor with overflow
+     would otherwise clip this to the panel width. Placement is computed in
+     the component. */
+  position: fixed; z-index: 60; width: 290px;
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px;
+  padding: 10px 12px; box-shadow: var(--shadow); font-size: 12.5px; line-height: 1.5;
+  color: var(--ink-2); font-weight: 400; text-transform: none; letter-spacing: 0;
+}
+.hint-what { color: var(--ink); }
+.hint-line b {
+  display: block; font-size: 10px; letter-spacing: .07em; text-transform: uppercase;
+  color: var(--ink-3); font-weight: 600;
+}
+.hint-watch { color: var(--b-moderate); }
+
+/* subgroup share editor --------------------------------------------- */
+.share-editor { display: flex; flex-direction: column; gap: 3px; }
+.share-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 4px 0; font-size: 13px;
+}
+.share-label { color: var(--ink-2); display: inline-flex; align-items: center; gap: 5px; }
+.share-input { display: inline-flex; align-items: center; gap: 3px; color: var(--ink-3); }
+.share-input input {
+  width: 58px; padding: 3px 6px; font: inherit; font-size: 13px; text-align: right;
+  font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums;
+  color: var(--ink); background: var(--surface);
+  border: 1px solid var(--line-2); border-radius: 5px;
+}
+.share-input input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.share-residual { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 8px; }
+.share-derived { color: var(--ink-3); font-size: 13px; padding-right: 4px; }
+.share-total {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid var(--line-2); margin-top: 6px; padding-top: 7px;
+  font-size: 12px; color: var(--ink-3);
+}
+.share-total.bad, .share-row.bad .share-derived { color: var(--b-critical); }
+.share-actions { display: flex; gap: 10px; margin-top: 10px; }
+.share-findings { list-style: none; margin: 9px 0 0; padding: 0; display: flex;
+  flex-direction: column; gap: 4px; font-size: 11.5px; }
+.share-findings li { color: var(--ink-2); }
+.share-findings .finding-error { color: var(--b-critical); }
+.share-findings .finding-warning { color: var(--b-moderate); }
+
+/* responsive ---------------------------------------------------------
+   A grid or flex item defaults to `min-width: auto`, which means it will
+   not shrink below its content's intrinsic width. With a 720px-min table
+   inside, that made the whole page wider than the viewport and pushed a
+   horizontal scrollbar onto the document instead of onto the table's own
+   `.tablewrap`. Zeroing it is what lets every overflow container below
+   actually do its job. */
+.layout > *, .results, .panel, .tabs, .tabpanel, .tabpanel > * { min-width: 0; }
+
+/* Wide screens: the old 940px cap predates the subgroup table's seven
+   columns. Prose stays readable because paragraphs carry their own ch cap. */
+.results { max-width: 1180px; }
+
+@media (max-width: 900px) {
+  .results { padding: 20px 16px 60px; }
+  .results section { margin-top: 28px; }
+  .tabstrip { position: static; }        /* sticky offset is meaningless once stacked */
+}
+
+@media (max-width: 560px) {
+  .topbar { padding: 16px; }
+  .results { padding: 16px 12px 48px; }
+  .tab { padding: 10px 11px 8px; font-size: 13px; }
+  .share-row { flex-wrap: wrap; }
+  .intervention-total .figure { font-size: 19px; }
+}
+
+/* Never wider than the window it is placed in. */
+.hint-bubble { max-width: calc(100vw - 24px); }
+.twoworld-tip { max-width: min(320px, calc(100vw - 32px)); }
+
+/* Below the stacking breakpoint the chart's fixed viewBox squeezes labels
+   to unreadable; letting it scroll inside its own box keeps the marks
+   legible rather than technically visible. */
+@media (max-width: 640px) {
+  .twoworld { overflow-x: auto; }
+  .twoworld-svg { min-width: 480px; }
+}
+
+/* The table already scrolls inside `.tablewrap`, so squeezing the name and
+   definition into a ribbon buys nothing — it just makes them unreadable.
+   Give the first column room and let the table be the thing that scrolls. */
+.subgroup-table th:first-child, .subgroup-table td:first-child { min-width: 260px; }
+.findings-table th:last-child, .findings-table td:last-child { min-width: 280px; }
