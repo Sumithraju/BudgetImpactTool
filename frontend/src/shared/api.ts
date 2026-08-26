@@ -93,7 +93,16 @@ export interface Calculation {
   launch_year: number;
   horizon_years: number;
   countries: CountryResult[];
-  totals: { by_year: number[]; cumulative: number; peak_year: number; currency: string };
+  totals: {
+    by_year: number[];
+    cumulative: number;
+    peak_year: number;
+    currency: string;
+    /** The two worlds `by_year` is the difference of, in the reporting
+     *  currency. Empty on a run made before these were carried. */
+    without_by_year: number[];
+    with_by_year: number[];
+  };
   warnings: Warning[];
   duration_ms: number | null;
 }

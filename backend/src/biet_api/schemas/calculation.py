@@ -125,6 +125,10 @@ class TotalsRead(BaseModel):
     cumulative: float
     peak_year: int
     currency: str
+    #: The world without the asset and the world with it, per year, in the
+    #: reporting currency. `by_year` is their difference.
+    without_by_year: list[float] = []
+    with_by_year: list[float] = []
 
 
 class CalculationResponse(BaseModel):

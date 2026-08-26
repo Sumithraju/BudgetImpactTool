@@ -4,6 +4,7 @@ import { AffordabilityGauge } from "../affordability/AffordabilityGauge";
 import { PriceCorridor } from "../price-solver/PriceCorridor";
 import { CostBridge } from "./CostBridge";
 import { EvidencePriority } from "./EvidencePriority";
+import { TwoWorldChart, type TwoWorldSeries } from "../../shared/charts/TwoWorldChart";
 import {
   BASIS_LABELS,
   STAGE_LABELS,
@@ -38,6 +39,16 @@ export function Results({
     calculation.countries.find((c) => c.country_code === market) ?? calculation.countries[0];
 
   const { totals } = calculation;
+
+  /** Launch-relative years, with the calendar year derived for display
+   *  only (non-negotiable 7). Empty when a run predates these totals. */
+  const twoWorld: TwoWorldSeries[] = totals.without_by_year.map((without, i) => ({
+    year: i + 1,
+    calendarYear: calculation.launch_year + i,
+    without,
+    with: totals.with_by_year[i] ?? 0,
+    difference: totals.by_year[i] ?? 0,
+  }));
 
   return (
     <>
@@ -76,6 +87,20 @@ export function Results({
             </div>
           ))}
         </div>
+      </section>
+
+      {/* The increment drawn as what it is the difference of. A single
+          incremental figure is the right answer and the wrong first
+          impression: a reader needs to see the two worlds to trust it. */}
+      <section>
+        <h2>With and without the intervention</h2>
+        <TwoWorldChart series={twoWorld} currency={totals.currency} />
+        <p className="note">
+          Both bars are what the payer spends in total on this population in that year —
+          the left in the world where the asset never launches, the right in the world
+          where it does. The figure above each pair is the difference, and that difference
+          is the budget impact. Neither bar is the cost of the new therapy on its own.
+        </p>
       </section>
 
       {/* per-market -------------------------------------------------- */}

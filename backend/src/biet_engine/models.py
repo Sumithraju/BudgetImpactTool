@@ -666,9 +666,16 @@ class Totals(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    by_year: tuple[Money, ...]               # Total(y)
+    by_year: tuple[Money, ...]               # Total(y) — the incremental figure
     cumulative: Money
     peak_year: int                           # argmax Total(y); ties resolve to the earliest
+
+    #: The two worlds the incremental figure is the difference of, converted
+    #: and summed the same way. Carried explicitly because a reader asked to
+    #: fund an increment will ask what it is an increment *over*, and
+    #: recomputing it downstream from a bare difference is not possible.
+    without_by_year: tuple[Money, ...] = ()
+    with_by_year: tuple[Money, ...] = ()
 
 
 class EngineResult(BaseModel):

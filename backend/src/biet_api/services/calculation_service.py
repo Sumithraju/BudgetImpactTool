@@ -176,6 +176,8 @@ class CalculationService:
                 cumulative=result.totals.cumulative.amount,
                 peak_year=result.totals.peak_year,
                 currency=result.totals.cumulative.currency,
+                without_by_year=[m.amount for m in result.totals.without_by_year],
+                with_by_year=[m.amount for m in result.totals.with_by_year],
             ),
             warnings=_warnings(list(resolution_warnings) + list(result.warnings)),
             duration_ms=duration_ms,
