@@ -13,8 +13,13 @@
  * times. And obesity alone is the *residual*: it is derived from the other
  * four, never supplied, and it is labelled as derived on screen.
  */
-import type { SubgroupOption } from "../../shared/api";
-import { formatCount, formatPercent, TIER_MEANING } from "../../shared/format";
+import type { Segment, SubgroupOption } from "../../shared/api";
+import {
+  formatCount,
+  formatMoneyCompact,
+  formatPercent,
+  TIER_MEANING,
+} from "../../shared/format";
 import { GLOSSARY } from "../../shared/glossary";
 import { Hint } from "../../shared/Hint";
 import type { SubgroupShares } from "./SubgroupShareEditor";
@@ -25,9 +30,23 @@ interface SubgroupBreakdownProps {
   options: SubgroupOption[];
   /** The analyst's shares, which may differ from the seeded defaults. */
   shares: SubgroupShares;
+  /** Per-segment results, once the scenario has been run. Null before that:
+   *  the split is describable without a calculation, its cost is not. */
+  segments: Segment[] | null;
+  /** The reporting currency the segment impacts are in. Passed rather than
+   *  assumed — no bare number represents money across a boundary. */
+  currency: string | null;
 }
 
-export function SubgroupBreakdown({ diseased, options, shares }: SubgroupBreakdownProps) {
+export function SubgroupBreakdown({
+  diseased,
+  options,
+  shares,
+  segments,
+  currency,
+}: SubgroupBreakdownProps) {
+  const bySegment = new Map((segments ?? []).map((s) => [s.code, s]));
+  const showImpact = segments !== null && currency !== null;
   if (options.length === 0) {
     return <p className="note">Subgroup taxonomy unavailable.</p>;
   }
@@ -92,6 +111,9 @@ export function SubgroupBreakdown({ diseased, options, shares }: SubgroupBreakdo
               <th>Subgroup</th>
               <th>Share</th>
               <th>Patients</th>
+              {showImpact && <th>Treated, final year</th>}
+              {showImpact && <th>Budget impact</th>}
+              {showImpact && <th>Of total</th>}
               <th>Basis</th>
             </tr>
           </thead>
@@ -104,6 +126,30 @@ export function SubgroupBreakdown({ diseased, options, shares }: SubgroupBreakdo
                 </td>
                 <td className="num">{formatPercent(share)}</td>
                 <td className="num">{formatCount(patients)}</td>
+                {showImpact && (
+                  <td className="num">
+                    {bySegment.has(option.code)
+                      ? formatCount(bySegment.get(option.code)!.patients_on_new_final_year)
+                      : "—"}
+                  </td>
+                )}
+                {showImpact && (
+                  <td className="num">
+                    {bySegment.has(option.code)
+                      ? formatMoneyCompact(
+                          bySegment.get(option.code)!.cumulative_impact,
+                          currency,
+                        )
+                      : "—"}
+                  </td>
+                )}
+                {showImpact && (
+                  <td className="num">
+                    {bySegment.has(option.code)
+                      ? formatPercent(bySegment.get(option.code)!.share_of_total_impact)
+                      : "—"}
+                  </td>
+                )}
                 <td>
                   {option.is_residual ? (
                     <span className="derived">derived residual</span>
@@ -126,6 +172,18 @@ export function SubgroupBreakdown({ diseased, options, shares }: SubgroupBreakdo
               <td><strong>All adults with obesity</strong></td>
               <td className="num"><strong>{formatPercent(1)}</strong></td>
               <td className="num"><strong>{formatCount(diseased)}</strong></td>
+              {showImpact && <td />}
+              {showImpact && (
+                <td className="num">
+                  <strong>
+                    {formatMoneyCompact(
+                      segments.reduce((sum, x) => sum + x.cumulative_impact, 0),
+                      currency,
+                    )}
+                  </strong>
+                </td>
+              )}
+              {showImpact && <td className="num"><strong>{formatPercent(1)}</strong></td>}
               <td />
             </tr>
           </tfoot>

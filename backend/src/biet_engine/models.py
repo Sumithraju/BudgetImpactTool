@@ -721,6 +721,31 @@ class EngineResult(BaseModel):
     warnings: tuple[Warning_, ...]
 
 
+class SegmentContribution(BaseModel):
+    """What one subgroup contributed to the aggregate — M18 section 5.4."""
+
+    model_config = ConfigDict(frozen=True)
+
+    subgroup: Subgroup
+    share: float
+    cumulative_impact: Money
+    #: Signed. Negative where the segment is cost-saving, and it can exceed 1
+    #: when segments pull in opposite directions — see `MIXED_SIGN_SEGMENTS`.
+    share_of_total_impact: float
+    addressable_final_year: float
+    patients_on_new_final_year: float
+
+
+class SubgroupAggregate(BaseModel):
+    """The scenario total, and which segment drove it."""
+
+    model_config = ConfigDict(frozen=True)
+
+    totals: Totals
+    contributions: tuple[SegmentContribution, ...]
+    warnings: tuple[Warning_, ...] = ()
+
+
 # --------------------------------------------------------------------------- M8 — Affordability & Price Solver
 
 

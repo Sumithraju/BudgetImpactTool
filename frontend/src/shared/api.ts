@@ -364,6 +364,37 @@ export interface ComparatorImportResult {
   share_totals: Record<string, number>;
 }
 
+/** M18 — one subgroup's contribution to the scenario. */
+export interface Segment {
+  code: string;
+  label: string;
+  share: number;
+  cumulative_impact: number;
+  /** Signed. Not a proportion when segments pull in opposite directions. */
+  share_of_total_impact: number;
+  addressable_final_year: number;
+  patients_on_new_final_year: number;
+}
+
+export interface SegmentedCalculation {
+  scenario_id: string;
+  engine_version: string;
+  reporting_currency: string;
+  launch_year: number;
+  horizon_years: number;
+  totals: {
+    by_year: number[];
+    cumulative: number;
+    peak_year: number;
+    currency: string;
+    without_by_year: number[];
+    with_by_year: number[];
+  };
+  segments: Segment[];
+  warnings: Warning[];
+  duration_ms: number | null;
+}
+
 /** M18 — one obesity subgroup in the taxonomy. */
 export interface SubgroupOption {
   code: string;
@@ -667,6 +698,14 @@ export const api = {
   subgroups: () => request<SubgroupOption[]>("/api/v1/reference/subgroups"),
 
   subgroupTemplateUrl: () => "/api/v1/reference/subgroups/template",
+
+  /** The same scenario, run once per subgroup and aggregated. Shares are
+   *  fractions keyed by subgroup code; omit them for the seeded defaults. */
+  calculateSegments: (scenarioId: string, shares: Record<string, number>) =>
+    request<SegmentedCalculation>(
+      `/api/v1/scenarios/${scenarioId}/calculate/segments`,
+      { method: "POST", body: JSON.stringify(shares) },
+    ),
 
   /** Multipart, so it bypasses `request`'s JSON content-type — see
    *  `importComparators` for why. */

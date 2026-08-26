@@ -1258,11 +1258,28 @@ from then on, which is precisely the failure this system is built to avoid.
     do not exist would be worse. M15 will rank this split as one of the least certain things
     in the model, which is correct.
 
-    **Not yet done for M18:** the service-layer loop that runs the engine once per segment
-    and aggregates. The split is currently descriptive — it divides the funnel and reports
-    who the patients are; it does not yet give each segment its own comparator mix, uptake
-    or outcome profile, which is where the subgroup structure changes the *answer* rather
-    than the *description*.
+    **M18 completed.** `CalculationService.calculate_segments` runs the engine once per
+    segment and `aggregate_segments` combines the results;
+    `POST /scenarios/{id}/calculate/segments` exposes it and the breakdown table gains
+    treated patients, budget impact and share of total per subgroup.
+
+    The mechanism is one line: scaling a market's prevalence by the segment's share scales
+    the `diseased` stage and nothing else, because `diseased = population x adult share x
+    prevalence`. So a subgroup really is a *scenario dimension* — the engine runs unchanged,
+    `compute_budget_impact` keeps its signature, and every rate beneath the split is free to
+    differ per segment later without touching `biet_engine`.
+
+    The acceptance test is the one the design is exposed to: **a uniform split reproduces the
+    undifferentiated total exactly**, to 1e-9, in both the engine and the service. Ratios are
+    recomputed from aggregated totals rather than averaged across segments, and a mixed-sign
+    set (one segment cost-saving, another cost-adding) warns that share-of-total is a signed
+    contribution rather than a proportion.
+
+    **Still per-disease, not yet per-segment:** each segment currently inherits the scenario's
+    comparator mix, uptake curve and outcome profile. The structure to vary them exists — that
+    is what scaling prevalence rather than patching the funnel buys — but the resolution chain
+    does not yet read per-subgroup overrides, so a segment's *displaced cost* is still the
+    disease average. M18 section 5.3 names the comparator mix as where this matters most.
 
     **The one thing worth deciding before writing code:** whether the hackathon demo needs
     Phases 15–17 more than it needs 13–14. The dependency order says subgroups first; a

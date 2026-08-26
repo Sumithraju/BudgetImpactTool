@@ -125,7 +125,13 @@ def displace(
         else:
             m_with[t] = m - take
 
-    redistributed = deficit > 0
+    # A deficit below the accounting tolerance is float noise, not a real
+    # shortfall. Treating it as one raises `DisplacementError` on the
+    # legitimate case where uptake is total: every therapy is fully displaced,
+    # so no headroom exists to redistribute into, while the accounting already
+    # closes — `u + sum(m_with) = 1`. Found by the share-accounting property
+    # test at m_without={0.0, 1.0}, u=1.0, sigma≈{0, 1}.
+    redistributed = deficit > ACCOUNTING_TOLERANCE
     if redistributed:
         headroom = {t: m for t, m in m_with.items() if m > 0}
         total = sum(headroom.values())

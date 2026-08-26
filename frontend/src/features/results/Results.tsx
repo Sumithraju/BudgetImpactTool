@@ -4,6 +4,7 @@ import type {
   EvidenceGapReport,
   Owsa,
   Psa,
+  Segment,
   SubgroupOption,
 } from "../../shared/api";
 import { AffordabilityGauge } from "../affordability/AffordabilityGauge";
@@ -39,6 +40,8 @@ export function Results({
   bands,
   subgroupOptions,
   subgroupShares,
+  segments,
+  segmentCurrency,
 }: {
   calculation: Calculation;
   owsa: Owsa | null;
@@ -47,6 +50,8 @@ export function Results({
   bands: Record<string, number>;
   subgroupOptions: SubgroupOption[];
   subgroupShares: SubgroupShares;
+  segments: Segment[] | null;
+  segmentCurrency: string | null;
 }) {
   const [market, setMarket] = useState(calculation.countries[0]?.country_code ?? "");
   const selected =
@@ -246,6 +251,8 @@ export function Results({
           diseased={selected.funnel.find((s) => s.stage === "diseased")?.value ?? 0}
           options={subgroupOptions}
           shares={subgroupShares}
+          segments={segments}
+          currency={segmentCurrency}
         />
 
         <details className="sources">

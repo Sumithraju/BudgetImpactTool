@@ -9,6 +9,7 @@ import {
   type Owsa,
   type Psa,
   type SubgroupOption,
+  type SegmentedCalculation,
 } from "../shared/api";
 import { ScenarioForm, type Draft } from "../features/scenario-builder/ScenarioForm";
 import { Results } from "../features/results/Results";
@@ -50,6 +51,7 @@ export function App() {
   const [owsa, setOwsa] = useState<Owsa | null>(null);
   const [psa, setPsa] = useState<Psa | null>(null);
   const [gaps, setGaps] = useState<EvidenceGapReport | null>(null);
+  const [segmented, setSegmented] = useState<SegmentedCalculation | null>(null);
 
   /** Every run this session, so any two can be compared. Kept in memory
    *  rather than re-fetched: the scenarios are already persisted server-side
@@ -149,6 +151,7 @@ export function App() {
       setOwsa(null);
       setPsa(null);
       setGaps(null);
+      setSegmented(null);
       setSaved((current) => [
         ...current,
         {
@@ -161,14 +164,16 @@ export function App() {
 
       // M15's ranking needs the same sweep the tornado does, so all three
       // are fetched together rather than the panel triggering a second one.
-      const [o, p, g] = await Promise.all([
+      const [o, p, g, seg] = await Promise.all([
         api.owsa(scenario.scenario_id),
         api.psa(scenario.scenario_id, 4000),
         api.evidenceGaps(scenario.scenario_id),
+        api.calculateSegments(scenario.scenario_id, subgroupShares),
       ]);
       setOwsa(o);
       setPsa(p);
       setGaps(g);
+      setSegmented(seg);
     } catch (e) {
       const err = e as ApiError;
       setError({ message: err.message, field: err.field });
@@ -176,7 +181,7 @@ export function App() {
     } finally {
       setBusy(false);
     }
-  }, [draft, overrides, projectLandscape]);
+  }, [draft, overrides, projectLandscape, subgroupShares]);
 
   /** The tabs, in the order the model runs: what the world without the asset
    *  is made of, what is being introduced, then what the difference costs.
@@ -233,6 +238,8 @@ export function App() {
           bands={bands}
           subgroupOptions={subgroupOptions}
           subgroupShares={subgroupShares}
+          segments={segmented?.segments ?? null}
+          segmentCurrency={segmented?.totals.currency ?? null}
         />
       ) : (
         <div className="empty">

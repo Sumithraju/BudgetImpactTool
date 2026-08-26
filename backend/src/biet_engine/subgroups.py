@@ -29,10 +29,15 @@ from .constants import (
 )
 from .exceptions import SubgroupAllocationError
 from .models import (
+    EngineResult,
+    Money,
     Provenance,
+    SegmentContribution,
+    SubgroupAggregate,
     SubgroupAllocation,
     SubgroupSegment,
     SubgroupShare,
+    Totals,
     Warning_,
 )
 
@@ -166,4 +171,119 @@ def split_stage(
 
     return SubgroupAllocation(
         stage=stage, total=total, segments=segments, warnings=warnings
+    )
+
+
+def aggregate_segments(
+    runs: Sequence[tuple[Subgroup, float, EngineResult]],
+) -> SubgroupAggregate:
+    """Combine per-segment engine results into one scenario answer — M18 section 5.4.
+
+    Each segment has already been through the whole engine with its own
+    resolved inputs. This adds them up, and the rule it exists to enforce is
+    that **a ratio is recomputed from its aggregated numerator and denominator,
+    never averaged across segments**. Segment sizes differ by more than an
+    order of magnitude between established cardiovascular disease and obesity
+    alone, so an unweighted mean of two segment ratios is not approximately
+    right — it is wrong by roughly the size ratio.
+
+    Args:
+        runs: `(subgroup, share, result)` per segment, every result computed
+            over the same horizon and reported in the same currency.
+
+    Returns:
+        Aggregated totals, each segment's contribution, and any warnings.
+
+    Raises:
+        CurrencyMismatchError: two segments reported in different currencies.
+        SubgroupAllocationError: the segments do not share a horizon, which
+            would make a year-by-year sum meaningless.
+    """
+    if not runs:
+        raise SubgroupAllocationError("no segments to aggregate")
+
+    horizons = {len(result.totals.by_year) for _, _, result in runs}
+    if len(horizons) > 1:
+        raise SubgroupAllocationError(
+            f"segments span different horizons {sorted(horizons)}; a year-by-year "
+            f"sum across them would not describe one scenario"
+        )
+
+    horizon = horizons.pop()
+    currency = runs[0][2].totals.cumulative.currency
+    warnings: list[Warning_] = []
+
+    def summed(pick: str) -> tuple[Money, ...]:
+        out: list[Money] = []
+        for year in range(horizon):
+            total = Money(amount=0.0, currency=currency)
+            for _, _, result in runs:
+                series: tuple[Money, ...] = getattr(result.totals, pick)
+                # A run made before both worlds were carried has empty series;
+                # summing what is absent would silently understate the world.
+                if len(series) > year:
+                    total = total + series[year]           # raises on a mismatch
+            out.append(total)
+        return tuple(out)
+
+    by_year = summed("by_year")
+    without_by_year = summed("without_by_year")
+    with_by_year = summed("with_by_year")
+
+    cumulative = Money(amount=0.0, currency=currency)
+    for amount in by_year:
+        cumulative = cumulative + amount
+
+    peak_year = max(range(1, horizon + 1), key=lambda y: by_year[y - 1].amount)
+
+    # Segments pulling in opposite directions make "share of total" read as a
+    # proportion when it is not one. Saying so is cheaper than a reader
+    # discovering it from a 140% row.
+    signs = {result.totals.cumulative.amount > 0 for _, _, result in runs}
+    if len(signs) > 1:
+        warnings.append(
+            Warning_(
+                code="MIXED_SIGN_SEGMENTS",
+                message=(
+                    "Some subgroups add cost and others save it, so each segment's "
+                    "share of the total is a signed contribution rather than a "
+                    "proportion, and the shares do not read as percentages of a whole."
+                ),
+            )
+        )
+
+    contributions = tuple(
+        SegmentContribution(
+            subgroup=subgroup,
+            share=share,
+            cumulative_impact=result.totals.cumulative,
+            # Recomputed from the aggregate, never averaged.
+            share_of_total_impact=(
+                result.totals.cumulative.amount / cumulative.amount
+                if cumulative.amount
+                else 0.0
+            ),
+            addressable_final_year=sum(
+                country.years[-1].addressable for country in result.countries
+            ),
+            patients_on_new_final_year=sum(
+                country.years[-1].patients_on_new for country in result.countries
+            ),
+        )
+        for subgroup, share, result in runs
+    )
+
+    for _, _, result in runs:
+        warnings.extend(result.warnings)
+
+    return SubgroupAggregate(
+        totals=Totals(
+            by_year=by_year,
+            cumulative=cumulative,
+            peak_year=peak_year,
+            without_by_year=without_by_year,
+            with_by_year=with_by_year,
+        ),
+        contributions=contributions,
+        warnings=tuple(warnings),
     )
