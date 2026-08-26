@@ -8,6 +8,7 @@ import {
   type EvidenceGapReport,
   type Owsa,
   type Psa,
+  type SubgroupOption,
 } from "../shared/api";
 import { ScenarioForm, type Draft } from "../features/scenario-builder/ScenarioForm";
 import { Results } from "../features/results/Results";
@@ -22,6 +23,7 @@ import {
   type InterventionDraft,
 } from "../features/new-intervention/NewIntervention";
 import { Tabs, type TabDefinition } from "../shared/Tabs";
+import type { SubgroupShares } from "../features/subgroups/SubgroupShareEditor";
 
 const DEFAULT_DRAFT: Draft = {
   name: "Wegovy obesity launch",
@@ -78,12 +80,31 @@ export function App() {
     name: DEFAULT_DRAFT.assetName,
   });
 
+  /** The subgroup split. Owned here because the sidebar edits it and the
+   *  results panel renders it — neither owning the other's state. Seeded from
+   *  the API's defaults on first load, then the analyst's to change. */
+  const [subgroupOptions, setSubgroupOptions] = useState<SubgroupOption[]>([]);
+  const [subgroupShares, setSubgroupShares] = useState<SubgroupShares>({});
+
   useEffect(() => {
-    Promise.all([api.countries(), api.indications(), api.affordabilityBands()])
-      .then(([c, i, b]) => {
+    Promise.all([
+      api.countries(),
+      api.indications(),
+      api.affordabilityBands(),
+      api.subgroups(),
+    ])
+      .then(([c, i, b, s]) => {
         setCountries(c);
         setIndications(i);
         setBands(b);
+        setSubgroupOptions(s);
+        setSubgroupShares(
+          Object.fromEntries(
+            s
+              .filter((o) => o.default_share !== null)
+              .map((o) => [o.code, o.default_share as number]),
+          ),
+        );
       })
       .catch((e: ApiError) =>
         setError({ message: `Could not reach the API — ${e.message}`, field: null }),
@@ -204,7 +225,15 @@ export function App() {
       label: "Results",
       badge: calculation ? undefined : "—",
       content: calculation ? (
-        <Results calculation={calculation} owsa={owsa} psa={psa} gaps={gaps} bands={bands} />
+        <Results
+          calculation={calculation}
+          owsa={owsa}
+          psa={psa}
+          gaps={gaps}
+          bands={bands}
+          subgroupOptions={subgroupOptions}
+          subgroupShares={subgroupShares}
+        />
       ) : (
         <div className="empty">
           <p>
@@ -264,6 +293,9 @@ export function App() {
           errorField={error?.field ?? null}
           projectLandscape={projectLandscape}
           onProjectLandscapeChange={setProjectLandscape}
+          subgroupOptions={subgroupOptions}
+          subgroupShares={subgroupShares}
+          onSubgroupSharesChange={setSubgroupShares}
         />
 
         <main className="results">

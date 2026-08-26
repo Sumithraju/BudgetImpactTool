@@ -1,11 +1,20 @@
 import { useState } from "react";
-import type { Calculation, EvidenceGapReport, Owsa, Psa } from "../../shared/api";
+import type {
+  Calculation,
+  EvidenceGapReport,
+  Owsa,
+  Psa,
+  SubgroupOption,
+} from "../../shared/api";
 import { AffordabilityGauge } from "../affordability/AffordabilityGauge";
 import { PriceCorridor } from "../price-solver/PriceCorridor";
 import { CostBridge } from "./CostBridge";
 import { EvidencePriority } from "./EvidencePriority";
 import { TwoWorldChart, type TwoWorldSeries } from "../../shared/charts/TwoWorldChart";
+import { GLOSSARY } from "../../shared/glossary";
+import { Hint } from "../../shared/Hint";
 import { SubgroupBreakdown } from "../subgroups/SubgroupBreakdown";
+import type { SubgroupShares } from "../subgroups/SubgroupShareEditor";
 import {
   BASIS_LABELS,
   STAGE_LABELS,
@@ -28,12 +37,16 @@ export function Results({
   gaps,
   psa,
   bands,
+  subgroupOptions,
+  subgroupShares,
 }: {
   calculation: Calculation;
   owsa: Owsa | null;
   gaps: EvidenceGapReport | null;
   psa: Psa | null;
   bands: Record<string, number>;
+  subgroupOptions: SubgroupOption[];
+  subgroupShares: SubgroupShares;
 }) {
   const [market, setMarket] = useState(calculation.countries[0]?.country_code ?? "");
   const selected =
@@ -94,7 +107,10 @@ export function Results({
           incremental figure is the right answer and the wrong first
           impression: a reader needs to see the two worlds to trust it. */}
       <section>
-        <h2>With and without the intervention</h2>
+        <h2>
+          With and without the intervention
+          <Hint content={GLOSSARY["result.budget_impact"]} label="budget impact" />
+        </h2>
         <TwoWorldChart series={twoWorld} currency={totals.currency} />
         <p className="note">
           Both bars are what the payer spends in total on this population in that year —
@@ -106,7 +122,10 @@ export function Results({
 
       {/* per-market -------------------------------------------------- */}
       <section>
-        <h2>Per market</h2>
+        <h2>
+          Per market
+          <Hint content={GLOSSARY["result.addressable"]} label="the per-market table" />
+        </h2>
         <div className="tablewrap">
           <table>
             <thead>
@@ -187,7 +206,10 @@ export function Results({
 
       {/* funnel ------------------------------------------------------ */}
       <section>
-        <h2>Population funnel</h2>
+        <h2>
+          Population funnel
+          <Hint content={GLOSSARY["funnel.diseased"]} label="the population funnel" />
+        </h2>
         <div className="picker">
           {calculation.countries.map((c) => (
             <button
@@ -222,6 +244,8 @@ export function Results({
         </div>
         <SubgroupBreakdown
           diseased={selected.funnel.find((s) => s.stage === "diseased")?.value ?? 0}
+          options={subgroupOptions}
+          shares={subgroupShares}
         />
 
         <details className="sources">

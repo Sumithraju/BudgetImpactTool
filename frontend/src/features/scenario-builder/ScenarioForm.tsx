@@ -1,5 +1,11 @@
-import type { CountryOption, IndicationOption } from "../../shared/api";
+import type { CountryOption, IndicationOption, SubgroupOption } from "../../shared/api";
 import { formatPercent } from "../../shared/format";
+import { GLOSSARY } from "../../shared/glossary";
+import { Hint } from "../../shared/Hint";
+import {
+  SubgroupShareEditor,
+  type SubgroupShares,
+} from "../subgroups/SubgroupShareEditor";
 
 export interface Draft {
   name: string;
@@ -27,6 +33,9 @@ interface Props {
   errorField: string | null;
   projectLandscape: boolean;
   onProjectLandscapeChange: (on: boolean) => void;
+  subgroupOptions: SubgroupOption[];
+  subgroupShares: SubgroupShares;
+  onSubgroupSharesChange: (shares: SubgroupShares) => void;
 }
 
 /** Sliders work in whole percent; state stays in fractions. The conversion
@@ -51,6 +60,10 @@ function RateSlider({
     <div className={`field ${errorField === path ? "field-error" : ""}`}>
       <div className="field-head">
         <label htmlFor={path}>{label}</label>
+        {/* The slider already carries the override vocabulary's dotted path,
+            which is the glossary's key — so the explanation attaches itself
+            rather than being wired per call site. */}
+        {GLOSSARY[path] && <Hint content={GLOSSARY[path]} label={label} />}
         <span className={overridden ? "val val-set" : "val"}>
           {overridden ? formatPercent(value) : fallback}
         </span>
@@ -87,6 +100,9 @@ export function ScenarioForm({
   errorField,
   projectLandscape,
   onProjectLandscapeChange,
+  subgroupOptions,
+  subgroupShares,
+  onSubgroupSharesChange,
 }: Props) {
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     onChange({ ...draft, [key]: value });
@@ -236,6 +252,19 @@ export function ScenarioForm({
           errorField={errorField}
         />
       </section>
+
+      {/* The split of the disease population. An input rather than a result:
+          it is the analyst's assumption about who their patients are, and the
+          seeded default is a starting point rather than an answer. */}
+      {subgroupOptions.length > 0 && (
+        <section>
+          <SubgroupShareEditor
+            options={subgroupOptions}
+            shares={subgroupShares}
+            onChange={onSubgroupSharesChange}
+          />
+        </section>
+      )}
 
       {/* M14 — a scenario variant, not a base case. The caveat sits at the
           toggle rather than in a footnote, because that is where the choice

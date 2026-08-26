@@ -46,6 +46,21 @@ OPTIONAL_COST_COLUMNS: Final[tuple[WorkbookColumn, ...]] = (
 )
 
 
+class SubgroupColumn(StrEnum):
+    """The subgroup share sheet — two columns, matched by label."""
+
+    SUBGROUP = "Subgroup"
+    SHARE_PCT = "Share (%)"
+    SOURCE = "Source"
+    TIER = "Tier"
+
+
+REQUIRED_SUBGROUP_COLUMNS: Final[tuple[SubgroupColumn, ...]] = (
+    SubgroupColumn.SUBGROUP,
+    SubgroupColumn.SHARE_PCT,
+)
+
+
 class FindingSeverity(StrEnum):
     ERROR = "error"
     WARNING = "warning"
@@ -72,6 +87,9 @@ class FindingCode(StrEnum):
     DUPLICATE_ROW = "DUPLICATE_ROW"
     UNKNOWN_TIER = "UNKNOWN_TIER"
     NO_ROWS = "NO_ROWS"
+    UNKNOWN_SUBGROUP = "UNKNOWN_SUBGROUP"
+    SUBGROUP_NOT_SUPPLIABLE = "SUBGROUP_NOT_SUPPLIABLE"
+    SUBGROUP_SHARES_EXCEED_ONE = "SUBGROUP_SHARES_EXCEED_ONE"
 
 
 #: Shares this far off 1.0 are normalised with a warning; further is rejected.

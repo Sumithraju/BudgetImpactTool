@@ -65,3 +65,28 @@ class ComparatorImportResult(BaseModel):
     comparators: tuple[ImportedComparator, ...] = ()
     #: Per market, the share total found before any normalisation.
     share_totals: dict[str, float] = Field(default_factory=dict)
+
+
+class ImportedSubgroupShare(BaseModel):
+    """One validated subgroup share. A fraction by the time it gets here."""
+
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    share: float = Field(ge=0.0, le=1.0)
+    source: str
+    confidence_tier: str = Field(min_length=1, max_length=1)
+    origin: str
+
+
+class SubgroupImportResult(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    accepted: bool
+    filename: str
+    sheet: str
+    rows_read: int
+    findings: tuple[ImportFinding, ...] = ()
+    shares: tuple[ImportedSubgroupShare, ...] = ()
+    #: Derived, never supplied — 1 minus the supplied total.
+    residual_share: float = 0.0

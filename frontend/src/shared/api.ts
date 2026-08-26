@@ -335,6 +335,25 @@ export interface ImportedComparator {
   origin: string;
 }
 
+export interface ImportedSubgroupShare {
+  code: string;
+  /** A fraction, already divided by 100 at the import boundary. */
+  share: number;
+  source: string;
+  confidence_tier: string;
+  origin: string;
+}
+
+export interface SubgroupImportResult {
+  accepted: boolean;
+  filename: string;
+  sheet: string;
+  rows_read: number;
+  findings: ImportFinding[];
+  shares: ImportedSubgroupShare[];
+  residual_share: number;
+}
+
 export interface ComparatorImportResult {
   accepted: boolean;
   filename: string;
@@ -646,4 +665,32 @@ export const api = {
   comparatorTemplateUrl: () => "/api/v1/comparators/import/template",
 
   subgroups: () => request<SubgroupOption[]>("/api/v1/reference/subgroups"),
+
+  subgroupTemplateUrl: () => "/api/v1/reference/subgroups/template",
+
+  /** Multipart, so it bypasses `request`'s JSON content-type — see
+   *  `importComparators` for why. */
+  importSubgroups: async (file: File): Promise<SubgroupImportResult> => {
+    const form = new FormData();
+    form.append("file", file);
+    const response = await fetch("/api/v1/reference/subgroups/import", {
+      method: "POST",
+      body: form,
+    });
+    if (!response.ok) {
+      let body: ApiErrorBody | null = null;
+      try {
+        body = (await response.json()) as ApiErrorBody;
+      } catch {
+        // A non-JSON error body has no envelope to read.
+      }
+      throw new ApiError(
+        body?.error.code ?? "HTTP_" + response.status,
+        body?.error.message ?? response.statusText,
+        body?.error.field ?? null,
+        body?.request_id ?? "unknown",
+      );
+    }
+    return (await response.json()) as SubgroupImportResult;
+  },
 };
