@@ -3,9 +3,6 @@ USA,United States,USD,North America,mixed_private_public
 GBR,United Kingdom,GBP,Europe,single_payer_beveridge
 DEU,Germany,EUR,Europe,social_insurance_bismarck
 FRA,France,EUR,Europe,social_insurance_bismarck
-ITA,Italy,EUR,Europe,single_payer_beveridge
-ESP,Spain,EUR,Europe,single_payer_beveridge
-JPN,Japan,JPY,Asia,social_insurance_bismarck
 CHN,China,CNY,Asia,mixed_public_insurance
 BRA,Brazil,BRL,South America,single_payer_beveridge
 IND,India,INR,Asia,mixed_out_of_pocket

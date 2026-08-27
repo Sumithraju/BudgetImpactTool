@@ -51,7 +51,7 @@ const DEFAULT_DRAFT: Draft = {
   launchYear: 2028,
   horizonYears: 3,
   reportingCurrency: "EUR",
-  countryCodes: ["USA", "DEU", "GBR", "JPN", "IND"],
+  countryCodes: ["USA", "DEU", "GBR", "DNK", "IND"],
   prevalence: null,
   diagnosisRate: null,
   treatmentRate: null,
