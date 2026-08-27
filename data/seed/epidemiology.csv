@@ -1,0 +1,23 @@
+country_code,indication_id,year,prevalence_pct,prevalence_low,prevalence_high,age_group,sex,source,confidence_tier,is_projected
+BRA,1,2024,30.1384,27.4159,32.9606,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+CHN,1,2024,9.2864,7.8625,10.8236,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+DEU,1,2024,20.6394,17.5908,23.9065,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+DNK,1,2024,14.3293,12.4124,16.4486,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+ESP,1,2024,15.31,12.4699,18.4266,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+FRA,1,2024,11.1936,9.6286,12.9164,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+GBR,1,2024,27.3781,25.1421,29.7631,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+IND,1,2024,8.0123,6.9901,9.1758,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+ITA,1,2024,13.9917,11.8598,16.3715,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+JPN,1,2024,5.9005,4.7494,7.154,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+USA,1,2024,40.9585,38.1786,43.7195,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_BMI_30A (adult obesity, BMI >= 30, age-standardised)",A,false
+BRA,2,2014,8.3,5.3,12.1,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false
+CHN,2,2014,8.8,6.0,12.4,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false
+DEU,2,2014,5.0,3.2,7.2,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false
+DNK,2,2014,4.3,2.7,6.4,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false
+ESP,2,2014,7.1,4.6,10.2,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false
+FRA,2,2014,5.9,3.8,8.6,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false
+GBR,2,2014,5.8,4.1,7.7,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false
+IND,2,2014,8.7,5.9,12.0,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false
+ITA,2,2014,5.8,3.8,8.3,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false
+JPN,2,2014,6.7,4.7,9.0,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false
+USA,2,2014,7.3,5.1,10.1,AGEGROUP_YEARS18-PLUS,SEX_BTSX,"WHO Global Health Observatory NCD_GLUC_04 (adult diabetes, age-standardised)",A,false

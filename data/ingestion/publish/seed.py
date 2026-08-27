@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +31,7 @@ from biet_api.models import (
     DrugPrice,
     DrugRegimen,
     EligibilityCriterion,
+    Epidemiology,
     EventCost,
     FunnelDefault,
     FxRate,
@@ -40,6 +41,7 @@ from biet_api.models import (
     SubgroupEventRate,
     TreatmentEffect,
 )
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import settings
@@ -989,6 +991,112 @@ def publish_country_economics(session: Session) -> int:
     return published
 
 
+# --------------------------------------------------------------------------- epidemiology.csv
+
+
+def publish_epidemiology(session: Session) -> int:
+    """Prevalence with WHO's own interval, so a first run can compute at all.
+
+    `epidemiology` was populated only by the live WHO GHO fetch, which
+    `--seed-only` skips. A container therefore started with the table empty and
+    could not run a single scenario: `epidemiology.prevalence` resolved to
+    nothing and every run failed with "no value for 'epidemiology.prevalence'
+    in market 'USA' at any resolution level" before it reached the engine.
+
+    `prevalence_low` and `prevalence_high` are WHO's published bounds and are
+    seeded with the central value rather than dropped — M9 parameterises the
+    PSA from them, and discarding them is a defect (see the model docstring).
+
+    A live run supersedes these by natural key, so this is a floor rather than
+    a fixture.
+    """
+    frame = _read("epidemiology.csv")
+    if frame is None:
+        return 0
+
+    published = 0
+    for row in frame.itertuples():
+        if row.country_code not in TARGET_COUNTRIES:
+            log.warning("seed_row_skipped", extra={"file": "epidemiology.csv",
+                                                     "reason": "not a target market",
+                                                     "country_code": row.country_code})
+            continue
+        upsert(
+            session, Epidemiology,
+            natural_key={
+                "country_code": row.country_code,
+                "indication_id": int(row.indication_id),
+                "year": int(row.year),
+                "age_group": row.age_group,
+                "sex": row.sex,
+            },
+            values={
+                "prevalence_pct": float(row.prevalence_pct),
+                "prevalence_low": float(row.prevalence_low),
+                "prevalence_high": float(row.prevalence_high),
+                "source": row.source,
+                "confidence_tier": row.confidence_tier,
+                "is_projected": _to_bool(row.is_projected),
+            },
+        )
+        published += 1
+
+    published += _project_diabetes(session, frame)
+    log.info("seed_published", extra={"file": "epidemiology.csv", "rows": published})
+    return published
+
+
+def _project_diabetes(session: Session, frame: pd.DataFrame) -> int:
+    """Carry the 2014 diabetes observation forward, as the live publisher does.
+
+    WHO's diabetes series stops in 2014. Left alone it is a decade stale, so
+    the live path grows it at the market's own CAGR and marks the result
+    projected; doing the same here keeps a seeded install and an ingested one
+    from disagreeing about the same market.
+    """
+    cagr = load_diabetes_cagr()
+    if not cagr:
+        return 0
+
+    diabetes = session.execute(
+        select(Indication).filter_by(who_indicator_code="NCD_GLUC_04")
+    ).scalar_one_or_none()
+    if diabetes is None:
+        return 0
+
+    projected_year = datetime.now(UTC).year
+    published = 0
+    for row in frame.itertuples():
+        if int(row.indication_id) != diabetes.indication_id:
+            continue
+        growth_rate = cagr.get(row.country_code)
+        if growth_rate is None or int(row.year) >= projected_year:
+            continue
+
+        growth = (1 + growth_rate) ** (projected_year - int(row.year))
+        upsert(
+            session, Epidemiology,
+            natural_key={
+                "country_code": row.country_code,
+                "indication_id": diabetes.indication_id,
+                "year": projected_year,
+                "age_group": row.age_group,
+                "sex": row.sex,
+            },
+            values={
+                "prevalence_pct": round(float(row.prevalence_pct) * growth, 4),
+                "prevalence_low": round(float(row.prevalence_low) * growth, 4),
+                "prevalence_high": round(float(row.prevalence_high) * growth, 4),
+                "source": f"{row.source} projected to {projected_year} via "
+                          f"data/seed/diabetes_cagr.csv (cagr={growth_rate})",
+                "confidence_tier": "C",
+                "is_projected": True,
+            },
+        )
+        published += 1
+    return published
+
+
 # --------------------------------------------------------------------------- orchestration
 
 #: Publish order matters: countries/indications before anything with a foreign
@@ -1000,6 +1108,8 @@ SEED_PUBLISHERS = (
     # After countries: foreign key, and it writes countries.adult_share.
     publish_country_economics,
     publish_indications,
+    # After countries and indications: foreign keys to both.
+    publish_epidemiology,
     publish_drugs,
     publish_drug_regimens,
     publish_drug_prices,
