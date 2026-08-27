@@ -74,6 +74,19 @@ def _to_bool(value: Any) -> bool:
     return str(value).strip().lower() in {"true", "1", "yes"}
 
 
+def _optional_float(value: Any) -> float | None:
+    """A blank numeric cell is absent, not zero and not NaN.
+
+    `_read` turns an empty field into `pd.NA`, and `float(pd.NA)` is `nan`,
+    which reaches PostgreSQL as a real value and fails any CHECK constraint
+    comparing it — silently, and only against an empty database, since an
+    existing row would be updated rather than inserted.
+    """
+    if value is None or pd.isna(value):
+        return None
+    return float(value)
+
+
 def _to_list(value: Any) -> list[str] | None:
     if value is None or pd.isna(value):
         return None
@@ -1032,8 +1045,8 @@ def publish_epidemiology(session: Session) -> int:
             },
             values={
                 "prevalence_pct": float(row.prevalence_pct),
-                "prevalence_low": float(row.prevalence_low),
-                "prevalence_high": float(row.prevalence_high),
+                "prevalence_low": _optional_float(row.prevalence_low),
+                "prevalence_high": _optional_float(row.prevalence_high),
                 "source": row.source,
                 "confidence_tier": row.confidence_tier,
                 "is_projected": _to_bool(row.is_projected),
@@ -1044,6 +1057,12 @@ def publish_epidemiology(session: Session) -> int:
     published += _project_diabetes(session, frame)
     log.info("seed_published", extra={"file": "epidemiology.csv", "rows": published})
     return published
+
+
+def _scaled(value: Any, growth: float) -> float | None:
+    """Grow a bound, or keep it absent. An absent bound stays absent."""
+    bound = _optional_float(value)
+    return None if bound is None else round(bound * growth, 4)
 
 
 def _project_diabetes(session: Session, frame: pd.DataFrame) -> int:
@@ -1085,8 +1104,8 @@ def _project_diabetes(session: Session, frame: pd.DataFrame) -> int:
             },
             values={
                 "prevalence_pct": round(float(row.prevalence_pct) * growth, 4),
-                "prevalence_low": round(float(row.prevalence_low) * growth, 4),
-                "prevalence_high": round(float(row.prevalence_high) * growth, 4),
+                "prevalence_low": _scaled(row.prevalence_low, growth),
+                "prevalence_high": _scaled(row.prevalence_high, growth),
                 "source": f"{row.source} projected to {projected_year} via "
                           f"data/seed/diabetes_cagr.csv (cagr={growth_rate})",
                 "confidence_tier": "C",
