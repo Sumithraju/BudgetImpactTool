@@ -23,11 +23,12 @@ from biet_api.models import (
     AdverseEvent,
     AdverseEventCost,
     Country,
+    CountryEconomics,
     CountryHealthIndicator,
     DiseaseSubgroup,
     Drug,
-    DrugPrice,
     DrugAdverseEvent,
+    DrugPrice,
     DrugRegimen,
     EligibilityCriterion,
     EventCost,
@@ -50,6 +51,7 @@ from ..constants import (
     TARGET_COUNTRIES,
 )
 from ..errors import SourceValidationError
+from ..sources.worldbank import derive_adult_share
 from .upsert import resync_sequence, upsert
 
 log = logging.getLogger(__name__)
@@ -924,6 +926,69 @@ def publish_fx_rates(session: Session) -> int:
     return published
 
 
+# --------------------------------------------------------------------------- country_economics.csv
+
+
+def publish_country_economics(session: Session) -> int:
+    """Population and economic indicators, so a first run can price offline.
+
+    `country_economics` was populated only by the live World Bank fetch, which
+    `--seed-only` deliberately skips. A container therefore started with the
+    table empty, and an empty table is not a small loss: M5 derives a price for
+    every market with no observed one by purchasing-power parity, and that
+    derivation needs GDP per capita. Without it `_derive` returns None and the
+    cell falls all the way through to "no price in any market this could be
+    derived from" — 0.00 at tier D. Seven of eleven markets showed no price at
+    all, and affordability had no capacity figure to position impact against.
+
+    Real World Bank figures at their own vintages, one row per market per
+    indicator. The vintage differs by indicator on purpose: population reaches
+    2025 while health expenditure lags, and pinning them to one year would
+    silently drop the lagging series.
+
+    A later live run supersedes these by natural key, so this is a floor rather
+    than a fixture.
+    """
+    frame = _read("country_economics.csv")
+    if frame is None:
+        return 0
+
+    published = 0
+    for row in frame.itertuples():
+        if row.country_code not in TARGET_COUNTRIES:
+            log.warning("seed_row_skipped", extra={"file": "country_economics.csv",
+                                                     "reason": "not a target market",
+                                                     "country_code": row.country_code})
+            continue
+        upsert(
+            session, CountryEconomics,
+            natural_key={"country_code": row.country_code,
+                         "indicator": row.indicator,
+                         "year": int(row.year)},
+            values={"value": float(row.value), "source": row.source,
+                    "confidence_tier": row.confidence_tier},
+        )
+        published += 1
+
+    # `countries.adult_share` is derived from the paediatric band by the live
+    # publisher; deriving it here too keeps a seeded install and an ingested
+    # one the same. WHO publishes prevalence for adults while World Bank
+    # publishes all ages, so without this the diseased population carries the
+    # paediatric share.
+    age_bands = load_age_bands()
+    for row in frame.itertuples():
+        if row.indicator != "pop_0014_pct" or row.country_code not in TARGET_COUNTRIES:
+            continue
+        country = session.get(Country, row.country_code)
+        if country is not None:
+            country.adult_share = round(
+                derive_adult_share(float(row.value), age_bands.get(row.country_code)), 4,
+            )
+
+    log.info("seed_published", extra={"file": "country_economics.csv", "rows": published})
+    return published
+
+
 # --------------------------------------------------------------------------- orchestration
 
 #: Publish order matters: countries/indications before anything with a foreign
@@ -932,6 +997,8 @@ SEED_PUBLISHERS = (
     # No foreign keys, and every currency conversion depends on it.
     publish_fx_rates,
     publish_countries,
+    # After countries: foreign key, and it writes countries.adult_share.
+    publish_country_economics,
     publish_indications,
     publish_drugs,
     publish_drug_regimens,
