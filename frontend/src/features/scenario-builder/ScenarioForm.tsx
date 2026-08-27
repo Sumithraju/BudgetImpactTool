@@ -159,7 +159,7 @@ export function ScenarioForm({
             value={draft.reportingCurrency}
             onChange={(e) => set("reportingCurrency", e.target.value)}
           >
-            {["EUR", "USD", "GBP", "JPY", "INR"].map((c) => (
+            {["USD", "EUR", "GBP", "DKK", "INR", "BRL", "CNY"].map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>

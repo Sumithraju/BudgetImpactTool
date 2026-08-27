@@ -51,7 +51,7 @@ const DEFAULT_DRAFT: Draft = {
   launchYear: 2028,
   horizonYears: 3,
   reportingCurrency: "EUR",
-  countryCodes: ["USA", "DEU", "GBR", "JPN", "IND"],
+  countryCodes: ["USA", "DEU", "GBR", "DNK", "IND"],
   prevalence: null,
   diagnosisRate: null,
   treatmentRate: null,
@@ -84,6 +84,26 @@ export function App() {
   const [perspectives, setPerspectives] = useState<PerspectiveOption[]>([]);
   const [guide, setGuide] = useState<FieldGroup[]>([]);
   const [bands, setBands] = useState<Record<string, number>>({});
+  // Panel reasoning is off by default and remembered per browser. An analyst
+  // reviewing the model wants every word; the same person presenting it wants
+  // the figures. Neither should have to be the default for the other.
+  const [explain, setExplain] = useState(() => {
+    try {
+      return localStorage.getItem("biet.explain") === "on";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("biet.explain", explain ? "on" : "off");
+    } catch {
+      // A browser with site data blocked still works; the choice just does
+      // not survive a reload.
+    }
+  }, [explain]);
+
   const [prices, setPrices] = useState<DrugPrice[]>([]);
   const [pricesLoading, setPricesLoading] = useState(false);
 
@@ -341,7 +361,7 @@ export function App() {
   ];
 
   return (
-    <div className="shell">
+    <div className="shell" data-explain={explain ? "on" : "off"}>
       <header className="topbar" ref={topbar}>
         <Brand />
 
@@ -365,6 +385,19 @@ export function App() {
         </nav>
 
         <div className="topmeta">
+          <button
+            type="button"
+            className="explain-toggle"
+            aria-pressed={explain}
+            title={
+              explain
+                ? "Hide the notes above each panel"
+                : "Show the notes above each panel — what it is, and why it is here"
+            }
+            onClick={() => setExplain((v) => !v)}
+          >
+            Guide
+          </button>
           {calculation && (
             <>
               <span className="topfigure mono">
@@ -409,14 +442,17 @@ export function App() {
             <>
               <div className="intro">
                 <h2>Define the scenario on the left, then run it.</h2>
-                <p>
+                {/* The heading is an instruction and always shows; the two
+                    paragraphs below it are reasoning, so they follow the same
+                    Explain control as every panel lede. */}
+                <p className="lede-explain">
                   The inputs are in the order the model computes them — population,
                   epidemiology, eligibility, current care, the intervention, uptake,
                   behaviour, horizon, perspective. Every field explains itself where
                   it sits; the same explanation appears in the import template and
                   the exported workbook.
                 </p>
-                <p>
+                <p className="lede-explain">
                   Every figure that comes back carries the source it was resolved
                   from, its vintage and its confidence tier. Where a value is an
                   assumption rather than an observation, the result says so on the

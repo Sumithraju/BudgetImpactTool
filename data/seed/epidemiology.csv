@@ -1,0 +1,17 @@
+country_code,indication_id,year,prevalence_pct,prevalence_low,prevalence_high,age_group,sex,source,confidence_tier,is_projected
+BRA,1,2024,28.8,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+CHN,1,2024,14.1,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+DEU,1,2024,25.7,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+DNK,1,2024,14.3,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+FRA,1,2024,21.6,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+GBR,1,2024,28.0,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+IND,1,2024,9.8,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+USA,1,2024,42.9,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+BRA,2,2024,8.8,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+CHN,2,2024,11.2,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+DEU,2,2024,9.5,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+DNK,2,2014,4.3,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+FRA,2,2024,6.8,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+GBR,2,2024,8.0,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+IND,2,2024,10.4,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
+USA,2,2024,11.3,,,AGEGROUP_YEARS18-PLUS,SEX_BTSX,WHO Global Health Observatory,A,false
