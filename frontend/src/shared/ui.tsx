@@ -308,7 +308,11 @@ export function Card({
           {actions && <div className="card-actions">{actions}</div>}
         </header>
       )}
-      {lede && <p className="lede">{lede}</p>}
+      {/* Explanatory, so opt-in: see `.lede-explain` in styles.css. The
+          dashboard's job is to be read at a glance, and a paragraph of
+          reasoning above every panel buries the figures it is explaining.
+          Nothing is deleted — the toggle in the header brings it all back. */}
+      {lede && <p className="lede lede-explain">{lede}</p>}
       {children}
     </section>
   );

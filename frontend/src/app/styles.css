@@ -104,6 +104,29 @@ input[type="range"] { accent-color: var(--accent); width: 100%; }
 }
 .lede { color: var(--ink-2); max-width: 86ch; margin: 8px 0 12px;
   font-size: 13px; line-height: 1.5; }
+
+/* Panel ledes are reasoning, not data, and they are off by default.
+   Every panel carrying a paragraph above its figures turns a dashboard into
+   an essay: the numbers are what a reader came for, and they were sitting
+   below three lines of justification. `Explain` in the header turns the whole
+   set back on at once, so the reasoning is one click away rather than absent
+   — this hides text, it never removes it. Status and empty-state messages
+   use plain `.lede` and are unaffected. */
+.lede-explain { display: none; }
+[data-explain="on"] .lede-explain { display: block; }
+
+.explain-toggle {
+  font: inherit; font-family: "IBM Plex Mono", monospace; font-size: 11px;
+  letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-2); background: transparent; color: var(--ink-3);
+  cursor: pointer; transition: color .12s ease, border-color .12s ease,
+    background .12s ease;
+}
+.explain-toggle:hover { color: var(--ink-2); border-color: var(--ink-3); }
+.explain-toggle[aria-pressed="true"] {
+  color: var(--on-accent); background: var(--accent); border-color: var(--accent);
+}
 .empty { margin-top: 60px; max-width: 46ch; }
 .empty p { font-family: "Source Serif 4", Georgia, serif; color: var(--ink-3); }
 .alert { border: 1px solid var(--t-D); border-left-width: 3px; border-radius: 3px;
