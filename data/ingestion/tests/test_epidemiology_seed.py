@@ -92,7 +92,8 @@ def test_a_supplied_interval_is_kept(session: Session, seed_dir: Path) -> None:
 
 def test_the_shipped_file_covers_every_target_market() -> None:
     """A market carried with no prevalence cannot produce a budget impact."""
-    rows = list(csv.DictReader(open("data/seed/epidemiology.csv")))
+    with Path("data/seed/epidemiology.csv").open(encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
     covered = {r["country_code"] for r in rows if r["indication_id"] == "1"}
 
     assert not set(TARGET_COUNTRIES) - covered, (
