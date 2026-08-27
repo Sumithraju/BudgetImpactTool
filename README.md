@@ -73,6 +73,17 @@ while the rest of the tool carries on working. Behind a corporate proxy, set
 `HTTPS_PROXY` (and `NO_PROXY` for `db`) in the shell you run Compose from —
 `docker-compose.yml` passes both through to the API and the migration step.
 
+Those three ports are also the ones a local dev setup uses, so if you are
+already running `npm run dev` or uvicorn — or want a second copy of the project
+up at the same time — override the host side and nothing collides:
+
+```bash
+BIET_UI_PORT=5273 BIET_API_PORT=8177 BIET_DB_PORT=5533 docker compose up --build
+```
+
+Only the host ports move. Inside the compose network the API is always
+`api:8077`, which is what the interface proxies to, so nothing else changes.
+
 To stop:
 
 ```bash

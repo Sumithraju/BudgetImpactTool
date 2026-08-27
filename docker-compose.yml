@@ -17,6 +17,17 @@
 # Left empty by default and passed straight through from the host, so an unset
 # variable stays unset: httpx ignores an empty proxy value and connects
 # directly, so this costs nothing on a machine with no proxy.
+# Host ports are overridable, and default to the same numbers as before.
+#
+# The three defaults collide with a local dev environment — `npm run dev` holds
+# 5173, uvicorn holds 8077, and a developer PostgreSQL often holds 5433 — so
+# running a container alongside the source checkout, or two copies of this
+# project at once, failed to bind with nothing but a port message to explain
+# it. Only the host side moves; inside the network the API is always api:8077,
+# which is what nginx proxies to, so no other file needs to know.
+#
+#   BIET_UI_PORT=5273 BIET_API_PORT=8177 BIET_DB_PORT=5533 docker compose up --build
+#
 x-outbound: &outbound
   # httpx, in the API, reads the standard names — and only reads them at all
   # because the client leaves its transport to httpx (see comparator.py).
@@ -42,7 +53,7 @@ services:
     ports:
       # Exposed so you can point psql or a GUI at it. 5433 on the host to avoid
       # colliding with a PostgreSQL you may already run on 5432.
-      - "5433:5432"
+      - "${BIET_DB_PORT:-5433}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U biet -d biet"]
       interval: 5s
@@ -81,7 +92,7 @@ services:
       migrate:
         condition: service_completed_successfully
     ports:
-      - "8077:8077"
+      - "${BIET_API_PORT:-8077}:8077"
     restart: unless-stopped
 
   ui:
@@ -92,7 +103,7 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "5173:5173"
+      - "${BIET_UI_PORT:-5173}:5173"
     restart: unless-stopped
 
 volumes:
