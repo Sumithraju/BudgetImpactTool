@@ -12,12 +12,13 @@ from typing import Final
 # --------------------------------------------------------------------------- markets
 
 TARGET_COUNTRIES: Final[tuple[str, ...]] = (
-    "USA", "GBR", "DEU", "FRA", "ITA", "ESP", "IND", "CHN", "BRA", "JPN",
+    "USA", "GBR", "DEU", "FRA", "ITA", "ESP", "IND", "CHN", "BRA", "JPN", "DNK",
 )
 
 COUNTRY_CURRENCY: Final[dict[str, str]] = {
     "USA": "USD", "GBR": "GBP", "DEU": "EUR", "FRA": "EUR", "ITA": "EUR",
     "ESP": "EUR", "IND": "INR", "CHN": "CNY", "BRA": "BRL", "JPN": "JPY",
+    "DNK": "DKK",
 }
 
 REQUIRED_CURRENCIES: Final[frozenset[str]] = frozenset(COUNTRY_CURRENCY.values())
@@ -106,7 +107,7 @@ ADULT_SHARE_MAX: Final[float] = 0.95
 ADOLESCENT_BAND_RATIO: Final[float] = 3.0 / 15.0
 RATE_MIN: Final[float] = 0.0
 RATE_MAX: Final[float] = 1.0
-MIN_FX_CURRENCIES: Final[int] = 7          # six quoted plus the USD identity row
+MIN_FX_CURRENCIES: Final[int] = 8          # seven quoted plus the USD identity row
 STALE_VINTAGE_YEARS: Final[int] = 5
 
 # --------------------------------------------------------------------------- confidence

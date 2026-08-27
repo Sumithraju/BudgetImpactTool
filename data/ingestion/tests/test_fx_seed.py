@@ -29,8 +29,8 @@ from ..errors import SourceValidationError
 from ..publish.seed import publish_fx_rates
 
 _GOOD = [
-    ("BRL", "5.1729"), ("CNY", "6.7206"), ("EUR", "0.85477"),
-    ("GBP", "0.73228"), ("INR", "95.7"), ("JPY", "158.7"), ("USD", "1.0"),
+    ("BRL", "5.1465"), ("CNY", "6.7205"), ("DKK", "6.4065"), ("EUR", "0.85697"),
+    ("GBP", "0.73368"), ("INR", "95.42"), ("JPY", "159.07"), ("USD", "1.0"),
 ]
 
 
