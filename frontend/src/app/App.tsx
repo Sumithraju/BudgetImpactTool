@@ -391,12 +391,12 @@ export function App() {
             aria-pressed={explain}
             title={
               explain
-                ? "Hide the reasoning above each panel"
-                : "Show the reasoning above each panel"
+                ? "Hide the notes above each panel"
+                : "Show the notes above each panel — what it is, and why it is here"
             }
             onClick={() => setExplain((v) => !v)}
           >
-            Explain
+            Guide
           </button>
           {calculation && (
             <>
