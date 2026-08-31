@@ -20,7 +20,6 @@ import {
   type BreakEven,
   type Calculation,
   type CountryOption,
-  type CriterionOption,
   type DrugPrice,
   type EvidenceGapReport,
   type FieldGroup,
@@ -40,7 +39,6 @@ import { ResultsView } from "../features/results/ResultsView";
 import { ScenarioCompare, type SavedRun } from "../features/scenario-compare/ScenarioCompare";
 import { ComparatorDiscovery } from "../features/comparator-discovery/ComparatorDiscovery";
 import { ComparatorRegistry } from "../features/comparator-discovery/ComparatorRegistry";
-import { EviTrack } from "../features/evitrack/EviTrack";
 import { Placeholder } from "../shared/ui";
 import { formatMoneyCompact } from "../shared/format";
 import { useStickyHeaderHeight } from "../shared/useStickyHeader";
@@ -62,8 +60,6 @@ const DEFAULT_DRAFT: Draft = {
   uptakeTerminal: null,
   uptakeCurve: "logistic",
   regainPerYear: null,
-  criteriaFactors: {},
-  substitutionNaive: null,
   perspective: "health_system",
   coveredPopulation: null,
   subgroupCodes: [],
@@ -71,7 +67,7 @@ const DEFAULT_DRAFT: Draft = {
   imported: [],
 };
 
-type Workspace = "build" | "prices" | "comparators" | "results" | "evitrack";
+type Workspace = "build" | "prices" | "comparators" | "results";
 
 export function App() {
   // The header wraps from one row to three between a monitor and a phone, and
@@ -87,7 +83,6 @@ export function App() {
   const [subgroups, setSubgroups] = useState<SubgroupOption[]>([]);
   const [perspectives, setPerspectives] = useState<PerspectiveOption[]>([]);
   const [guide, setGuide] = useState<FieldGroup[]>([]);
-  const [criteria, setCriteria] = useState<CriterionOption[]>([]);
   const [bands, setBands] = useState<Record<string, number>>({});
   // Panel reasoning is off by default and remembered per browser. An analyst
   // reviewing the model wants every word; the same person presenting it wants
@@ -168,21 +163,6 @@ export function App() {
       .catch(() => setSubgroups([]));
   }, [draft.indicationId]);
 
-  // The criterion stack belongs to the disease, so it reloads with it. A
-  // factor the reader moved is keyed by criterion code and would be
-  // meaningless against another disease's codes, so the overrides clear too.
-  useEffect(() => {
-    api
-      .criteria(draft.indicationId)
-      .then(setCriteria)
-      .catch(() => setCriteria([]));
-    setDraft((current) =>
-      Object.keys(current.criteriaFactors).length
-        ? { ...current, criteriaFactors: {} }
-        : current,
-    );
-  }, [draft.indicationId]);
-
   // The price grid reloads when the market set or the disease changes, since
   // both change which cells exist. Edits are keyed by therapy and market, so
   // an edit to a market still in the set survives the reload.
@@ -213,10 +193,6 @@ export function App() {
     add("uptake.year_1", draft.uptakeYear1);
     add("uptake.terminal", draft.uptakeTerminal);
     add("outcomes.regain_per_year", draft.regainPerYear);
-    add("substitution.naive", draft.substitutionNaive);
-    for (const [code, factor] of Object.entries(draft.criteriaFactors)) {
-      out.push({ parameter_path: `criteria.${code}.factor`, value: factor });
-    }
     if (draft.uptakeCurve !== "logistic") {
       out.push({ parameter_path: "uptake.curve", value: draft.uptakeCurve });
     }
@@ -382,7 +358,6 @@ export function App() {
     { id: "prices", step: 2, label: "Prices", hint: "what it costs" },
     { id: "comparators", step: 3, label: "Comparators", hint: "what it displaces" },
     { id: "results", step: 4, label: "Results", hint: "what it means" },
-    { id: "evitrack", step: 5, label: "EviTrack", hint: "find and curate evidence" },
   ];
 
   return (
@@ -448,8 +423,6 @@ export function App() {
           subgroups={subgroups}
           perspectives={perspectives}
           guide={guide}
-          criteria={criteria}
-          calculation={calculation}
           onRun={run}
           busy={busy}
           errorField={error?.field ?? null}
@@ -559,10 +532,9 @@ export function App() {
               <Placeholder title="Nothing has been run yet">
                 Define the scenario on the left and press Run.
               </Placeholder>
-            )) }
-      	  {workspace === "evitrack" && <EviTrack />}
+            ))}
         </main>
       </div>
     </div>
   );
-}	
+}
