@@ -1,0 +1,120 @@
+EviTrack CHANGELOG
+==================
+
+2026-08-30
+
+Architecture
+------------
+- Finalized isolated EviTrack workflow.
+- Existing BIA workflow remains unchanged.
+- Shared PostgreSQL database.
+- No LLM/vector DB for MVP.
+- Flexible, user-curatable evidence.
+- Flow:
+  Search → Sources → Add Evidence → Curate → Store → View/Export → BIA handoff.
+
+Frontend
+--------
+- Added EviTrack as Workspace Step 5 in the existing BIET frontend.
+- Created EviTrack frontend scaffold:
+  - EviTrack.tsx
+  - SearchBox.tsx
+  - SearchResults.tsx
+  - EvidenceWorkspace.tsx
+- SearchBox accepts a user query.
+- EviTrack now calls the backend search endpoint.
+- Search results are rendered in SearchResults.tsx.
+- Loading and search-error states were added.
+- Frontend production build had previously been verified.
+
+Backend
+-------
+- Added isolated EviTrack API route:
+  GET /api/v1/evitrack/health
+  GET /api/v1/evitrack/search?q=<query>
+- Registered evitrack.router in biet_api/main.py.
+- Search endpoint uses FastEmbed with:
+  BAAI/bge-small-en-v1.5
+- Query embedding size:
+  384 dimensions.
+- Existing GuidelineRepository is used for retrieval.
+- GuidelineRepository searches PostgreSQL using pgvector cosine distance.
+- Search returns the top 5 guideline chunks.
+- Similarity is represented as:
+  1 - cosine distance.
+- Retrieved results use the existing RetrievedChunk model.
+
+Current Search Flow
+-------------------
+User query
+    ↓
+EviTrack SearchBox
+    ↓
+GET /api/v1/evitrack/search
+    ↓
+FastEmbed
+    ↓
+384-dimensional embedding
+    ↓
+GuidelineRepository.search()
+    ↓
+PostgreSQL + pgvector
+    ↓
+Top 5 guideline chunks
+    ↓
+SearchResults
+
+Important Boundary
+------------------
+- The current EviTrack search uses the existing internal guideline corpus.
+- It does NOT yet perform external web search.
+- Existing guideline retrieval is primarily used for BIET narrative grounding.
+- EviTrack's long-term purpose is broader evidence discovery.
+- External evidence discovery will be implemented as a separate layer.
+- External evidence should provide source links and provenance.
+- Retrieved external evidence must not automatically become a BIA input.
+- User review/curation is required before BIA handoff.
+
+Completed
+---------
+[x] Frontend scaffold
+[x] Navigation
+[x] Search input
+[x] EviTrack backend route
+[x] Internal guideline retrieval
+[x] FastEmbed integration
+[x] PostgreSQL/pgvector retrieval
+[x] Top-5 result response
+[x] Frontend search integration
+[x] Search result rendering
+
+Not Yet Implemented
+-------------------
+[ ] External web search
+[ ] Scientific paper discovery
+[ ] Dataset discovery
+[ ] Source URLs
+[ ] Source metadata
+[ ] Evidence storage
+[ ] Evidence curation
+[ ] Provenance tracking
+[ ] Evidence value extraction
+[ ] Export
+[ ] BIA handoff
+[ ] Optional LLM
+
+Next
+----
+Build the separate external evidence discovery layer.
+
+The target use case is a query such as:
+
+"Arthritis prevalence in India"
+
+EviTrack should eventually discover relevant external evidence such as
+research papers, official reports and datasets, show their source links and
+metadata, and allow the user to select and curate evidence before it can
+support a BIA input.
+
+The external discovery layer should not replace the existing guideline
+retrieval system and should not modify the deterministic BIA engine.

@@ -1,0 +1,33 @@
+.evitrack {
+  padding: 28px;
+}
+
+.evitrack-header {
+  margin-bottom: 24px;
+}
+
+.evitrack-header h2 {
+  margin: 0;
+}
+
+.evitrack-header p {
+  margin-top: 6px;
+}
+
+.evitrack-search {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.evitrack-search input {
+  flex: 1;
+  padding: 12px;
+}
+
+.evitrack-section {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
