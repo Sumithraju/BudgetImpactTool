@@ -559,10 +559,10 @@ export function App() {
               <Placeholder title="Nothing has been run yet">
                 Define the scenario on the left and press Run.
               </Placeholder>
-            )) }
-      	  {workspace === "evitrack" && <EviTrack />}
+            ))}
+          {workspace === "evitrack" && <EviTrack />}
         </main>
       </div>
     </div>
   );
-}	
+}

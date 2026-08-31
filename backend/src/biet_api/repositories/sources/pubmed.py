@@ -6,7 +6,6 @@ import httpx
 
 from ...schemas.evidence import EvidenceResult
 
-
 PUBMED_EUTILS_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
 

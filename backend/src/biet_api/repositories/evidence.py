@@ -8,7 +8,6 @@ from ..schemas.evidence import EvidenceResult
 from .sources.pubmed import PubMedSource
 from .sources.registry import EvidenceSourceRegistry
 
-
 PUBMED_EUTILS_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
 
