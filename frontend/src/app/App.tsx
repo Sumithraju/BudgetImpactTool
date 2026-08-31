@@ -20,6 +20,7 @@ import {
   type BreakEven,
   type Calculation,
   type CountryOption,
+  type CriterionOption,
   type DrugPrice,
   type EvidenceGapReport,
   type FieldGroup,
@@ -60,6 +61,8 @@ const DEFAULT_DRAFT: Draft = {
   uptakeTerminal: null,
   uptakeCurve: "logistic",
   regainPerYear: null,
+  criteriaFactors: {},
+  substitutionNaive: null,
   perspective: "health_system",
   coveredPopulation: null,
   subgroupCodes: [],
@@ -83,6 +86,7 @@ export function App() {
   const [subgroups, setSubgroups] = useState<SubgroupOption[]>([]);
   const [perspectives, setPerspectives] = useState<PerspectiveOption[]>([]);
   const [guide, setGuide] = useState<FieldGroup[]>([]);
+  const [criteria, setCriteria] = useState<CriterionOption[]>([]);
   const [bands, setBands] = useState<Record<string, number>>({});
   // Panel reasoning is off by default and remembered per browser. An analyst
   // reviewing the model wants every word; the same person presenting it wants
@@ -163,6 +167,21 @@ export function App() {
       .catch(() => setSubgroups([]));
   }, [draft.indicationId]);
 
+  // The criterion stack belongs to the disease, so it reloads with it. A
+  // factor the reader moved is keyed by criterion code and would be
+  // meaningless against another disease's codes, so the overrides clear too.
+  useEffect(() => {
+    api
+      .criteria(draft.indicationId)
+      .then(setCriteria)
+      .catch(() => setCriteria([]));
+    setDraft((current) =>
+      Object.keys(current.criteriaFactors).length
+        ? { ...current, criteriaFactors: {} }
+        : current,
+    );
+  }, [draft.indicationId]);
+
   // The price grid reloads when the market set or the disease changes, since
   // both change which cells exist. Edits are keyed by therapy and market, so
   // an edit to a market still in the set survives the reload.
@@ -193,6 +212,10 @@ export function App() {
     add("uptake.year_1", draft.uptakeYear1);
     add("uptake.terminal", draft.uptakeTerminal);
     add("outcomes.regain_per_year", draft.regainPerYear);
+    add("substitution.naive", draft.substitutionNaive);
+    for (const [code, factor] of Object.entries(draft.criteriaFactors)) {
+      out.push({ parameter_path: `criteria.${code}.factor`, value: factor });
+    }
     if (draft.uptakeCurve !== "logistic") {
       out.push({ parameter_path: "uptake.curve", value: draft.uptakeCurve });
     }
@@ -423,6 +446,8 @@ export function App() {
           subgroups={subgroups}
           perspectives={perspectives}
           guide={guide}
+          criteria={criteria}
+          calculation={calculation}
           onRun={run}
           busy={busy}
           errorField={error?.field ?? null}

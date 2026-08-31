@@ -581,7 +581,7 @@ tbody tr:last-child td { border-bottom: none; }
   --series-4: #2c6f52;   /* avoided events — the benefit */
   --radius: 8px;
   --radius-sm: 5px;
-  --studio-width: 356px;
+  --studio-width: 428px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -1193,3 +1193,57 @@ tr.peak:hover td { background: var(--accent-soft); }
 .recharts-tooltip-item-value { color: var(--ink-2) !important; }
 .recharts-legend-item-text { color: var(--ink-2) !important; }
 .recharts-cartesian-axis-tick text { fill: var(--ink-3); }
+
+
+/* ------------------------------------------------------------------ *
+ * Eligibility criteria, read-only figures, and the Guide gate.
+ *
+ * The panel has two audiences in the same session: someone building the
+ * model, who wants every sentence, and someone presenting it, who wants the
+ * numbers and nothing else. Guide switches between them. Off is the default
+ * and it is not a degraded mode — the figure, its label and one line of
+ * meaning stay; the reasoning, the provenance paragraphs and the help dots go.
+ * ------------------------------------------------------------------ */
+
+.criteria { display: flex; flex-direction: column; gap: 4px;
+  border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
+
+.criterion { padding: 9px 0; border-bottom: 1px solid var(--line-2, var(--line)); }
+.criterion:last-child { border-bottom: none; }
+.criterion-head { display: flex; align-items: baseline;
+  justify-content: space-between; gap: 10px; margin-bottom: 5px; }
+.criterion-head label { font-size: 12.5px; line-height: 1.35; }
+.criterion-why { font-family: "Source Serif 4", Georgia, serif;
+  font-size: 11.5px; line-height: 1.45; color: var(--ink-3);
+  margin: 6px 0 0; }
+
+/* A figure the engine derives and does not accept back. Distinguished from
+   an input by having no control at all, rather than by a disabled one — a
+   greyed-out slider still reads as something that ought to work. */
+.readout { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px;
+  align-items: baseline; padding: 8px 0;
+  border-bottom: 1px solid var(--line); }
+.readout:last-of-type { border-bottom: none; }
+.readout-label { font-size: 12.5px; color: var(--ink-2); }
+.readout-value { font-family: "IBM Plex Mono", monospace; font-size: 12.5px;
+  font-variant-numeric: tabular-nums; color: var(--ink-1); text-align: right; }
+.readout-why { grid-column: 1 / -1; font-family: "Source Serif 4", Georgia, serif;
+  font-size: 11.5px; line-height: 1.45; color: var(--ink-3); }
+
+.horizon-val { font-family: "IBM Plex Mono", monospace;
+  font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+
+/* The gate. Everything hidden here is explanation; nothing hidden here is a
+   value, a label or a control. */
+[data-explain="off"] .studio .help-dot,
+[data-explain="off"] .studio .hint,
+[data-explain="off"] .studio .instep-summary,
+[data-explain="off"] .studio .criterion-why,
+[data-explain="off"] .studio .readout-why,
+[data-explain="off"] .studio .toggle small,
+[data-explain="off"] .studio .persp em { display: none; }
+
+/* The one exception: a warning is not an explanation. A per-member figure
+   silently falling back to the national population is a defect in the
+   reading, and hiding that leaves the number looking sounder than it is. */
+[data-explain="off"] .studio .hint.warn { display: block; }

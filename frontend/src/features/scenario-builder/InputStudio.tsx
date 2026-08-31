@@ -14,14 +14,16 @@
 
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type {
+  Calculation,
   CountryOption,
+  CriterionOption,
   FieldGroup,
   IndicationOption,
   PerspectiveOption,
   SubgroupOption,
 } from "../../shared/api";
 import { Help, indexFields } from "../../shared/ui";
-import { formatCount, formatPercent } from "../../shared/format";
+import { formatCount, formatMoney, formatPercent } from "../../shared/format";
 
 /** One value read out of an imported file, kept editable.
  *
@@ -60,6 +62,14 @@ export interface Draft {
   uptakeTerminal: number | null;
   uptakeCurve: "logistic" | "linear";
   regainPerYear: number | null;
+  /** Per-criterion narrowing factors, keyed by criterion code. Absent means
+   *  the seeded default; a present value is an override the run carries as
+   *  tier C, exactly like every other typed input. */
+  criteriaFactors: Record<string, number>;
+  /** How much of the new therapy's uptake is drawn from existing treatment
+   *  rather than from untreated patients. Moves what the world-without costs,
+   *  which is the whole of the subtraction. */
+  substitutionNaive: number | null;
   perspective: string;
   coveredPopulation: number | null;
   subgroupCodes: string[];
@@ -83,6 +93,12 @@ interface Props {
   subgroups: SubgroupOption[];
   perspectives: PerspectiveOption[];
   guide: FieldGroup[];
+  criteria: CriterionOption[];
+  /** The last finished run, or null before the first one. Read only for the
+   *  figures the engine derives and does not accept back as inputs — outcomes
+   *  and the cost components — so those sections show real seeded values
+   *  rather than controls that would move nothing. */
+  calculation: Calculation | null;
   onRun: () => void;
   busy: boolean;
   errorField: string | null;
@@ -166,6 +182,193 @@ function Rate({
   );
 }
 
+/** A count, on a slider with a typed box beside it.
+ *
+ *  Absolute rather than a share, so the scale is logarithmic — covered lives
+ *  run from a small self-insured employer to a national payer, and a linear
+ *  track would put every realistic value in the first millimetre. */
+function Amount({
+  label,
+  fieldKey,
+  id,
+  value,
+  placeholder,
+  min,
+  max,
+  onChange,
+  guide,
+  note,
+}: {
+  label: string;
+  fieldKey: string;
+  id: string;
+  value: number | null;
+  placeholder: string;
+  min: number;
+  max: number;
+  onChange: (v: number | null) => void;
+  guide: ReturnType<typeof indexFields>;
+  note?: string;
+}) {
+  const set = value !== null;
+  const lg = (n: number) => Math.log10(Math.max(n, 1));
+  const toSlider = (n: number) =>
+    ((lg(n) - lg(min)) / (lg(max) - lg(min))) * 100;
+  const fromSlider = (pct: number) =>
+    Math.round(10 ** (lg(min) + (pct / 100) * (lg(max) - lg(min))));
+
+  return (
+    <div className="field">
+      <div className="field-head">
+        <Help spec={guide.get(fieldKey)}>
+          <label htmlFor={id}>{label}</label>
+        </Help>
+        <span className={set ? "val val-set" : "val"}>
+          {set ? formatCount(value) : placeholder}
+        </span>
+      </div>
+      <div className="rate-controls">
+        <input
+          id={id}
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={set ? toSlider(value) : 0}
+          onChange={(e) => onChange(fromSlider(Number(e.target.value)))}
+          aria-label={label}
+        />
+        <input
+          className="rate-number"
+          type="number"
+          min={min}
+          step={1000}
+          value={set ? value : ""}
+          placeholder="—"
+          aria-label={`${label}, people`}
+          onChange={(e) =>
+            onChange(e.target.value === "" ? null : Number(e.target.value))
+          }
+        />
+        <span className="rate-unit" />
+      </div>
+      <div className="field-foot">
+        <span>{set ? "your override · tier C" : note ?? "not supplied"}</span>
+        {set && (
+          <button type="button" className="reset" onClick={() => onChange(null)}>
+            Reset
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** One eligibility criterion: a narrowing factor on a slider, and the stack
+ *  position the engine gave it.
+ *
+ *  The enabled state is reported, not offered. `criteria.<code>.enabled` is in
+ *  the override vocabulary but the engine does not read it back yet, so a
+ *  switch here would look like a control and change nothing. The factor beside
+ *  it does resolve, so that is what moves. */
+function CriterionRow({
+  spec,
+  value,
+  onChange,
+  errorField,
+}: {
+  spec: CriterionOption;
+  value: number | undefined;
+  onChange: (v: number | undefined) => void;
+  errorField: string | null;
+}) {
+  const path = `criteria.${spec.criterion_code}.factor`;
+  const set = value !== undefined;
+  const shown = set ? value : spec.default_factor;
+  // The seeded band when there is one, widened just enough to be draggable
+  // when low and high are equal — otherwise the track has no travel at all.
+  const lo = Math.round((spec.factor_low ?? Math.min(shown, 0.05)) * 100);
+  const hi = Math.round((spec.factor_high ?? 1) * 100);
+  const min = Math.max(1, Math.min(lo, Math.round(shown * 100)));
+  const max = Math.max(hi, Math.round(shown * 100), min + 1);
+
+  return (
+    <div className={`criterion ${errorField === path ? "field-error" : ""}`}>
+      <div className="criterion-head">
+        <label htmlFor={path}>{spec.criterion_label}</label>
+        <span className={set ? "val val-set" : "val"}>
+          {formatPercent(shown, 0)}
+        </span>
+      </div>
+      <div className="rate-controls">
+        <input
+          id={path}
+          type="range"
+          min={min}
+          max={max}
+          step={1}
+          value={Math.round(shown * 100)}
+          onChange={(e) => onChange(Number(e.target.value) / 100)}
+          aria-label={spec.criterion_label}
+        />
+        <input
+          className="rate-number"
+          type="number"
+          min={0}
+          max={100}
+          step={0.5}
+          value={Number((shown * 100).toFixed(1))}
+          aria-label={`${spec.criterion_label}, percent`}
+          onChange={(e) =>
+            onChange(e.target.value === "" ? undefined : Number(e.target.value) / 100)
+          }
+        />
+        <span className="rate-unit">%</span>
+      </div>
+      <div className="field-foot">
+        <span>
+          {spec.enabled ? "in the stack" : "held out — overlaps another"} · tier{" "}
+          {set ? "C" : spec.confidence_tier}
+        </span>
+        {set && (
+          <button
+            type="button"
+            className="reset"
+            onClick={() => onChange(undefined)}
+          >
+            Reset
+          </button>
+        )}
+      </div>
+      <p className="criterion-why">{spec.source}</p>
+    </div>
+  );
+}
+
+/** A figure the engine derives and does not take back as an input.
+ *
+ *  Shown rather than hidden: the review asks for outcomes and cost components
+ *  to be visible where the inputs are, and they are real seeded values. They
+ *  are not controls because no override path reaches them — a slider here
+ *  would move nothing, which is worse than a number that admits it is fixed. */
+function Readout({
+  label,
+  value,
+  meaning,
+}: {
+  label: string;
+  value: string;
+  meaning?: string;
+}) {
+  return (
+    <div className="readout">
+      <span className="readout-label">{label}</span>
+      <span className="readout-value">{value}</span>
+      {meaning && <span className="readout-why">{meaning}</span>}
+    </div>
+  );
+}
+
 /** A path like `subgroup.htn_osa.share` in the words the panel uses elsewhere.
  *
  *  Falls back to the raw path rather than to a guess: an imported value whose
@@ -203,6 +406,8 @@ export function InputStudio({
   subgroups,
   perspectives,
   guide,
+  criteria,
+  calculation,
   onRun,
   busy,
   errorField,
@@ -239,6 +444,19 @@ export function InputStudio({
       ...current,
       subgroupCodes: current.subgroupCodes.includes(code) ? [] : [code],
     }));
+
+  const setCriterion = (code: string, value: number | undefined) =>
+    onChange((current) => {
+      const next = { ...current.criteriaFactors };
+      if (value === undefined) delete next[code];
+      else next[code] = value;
+      return { ...current, criteriaFactors: next };
+    });
+
+  // Outcomes and cost components come from the finished run: they are engine
+  // output, and the first market is the one the panel reports since the rest
+  // repeat the same structure in their own currency.
+  const shown = calculation?.countries?.[0] ?? null;
 
   const perspective = perspectives.find((p) => p.code === draft.perspective);
   const needsCovered = perspective?.requires_covered_population ?? false;
@@ -320,6 +538,35 @@ export function InputStudio({
               })}
             </div>
           </div>
+
+          <Amount
+            label="Covered population"
+            fieldKey="covered_population"
+            id="covered"
+            value={draft.coveredPopulation}
+            placeholder="whole market"
+            min={10_000}
+            max={1_500_000_000}
+            onChange={(v) => set("coveredPopulation", v)}
+            guide={fields}
+            note={
+              needsCovered
+                ? "needed by this perspective"
+                : "this perspective reads against the whole market"
+            }
+          />
+          {needsCovered && !draft.coveredPopulation && (
+            <p className="hint warn">
+              Without this, every per-member figure falls back to the modelled
+              population — a national average rather than this payer's.
+            </p>
+          )}
+
+          <Readout
+            label="Annual growth"
+            value="held flat"
+            meaning="The funnel runs on a fixed denominator; growth is not modelled."
+          />
         </Section>
 
         {/* 2 — EPIDEMIOLOGY ---------------------------------------------- */}
@@ -347,6 +594,15 @@ export function InputStudio({
             onChange={(v) => set("diagnosisRate", v)}
             errorField={errorField}
             guide={fields}
+          />
+          <Readout
+            label="Incidence"
+            value={
+              shown?.epidemiology?.incidence_per_100k
+                ? `${formatCount(shown.epidemiology.incidence_per_100k)} / 100k / yr`
+                : "WHO, per market"
+            }
+            meaning="The annual inflow. Seeded per market and not overridable."
           />
         </Section>
 
@@ -402,6 +658,28 @@ export function InputStudio({
               and compares them.
             </p>
           </div>
+          {criteria.length > 0 && (
+            <div className="criteria">
+              <div className="field-head">
+                <Help spec={fields.get("criteria")}>
+                  <label>Label and formulary restrictions</label>
+                </Help>
+                <span className="val">
+                  {criteria.filter((c) => c.enabled).length} of {criteria.length} in
+                  the stack
+                </span>
+              </div>
+              {criteria.map((c) => (
+                <CriterionRow
+                  key={c.criterion_code}
+                  spec={c}
+                  value={draft.criteriaFactors[c.criterion_code]}
+                  onChange={(v) => setCriterion(c.criterion_code, v)}
+                  errorField={errorField}
+                />
+              ))}
+            </div>
+          )}
           <Rate
             label="Treated share"
             fieldKey="treatment_rate"
@@ -486,6 +764,21 @@ export function InputStudio({
 
         {/* 4 — CURRENT CARE ---------------------------------------------- */}
         <Section id="current_care" title="4 · Current care" summary={summaryFor("current_care")}>
+          <Rate
+            label="Drawn from existing treatment"
+            fieldKey="substitution"
+            path="substitution.naive"
+            value={draft.substitutionNaive}
+            fallback="seeded per therapy"
+            onChange={(v) => set("substitutionNaive", v)}
+            errorField={errorField}
+            guide={fields}
+            min={0}
+          />
+          <p className="hint">
+            The rest comes from patients on no pharmacotherapy. Raise it and the
+            world-without gets dearer, so the incremental figure falls.
+          </p>
           <p className="hint">
             The comparator basket and its prices are on the{" "}
             <b>Prices</b> tab — every cell editable, and the derived ones marked
@@ -621,24 +914,111 @@ export function InputStudio({
           </p>
         </Section>
 
-        {/* 8 — TIME HORIZON ----------------------------------------------- */}
-        <Section id="time_horizon" title="8 · Time horizon" summary={summaryFor("time_horizon")}>
+        {/* 8 — OUTCOMES ---------------------------------------------------- */}
+        <Section id="outcomes" title="8 · Outcomes" summary={summaryFor("outcomes")}>
+          {shown?.outcomes ? (
+            <>
+              <Readout
+                label="Mean weight change"
+                value={
+                  shown.outcomes.mean_weight_loss_pct != null
+                    ? formatPercent(Math.abs(shown.outcomes.mean_weight_loss_pct), 1)
+                    : "—"
+                }
+                meaning={
+                  shown.outcomes.responder_trial
+                    ? `Reported by ${shown.outcomes.responder_trial}.`
+                    : undefined
+                }
+              />
+              <Readout
+                label="Responder threshold"
+                value={shown.outcomes.responder_threshold ?? "—"}
+                meaning="Weight loss counted as a response."
+              />
+              {shown.outcomes.events.map((e) => (
+                <Readout
+                  key={e.event_class}
+                  label={e.label}
+                  value={`−${formatPercent(e.relative_reduction, 0)}`}
+                  meaning={`Tier ${e.effect_provenance.confidence_tier} · ${e.trial}`}
+                />
+              ))}
+            </>
+          ) : (
+            <p className="hint">
+              Seeded from the trials. Run once to read them here.
+            </p>
+          )}
+          <p className="hint">
+            Effect sizes are evidence, not settings — they come from the trial
+            that reported them and there is no override path to move them.
+          </p>
+        </Section>
+
+        {/* 9 — HEALTHCARE COSTS -------------------------------------------- */}
+        <Section
+          id="healthcare_costs"
+          title="9 · Healthcare costs"
+          summary={summaryFor("healthcare_costs")}
+        >
+          {shown?.cost_bridge?.terms ? (
+            <>
+              {shown.cost_bridge.terms.map((t) => (
+                <Readout
+                  key={t.component}
+                  label={t.component}
+                  value={formatMoney(t.delta, shown.currency)}
+                  meaning={
+                    t.delta === 0
+                      ? "No difference between the two worlds."
+                      : `${formatMoney(t.new_therapy, shown.currency)} against ${formatMoney(t.displaced, shown.currency)}`
+                  }
+                />
+              ))}
+              <Readout
+                label="Net cost per switch"
+                value={formatMoney(
+                  shown.cost_bridge.net_cost_per_switch,
+                  shown.currency,
+                )}
+                meaning="What one switching patient costs above the care they leave."
+              />
+            </>
+          ) : (
+            <p className="hint">
+              Drug, administration, monitoring, adverse events and offsets. Run
+              once to read them here.
+            </p>
+          )}
+          <p className="hint">
+            Therapy prices are editable on the <b>Prices</b> tab. The other
+            components are seeded per market and carry no override path.
+          </p>
+        </Section>
+
+        {/* 10 — TIME HORIZON ----------------------------------------------- */}
+        <Section id="time_horizon" title="10 · Time horizon" summary={summaryFor("time_horizon")}>
           <div className="row">
             <div className="field">
               <Help spec={fields.get("horizon_years")}>
                 <label htmlFor="horizon">Horizon</label>
               </Help>
-              <select
-                id="horizon"
-                value={draft.horizonYears}
-                onChange={(e) => set("horizonYears", Number(e.target.value))}
-              >
-                {[1, 2, 3, 4, 5].map((y) => (
-                  <option key={y} value={y}>
-                    {y} year{y > 1 ? "s" : ""}
-                  </option>
-                ))}
-              </select>
+              <div className="rate-controls">
+                <input
+                  id="horizon"
+                  type="range"
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={draft.horizonYears}
+                  onChange={(e) => set("horizonYears", Number(e.target.value))}
+                  aria-label="Horizon, years"
+                />
+                <span className="val val-set horizon-val">
+                  {draft.horizonYears}y
+                </span>
+              </div>
             </div>
             <div className="field">
               <Help spec={fields.get("reporting_currency")}>
@@ -659,8 +1039,8 @@ export function InputStudio({
           </div>
         </Section>
 
-        {/* 9 — PERSPECTIVE ------------------------------------------------ */}
-        <Section id="perspective" title="9 · Perspective" summary={summaryFor("perspective")}>
+        {/* 11 — PERSPECTIVE ----------------------------------------------- */}
+        <Section id="perspective" title="11 · Perspective" summary={summaryFor("perspective")}>
           <div className="field">
             <Help spec={fields.get("perspective")}>
               <label>Whose budget</label>
@@ -681,41 +1061,6 @@ export function InputStudio({
               ))}
             </div>
           </div>
-          {needsCovered && (
-            <div className="field">
-              <div className="field-head">
-                <Help spec={fields.get("covered_population")}>
-                  <label htmlFor="covered">Covered lives</label>
-                </Help>
-                <span className={draft.coveredPopulation ? "val val-set" : "val"}>
-                  {draft.coveredPopulation
-                    ? formatCount(draft.coveredPopulation)
-                    : "not supplied"}
-                </span>
-              </div>
-              <input
-                id="covered"
-                type="number"
-                min={1}
-                step={1000}
-                placeholder="e.g. 4000000"
-                value={draft.coveredPopulation ?? ""}
-                onChange={(e) =>
-                  set(
-                    "coveredPopulation",
-                    e.target.value === "" ? null : Number(e.target.value),
-                  )
-                }
-              />
-              {!draft.coveredPopulation && (
-                <p className="hint warn">
-                  Without this, every per-member figure falls back to the modelled
-                  population — a national average rather than this payer's, and
-                  the result will say so.
-                </p>
-              )}
-            </div>
-          )}
         </Section>
       </div>
 
