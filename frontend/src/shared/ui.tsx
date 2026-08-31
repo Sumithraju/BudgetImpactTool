@@ -20,6 +20,7 @@ import {
   type ReactNode,
 } from "react";
 import type { FieldGroup, FieldSpec } from "./api";
+import { Icon, type IconName } from "./Icons";
 
 /* ------------------------------------------------------------------ help */
 
@@ -106,6 +107,9 @@ export interface TabDef {
    *  click through all of them to find the one they want. */
   hint?: string;
   badge?: string | number | null;
+  /** Optional glyph beside the label. Decorative — the label already names
+   *  the tab, so the icon is hidden from assistive technology. */
+  icon?: IconName;
 }
 
 export function Tabs({
@@ -148,6 +152,7 @@ export function Tabs({
           onClick={() => onChange(tab.id)}
         >
           <span className="tab-label">
+            {tab.icon && <Icon name={tab.icon} className="tab-icon" />}
             {tab.label}
             {tab.badge != null && tab.badge !== "" && (
               <i className="tab-badge">{tab.badge}</i>

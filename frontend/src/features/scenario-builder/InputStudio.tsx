@@ -23,6 +23,7 @@ import type {
   SubgroupOption,
 } from "../../shared/api";
 import { Help, indexFields } from "../../shared/ui";
+import { Icon, type IconName } from "../../shared/Icons";
 import { formatCount, formatMoney, formatPercent } from "../../shared/format";
 
 /** One value read out of an imported file, kept editable.
@@ -485,6 +486,10 @@ export function InputStudio({
     summary?: string;
     children: React.ReactNode;
   }) => {
+    // The group id doubles as the icon name: both come from the same
+    // eleven-module taxonomy, so a new module gets its glyph by existing
+    // rather than by being registered in a second list.
+    const icon = id as IconName;
     const open = openGroup === null || openGroup === id;
     return (
       <section className={`instep ${open ? "" : "collapsed"}`}>
@@ -494,7 +499,10 @@ export function InputStudio({
           aria-expanded={open}
           onClick={() => setOpenGroup(openGroup === id ? null : id)}
         >
-          <span className="instep-title">{title}</span>
+          <span className="instep-title">
+            <Icon name={icon} className="instep-icon" />
+            {title}
+          </span>
           <span className="instep-chevron" aria-hidden>
             {open ? "−" : "+"}
           </span>

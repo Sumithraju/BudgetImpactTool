@@ -2,23 +2,36 @@
    read as one product. Light is the bare :root; dark is redefined at token
    level only, never inside a component rule. */
 :root {
-  --ground: #f5f8f9; --surface: #fff; --surface-2: #edf3f4;
-  --ink: #0e181b; --ink-2: #42585f; --ink-3: #6c838b;
-  --line: #d8e3e6; --line-2: #c2d3d7;
-  --accent: #07707c; --accent-soft: #dceff1; --on-accent: #fff;
-  --t-A: #07707c; --t-B: #43708a; --t-C: #9a6410; --t-D: #a63e2e;
-  --b-low: #2c6f52; --b-moderate: #9a6410; --b-high: #b0562a; --b-critical: #a63e2e;
-  --shadow: 0 1px 2px rgba(14,24,27,.05), 0 8px 24px -12px rgba(14,24,27,.18);
+  /* Near-white ground with white cards floating on it, rather than a tinted
+     page and bordered panels. The neutrals carry a faint blue-green bias
+     toward the accent so greys read as chosen rather than default. */
+  --ground: #f3f6f8; --surface: #fff; --surface-2: #eef2f6;
+  --ink: #101720; --ink-2: #46535f; --ink-3: #6b7684;
+  --line: #e3e9ef; --line-2: #d0d9e2;
+  /* A green light enough to feel fresh and dark enough to read as text on
+     white — the mint in the reference is a fill colour, not a type colour,
+     and setting labels in it would fail contrast. */
+  --accent: #0e9f6e; --accent-soft: #dcf6ec; --on-accent: #fff;
+  /* The accent again, dark enough to set type in. The bright green is a fill
+     colour: on white it clears 3:1 and on the tinted cards it does not, and
+     the figure on those cards is the whole point of them. */
+  --accent-text: #06724e;
+  /* Tiers stay four separable hues, because the letter is a claim about
+     evidence quality and colour is how it is read at a glance. */
+  --t-A: #0e9f6e; --t-B: #3179c0; --t-C: #b47613; --t-D: #cc4436;
+  --b-low: #0e9f6e; --b-moderate: #d0982a; --b-high: #e07a3f; --b-critical: #cc4436;
+  --shadow: 0 1px 2px rgba(16,24,40,.04), 0 12px 32px -14px rgba(16,24,40,.16);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #0c1416; --surface: #131f23; --surface-2: #18272c;
-    --ink: #e7eff1; --ink-2: #9fb4bb; --ink-3: #758d95;
-    --line: #22343a; --line-2: #2e454c;
-    --accent: #3fc9d6; --accent-soft: #0e2e34; --on-accent: #0c1416;
-    --t-A: #3fc9d6; --t-B: #7fa9c2; --t-C: #d9a441; --t-D: #e2705c;
-    --b-low: #4fb286; --b-moderate: #d9a441; --b-high: #e08a54; --b-critical: #e2705c;
-    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+    --ground: #0d1218; --surface: #151c24; --surface-2: #1c242e;
+    --ink: #e8eef4; --ink-2: #a3b1bf; --ink-3: #78869a;
+    --line: #242e3a; --line-2: #31404f;
+    --accent: #34d399; --accent-soft: #10312a; --on-accent: #0d1218;
+    --accent-text: #5ee0ad;
+    --t-A: #34d399; --t-B: #7bb0e8; --t-C: #e0af4e; --t-D: #ef7f70;
+    --b-low: #34d399; --b-moderate: #e0af4e; --b-high: #ec9560; --b-critical: #ef7f70;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -14px rgba(0,0,0,.66);
   }
 }
 
@@ -575,20 +588,20 @@ tbody tr:last-child td { border-bottom: none; }
      constant is right at every width, and a constant that is too small hides
      content under an opaque bar. */
   --topbar-h: 60px;
-  --series-1: #7f97a3;   /* current care  — deliberately quiet */
-  --series-2: #07707c;   /* with the new therapy — the accent */
-  --series-3: #b0562a;   /* incremental — the cost being added */
-  --series-4: #2c6f52;   /* avoided events — the benefit */
-  --radius: 8px;
-  --radius-sm: 5px;
+  --series-1: #9fadbd;   /* current care  — deliberately quiet */
+  --series-2: #14b8a6;   /* with the new therapy — the accent, in fill weight */
+  --series-3: #f0b429;   /* incremental — the cost being added */
+  --series-4: #0e9f6e;   /* avoided events — the benefit */
+  --radius: 14px;
+  --radius-sm: 9px;
   --studio-width: 428px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --series-1: #6f8894;
-    --series-2: #3fc9d6;
-    --series-3: #e08a54;
-    --series-4: #4fb286;
+    --series-1: #7d8b9c;
+    --series-2: #2dd4bf;
+    --series-3: #f4c14e;
+    --series-4: #34d399;
   }
 }
 
@@ -1247,3 +1260,87 @@ tr.peak:hover td { background: var(--accent-soft); }
    silently falling back to the national population is a defect in the
    reading, and hiding that leaves the number looking sounder than it is. */
 [data-explain="off"] .studio .hint.warn { display: block; }
+
+/* ------------------------------------------------------------------ *
+ * Icons, and the softer card surface the palette asks for.
+ * ------------------------------------------------------------------ */
+
+/* One size, one stroke, always the colour of the text beside it — so an
+   active tab, a muted heading and an error state need no icon rule each. */
+.icon { width: 16px; height: 16px; flex: 0 0 auto; display: block; }
+
+.instep-title { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.instep-icon { color: var(--accent); opacity: .85; }
+/* A collapsed group is a heading, not a destination — the glyph steps back
+   with the rest of the row rather than staying at full strength. */
+.instep.collapsed .instep-icon { color: var(--ink-3); opacity: .7; }
+
+.tab-label { display: flex; align-items: center; gap: 8px; }
+.tab-icon { color: var(--ink-3); transition: color .12s ease; }
+.tab[aria-selected="true"] .tab-icon { color: var(--accent); }
+.tab:hover .tab-icon { color: var(--ink-2); }
+
+/* Cards float on the ground rather than being fenced off from it: the
+   reference layout carries almost no borders, and a hairline around a card
+   that already casts a shadow reads as two edges for one boundary. */
+.card, .instep, .results-shell .panel-card {
+  border-radius: var(--radius);
+}
+.card { box-shadow: var(--shadow); }
+
+/* The small radii predate the token and were tuned to an 8px card. Chips,
+   inputs and buttons round a little more so nothing sits square inside a
+   14px corner. */
+input[type="number"], input[type="text"], select, .mkt, .persp,
+.rate-number, .reset, .run, .chip { border-radius: var(--radius-sm); }
+
+/* ------------------------------------------------------------------ *
+ * Surfaces: white cards on a light ground, the way the reference layout
+ * carries them. A hairline plus a shadow draws one boundary twice, so the
+ * border goes and the shadow does the separating.
+ * ------------------------------------------------------------------ */
+:root {
+  --shadow-card: 0 1px 2px rgba(16,24,40,.03), 0 6px 20px -10px rgba(16,24,40,.13);
+  --shadow-lift: 0 2px 6px rgba(16,24,40,.05), 0 16px 36px -16px rgba(16,24,40,.20);
+  /* The tinted card. Mint at card weight, not text weight — nothing is set
+     in it, so it never has to clear a contrast bar. */
+  --fill-mint: linear-gradient(142deg, #e9fbf3, #d6f5ea);
+  --fill-teal: linear-gradient(142deg, #e6fbf8, #d0f5ef);
+  --fill-amber: linear-gradient(142deg, #fef6e0, #fdedc8);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --shadow-card: 0 1px 2px rgba(0,0,0,.34), 0 6px 20px -10px rgba(0,0,0,.5);
+    --shadow-lift: 0 2px 6px rgba(0,0,0,.4), 0 16px 36px -16px rgba(0,0,0,.68);
+    --fill-mint: linear-gradient(142deg, #12312a, #0e2a25);
+    --fill-teal: linear-gradient(142deg, #10302e, #0d2926);
+    --fill-amber: linear-gradient(142deg, #2e2617, #271f13);
+  }
+}
+
+.card, .stat { border-color: transparent; }
+.card { padding: 18px 20px 20px; }
+.stat { padding: 15px 17px 14px; }
+
+/* Tint follows tone, which the tabs already set from the figure itself —
+   the budget-impact tile is `good` when the market saves money and `accent`
+   when it adds cost. Colouring by position instead would have marked
+   whichever tile happened to be first, which is a fact about the grid and
+   not about the number. Neutral tiles stay white, so a tint always means
+   "this is the one to read". */
+.stat-accent { background: var(--fill-mint); }
+.stat-good   { background: var(--fill-teal); }
+.stat-warn   { background: var(--fill-amber); }
+.stat-accent .stat-icon { background: rgba(14,159,110,.16); color: var(--accent); }
+.stat-good   .stat-icon { background: rgba(20,184,166,.16); color: var(--series-2); }
+.stat-warn   .stat-icon { background: rgba(208,152,42,.18); color: var(--b-moderate); }
+
+/* Wider gutters. The reference reads as calm mostly because of the air
+   between its cards, not the cards themselves. */
+.stat-row, .cards, .card-grid { gap: 14px; }
+
+/* Figures and tier letters are read, not glanced at, so they take the type
+   weight of the accent rather than the fill weight. */
+.stat-accent .stat-value, .t-A, .tier-A { color: var(--accent-text); }
+.stat-good .stat-value { color: var(--accent-text); }
+.stat-label { color: var(--ink-2); }
