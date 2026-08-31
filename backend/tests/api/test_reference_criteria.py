@@ -180,3 +180,102 @@ def test_a_factor_override_is_range_checked(client: TestClient) -> None:
         assert accepted.status_code == 200, accepted.text
     finally:
         client.delete(f"/api/v1/scenarios/{sid}")
+
+
+# ------------------------------------------- identifiers inside a path
+
+
+def _scenario(client: TestClient, **kw: object) -> dict:
+    body = {
+        "name": "identifier check",
+        "indication_id": OBESITY,
+        "asset_name": "test asset",
+        "launch_year": 2028,
+        "horizon_years": 3,
+        "reporting_currency": "EUR",
+        "country_codes": ["DEU"],
+        "perspective": "health_system",
+        **kw,
+    }
+    return client.post("/api/v1/scenarios", json=body)
+
+
+def test_unknown_subgroup_is_refused_not_silently_dropped(
+    client: TestClient,
+) -> None:
+    """A segment code naming nothing used to be dropped, and the run then
+    modelled the whole diagnosed population while the request asked for a
+    subset — a wrong denominator reported as a correct answer."""
+    refused = _scenario(client, subgroup_codes=["not_a_real_subgroup"])
+    assert refused.status_code == 422, refused.text
+    assert "not_a_real_subgroup" in refused.text
+
+
+def test_a_real_subgroup_still_narrows(client: TestClient) -> None:
+    created = _scenario(client, subgroup_codes=["diabesity"])
+    assert created.status_code == 201, created.text
+    sid = created.json()["scenario_id"]
+    try:
+        whole = _scenario(client)
+        assert whole.status_code == 201
+        wid = whole.json()["scenario_id"]
+        try:
+            narrowed = client.post(f"/api/v1/scenarios/{sid}/calculate", json={})
+            everyone = client.post(f"/api/v1/scenarios/{wid}/calculate", json={})
+            assert narrowed.status_code == 200, narrowed.text
+            assert everyone.status_code == 200, everyone.text
+            a = narrowed.json()["countries"][0]["funnel"][-1]["value"]
+            b = everyone.json()["countries"][0]["funnel"][-1]["value"]
+            assert a < b, "a subgroup must narrow the funnel, not reproduce it"
+        finally:
+            client.delete(f"/api/v1/scenarios/{wid}")
+    finally:
+        client.delete(f"/api/v1/scenarios/{sid}")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "criteria.no_such_criterion.factor",
+        "subgroup.no_such_subgroup.share",
+        "therapy.999999.price_local",
+    ],
+)
+def test_override_naming_a_missing_row_is_refused(
+    client: TestClient, path: str
+) -> None:
+    """The path templates are regexes over `[A-Za-z0-9_]+`, so a misspelled
+    identifier matched the vocabulary, stored, and was then skipped by the
+    engine — which only iterates seeded rows. Accepted and inert is the worst
+    of both."""
+    created = _scenario(client)
+    assert created.status_code == 201, created.text
+    sid = created.json()["scenario_id"]
+    try:
+        refused = client.put(
+            f"/api/v1/scenarios/{sid}/overrides",
+            json={"overrides": [{"parameter_path": path, "value": 0.5}]},
+        )
+        assert refused.status_code == 422, f"{path} should be refused"
+    finally:
+        client.delete(f"/api/v1/scenarios/{sid}")
+
+
+def test_substitution_naive_is_not_read_as_a_drug_id(client: TestClient) -> None:
+    """`substitution.naive` shares its shape with `substitution.<drug_id>`.
+    The literal must not be looked up as an identifier."""
+    created = _scenario(client)
+    assert created.status_code == 201, created.text
+    sid = created.json()["scenario_id"]
+    try:
+        accepted = client.put(
+            f"/api/v1/scenarios/{sid}/overrides",
+            json={
+                "overrides": [
+                    {"parameter_path": "substitution.naive", "value": 0.4}
+                ]
+            },
+        )
+        assert accepted.status_code == 200, accepted.text
+    finally:
+        client.delete(f"/api/v1/scenarios/{sid}")
