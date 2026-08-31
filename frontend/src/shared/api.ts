@@ -391,6 +391,27 @@ export interface SubgroupOption {
   is_overlapping: boolean;
 }
 
+/** One eligibility restriction, offered before any run.
+ *
+ *  `enabled` is what the engine would build with no overrides: a criterion is
+ *  off when it is correlated with one already on, so two clinically
+ *  overlapping restrictions are never multiplied together. It is read-only —
+ *  `criteria.<code>.factor` resolves through the override chain, but
+ *  `criteria.<code>.enabled` is stored and not yet read back, so the interface
+ *  reports the stack rather than offering a switch that would change nothing. */
+export interface CriterionOption {
+  criterion_code: string;
+  criterion_label: string;
+  criterion_type: string;
+  default_factor: number;
+  factor_low: number | null;
+  factor_high: number | null;
+  enabled: boolean;
+  correlated_with: string[];
+  confidence_tier: string;
+  source: string;
+}
+
 export interface PerspectiveOption {
   code: string;
   label: string;
@@ -809,6 +830,11 @@ export const api = {
   subgroups: (indicationId: number) =>
     request<SubgroupOption[]>(
       `/api/v1/reference/subgroups?indication_id=${indicationId}`,
+    ),
+
+  criteria: (indicationId: number) =>
+    request<CriterionOption[]>(
+      `/api/v1/reference/criteria?indication_id=${indicationId}`,
     ),
 
   perspectives: () => request<PerspectiveOption[]>("/api/v1/reference/perspectives"),

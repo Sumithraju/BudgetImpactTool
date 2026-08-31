@@ -298,6 +298,33 @@ class SubgroupOption(BaseModel):
     is_overlapping: bool = False
 
 
+class CriterionOption(BaseModel):
+    """One eligibility restriction, before any run has happened.
+
+    Served for the same reason as `SubgroupOption`: the narrowing a criterion
+    applies is an assumption the reader is choosing, so it has to be visible
+    as a choice rather than only as a line in a finished funnel.
+
+    `enabled` is the stack the engine would build for a run with no overrides
+    — a criterion is off when it is correlated with one already on, so that
+    two overlapping restrictions are never multiplied together. It is reported
+    so the interface can show the excluded half as an available choice rather
+    than hide it, and it is read-only: `criteria.<code>.factor` is honoured
+    through the override chain, `criteria.<code>.enabled` is not yet.
+    """
+
+    criterion_code: str
+    criterion_label: str
+    criterion_type: str
+    default_factor: float
+    factor_low: float | None = None
+    factor_high: float | None = None
+    enabled: bool
+    correlated_with: list[str] = Field(default_factory=list)
+    confidence_tier: str
+    source: str
+
+
 # --------------------------------------------------------------------------- epidemiology
 
 

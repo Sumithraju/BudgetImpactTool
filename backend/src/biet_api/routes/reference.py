@@ -12,8 +12,10 @@ from ..constants.domain import SUBSET_PERSPECTIVES, Perspective
 from ..dal import get_session
 from ..models.reference import Country, Drug, Indication
 from ..repositories.outcomes import OutcomesRepository
+from ..repositories.reference import ReferenceRepository
 from ..schemas.calculation import (
     CountryOption,
+    CriterionOption,
     DrugOption,
     HealthIndicatorRead,
     IndicationOption,
@@ -148,6 +150,52 @@ def list_subgroups(session: SessionDep, indication_id: int) -> list[SubgroupOpti
         # twice.
         if not s.is_default_population
     ]
+
+
+@router.get("/criteria", response_model=list[CriterionOption])
+def list_criteria(session: SessionDep, indication_id: int) -> list[CriterionOption]:
+    """M3. The eligibility restrictions that narrow the diagnosed population.
+
+    Served before any run for the same reason the subgroups are: each factor
+    is an assumption the reader is entitled to see and to move, and a funnel
+    that only reveals them after a calculation makes them look like findings
+    rather than inputs.
+
+    `enabled` mirrors the stack `EngineInputBuilder._build_criteria` would
+    construct for a run with no overrides — a criterion is skipped when it is
+    correlated with one already enabled, so that two clinically overlapping
+    restrictions are never compounded. Recomputed here rather than imported so
+    this endpoint stays a read of reference data; the rule is small and the
+    duplication is covered by a test that pins the two together.
+    """
+    rows = ReferenceRepository(session).list_criteria(indication_id)
+
+    enabled_codes: set[str] = set()
+    correlated_with_enabled: set[str] = set()
+    out: list[CriterionOption] = []
+    for row in rows:
+        correlations = tuple(row.correlated_with or ())
+        enabled = row.criterion_code not in correlated_with_enabled
+        if enabled:
+            enabled_codes.add(row.criterion_code)
+            correlated_with_enabled.update(correlations)
+        out.append(
+            CriterionOption(
+                criterion_code=row.criterion_code,
+                criterion_label=row.criterion_label,
+                criterion_type=str(row.criterion_type),
+                default_factor=float(row.default_factor),
+                factor_low=float(row.factor_low) if row.factor_low is not None else None,
+                factor_high=(
+                    float(row.factor_high) if row.factor_high is not None else None
+                ),
+                enabled=enabled,
+                correlated_with=list(correlations),
+                confidence_tier=str(row.confidence_tier),
+                source=row.source,
+            )
+        )
+    return out
 
 
 @router.get("/perspectives", response_model=list[PerspectiveOption])
