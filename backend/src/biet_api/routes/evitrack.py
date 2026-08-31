@@ -19,7 +19,9 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
+from ..exceptions import ValidationError
 from ..repositories.evidence import EvidenceRepository
+from ..schemas.evidence import EvidenceResult
 
 router = APIRouter(
     prefix="/api/v1/evitrack",
@@ -69,11 +71,17 @@ def list_evidence(
 
 
 @router.post("/evidence")
-def add_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
-    """Save one externally discovered evidence record."""
-    from ..schemas.evidence import EvidenceResult
+def add_evidence(evidence: EvidenceResult) -> dict[str, Any]:
+    """Save one externally discovered evidence record.
 
-    item = EvidenceResult.model_validate(evidence)
+    The body is typed rather than taken as a bare dict and validated inside.
+    Pydantic raises the same error either way, but only a signature-level
+    model makes it a `RequestValidationError` — validated in the handler it
+    escaped as an unhandled exception, and a caller who posted the wrong
+    shape was told the server had failed rather than that their body was
+    wrong.
+    """
+    item = evidence
     repository = EvidenceRepository()
 
     try:
@@ -103,7 +111,7 @@ def list_sources() -> dict[str, Any]:
     repository = EvidenceRepository()
 
     try:
-        names = repository._source_registry.names()
+        names = repository.sources()
     finally:
         repository.close()
 
@@ -145,6 +153,17 @@ def search(
         }
 
     repository = EvidenceRepository()
+
+    # An unregistered source name reached the registry, which raises KeyError,
+    # which surfaced as a 500. Naming a source that does not exist is a bad
+    # request, and the answer should say which ones do.
+    known = repository.sources()
+    if source.strip().lower() not in known:
+        repository.close()
+        raise ValidationError(
+            f"unknown evidence source {source!r}; available: {known}",
+            source=source,
+        )
 
     try:
         results = repository.search(

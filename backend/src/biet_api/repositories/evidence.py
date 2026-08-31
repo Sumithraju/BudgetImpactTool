@@ -78,6 +78,10 @@ class EvidenceRepository:
 
             return int(record.evidence_id), True
 
+    def sources(self) -> list[str]:
+        """The registered source names, lowercased as the registry keys them."""
+        return self._source_registry.names()
+
     def search(
         self,
         query: str,

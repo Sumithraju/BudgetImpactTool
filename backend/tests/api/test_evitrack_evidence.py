@@ -482,6 +482,9 @@ def test_search_endpoint_reports_new_and_existing_counts(monkeypatch) -> None:
         def __init__(self) -> None:
             self.saved = set()
 
+        def sources(self) -> list[str]:
+            return ["pubmed"]
+
         def search(
             self,
             query: str,
@@ -636,6 +639,12 @@ def test_search_endpoint_dispatches_requested_source(monkeypatch) -> None:
     class FakeRepository:
         def __init__(self) -> None:
             self.requested_source = None
+
+        def sources(self) -> list[str]:
+            # This double stands in for a repository that has "fake"
+            # registered — the route asks before dispatching, and a source it
+            # does not advertise is now refused.
+            return ["pubmed", "fake"]
 
         def search(
             self,

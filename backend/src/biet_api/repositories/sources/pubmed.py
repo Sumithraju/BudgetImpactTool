@@ -21,7 +21,7 @@ class PubMedSource:
         self,
         url: str,
         *,
-        params: dict[str, object],
+        params: dict[str, str | int],
         attempts: int = 3,
     ) -> httpx.Response:
         """GET an upstream URL with bounded retries for transient failures."""
