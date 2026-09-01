@@ -1055,8 +1055,8 @@ td.cell.edited input { background: var(--accent-soft); border-color: var(--accen
    ================================================================== */
 
 :root {
-  --brand-1: #0B6E7A;
-  --brand-2: #38B2A6;
+  --brand-1: #7d9612;
+  --brand-2: #b3cf27;
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 16px;
@@ -1065,7 +1065,7 @@ td.cell.edited input { background: var(--accent-soft); border-color: var(--accen
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --brand-1: #0E8A97; --brand-2: #4FD8CA;
+    --brand-1: #8fab16; --brand-2: #c3dd4a;
     --shadow-card: 0 1px 2px rgba(0,0,0,.35), 0 4px 16px -8px rgba(0,0,0,.5);
     --shadow-lift: 0 2px 4px rgba(0,0,0,.4), 0 12px 32px -14px rgba(0,0,0,.7);
   }
@@ -1390,3 +1390,27 @@ input[type="number"], input[type="text"], select, .mkt, .persp,
    is a mark rather than something to read. */
 .tab-badge, .stat-icon, .chip.on { color: var(--accent-text); }
 .tab[aria-selected="true"] { border-bottom-color: var(--accent); }
+
+/* ------------------------------------------------------------------ *
+ * Result tabs read like the market chips: the name in ordinary ink,
+ * the accent kept for the one that is selected.
+ *
+ * They were grey, which made every unselected tab look disabled — nine
+ * dimmed labels above a panel is a row that reads as unavailable rather
+ * than as a choice. Black for the name, muted for its gloss so the
+ * hierarchy inside the tab survives, accent on hover and when selected.
+ * ------------------------------------------------------------------ */
+.tab { color: var(--ink); }
+.tab .tab-label { color: var(--ink); }
+.tab .tab-hint { color: var(--ink-3); }
+.tab .tab-icon { color: var(--ink-2); }
+
+.tab:hover .tab-label,
+.tab:hover .tab-hint,
+.tab:hover .tab-icon { color: var(--accent-text); }
+.tab:hover { background: var(--accent-soft); }
+
+.tab[aria-selected="true"] .tab-label,
+.tab[aria-selected="true"] .tab-hint,
+.tab[aria-selected="true"] .tab-icon { color: var(--accent-text); }
+.tab[aria-selected="true"] .tab-hint { opacity: .8; }
