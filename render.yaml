@@ -63,6 +63,14 @@ services:
     # The frontend addresses the API with relative paths and has no
     # configurable base URL, so it needs something same-origin to forward
     # them. These two rules are that something.
+    #
+    # CHECK THIS AFTER THE FIRST DEPLOY. `onrender.com` subdomains are global,
+    # so if `biet-api` is already taken Render appends a suffix and the real
+    # host becomes something like `biet-api-x7f2.onrender.com`. The rewrites
+    # below would then point at a service that is not yours, and every panel
+    # would come up empty with no error worth reading. Open the API service in
+    # the dashboard, copy its actual URL, and if it differs from the two lines
+    # below, change them and redeploy the static site.
     routes:
       - type: rewrite
         source: /api/*
