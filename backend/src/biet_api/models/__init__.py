@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from .base import Base
 from .comparator import ComparatorApproval, ComparatorAsset
+from .evidence import EvidenceRecord
 from .knowledge import GuidelineChunk, GuidelineDocument
 from .outcomes import (
     CountryHealthIndicator,
@@ -52,6 +53,7 @@ __all__ = [
     "EligibilityCriterion",
     "Epidemiology",
     "EventCost",
+    "EvidenceRecord",
     "FunnelDefault",
     "FxRate",
     "GuidelineChunk",

@@ -105,14 +105,14 @@ def test_unpriced_market_falls_back_to_ppp_derivation(
     """A market with no seeded price must derive one, and must say so — a
     derived price is a modelling assumption, not an observation (M5 5.3).
 
-    USA, DEU and GBR now carry observed prices, so Japan is the market that
-    exercises this path. If Japanese prices are ever seeded, move this to
+    USA, DEU and GBR now carry observed prices, so France is the market that
+    exercises this path. If French prices are ever seeded, move this to
     another unpriced market rather than deleting it.
     """
     row = Scenario(
         name="ppp fixture", indication_id=1, asset_name="Test Asset",
         launch_year=2028, horizon_years=3, reporting_currency="EUR",
-        country_codes=["USA", "JPN"],
+        country_codes=["USA", "FRA"],
     )
     session.add(row)
     session.flush()
@@ -121,8 +121,8 @@ def test_unpriced_market_falls_back_to_ppp_derivation(
     by_code = {c.country_code: c for c in engine_input.countries}
 
     assert by_code["USA"].new_therapy.price_basis is not PriceBasis.PPP_DERIVED
-    assert by_code["JPN"].new_therapy.price_basis is PriceBasis.PPP_DERIVED
-    assert "parity" in by_code["JPN"].new_therapy.price_provenance.source.lower()
+    assert by_code["FRA"].new_therapy.price_basis is PriceBasis.PPP_DERIVED
+    assert "parity" in by_code["FRA"].new_therapy.price_provenance.source.lower()
 
 
 def test_observed_price_beats_derivation_where_one_is_seeded(

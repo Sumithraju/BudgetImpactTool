@@ -40,6 +40,7 @@ import { ResultsView } from "../features/results/ResultsView";
 import { ScenarioCompare, type SavedRun } from "../features/scenario-compare/ScenarioCompare";
 import { ComparatorDiscovery } from "../features/comparator-discovery/ComparatorDiscovery";
 import { ComparatorRegistry } from "../features/comparator-discovery/ComparatorRegistry";
+import { EviTrack } from "../features/evitrack/EviTrack";
 import { Placeholder } from "../shared/ui";
 import { formatMoneyCompact } from "../shared/format";
 import { useStickyHeaderHeight } from "../shared/useStickyHeader";
@@ -70,7 +71,7 @@ const DEFAULT_DRAFT: Draft = {
   imported: [],
 };
 
-type Workspace = "build" | "prices" | "comparators" | "results";
+type Workspace = "build" | "prices" | "comparators" | "results" | "evitrack";
 
 export function App() {
   // The header wraps from one row to three between a monitor and a phone, and
@@ -381,6 +382,7 @@ export function App() {
     { id: "prices", step: 2, label: "Prices", hint: "what it costs" },
     { id: "comparators", step: 3, label: "Comparators", hint: "what it displaces" },
     { id: "results", step: 4, label: "Results", hint: "what it means" },
+    { id: "evitrack", step: 5, label: "EviTrack", hint: "find and curate evidence" },
   ];
 
   return (
@@ -558,6 +560,7 @@ export function App() {
                 Define the scenario on the left and press Run.
               </Placeholder>
             ))}
+          {workspace === "evitrack" && <EviTrack />}
         </main>
       </div>
     </div>

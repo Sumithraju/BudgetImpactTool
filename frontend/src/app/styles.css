@@ -2,23 +2,41 @@
    read as one product. Light is the bare :root; dark is redefined at token
    level only, never inside a component rule. */
 :root {
-  --ground: #f5f8f9; --surface: #fff; --surface-2: #edf3f4;
-  --ink: #0e181b; --ink-2: #42585f; --ink-3: #6c838b;
-  --line: #d8e3e6; --line-2: #c2d3d7;
-  --accent: #07707c; --accent-soft: #dceff1; --on-accent: #fff;
-  --t-A: #07707c; --t-B: #43708a; --t-C: #9a6410; --t-D: #a63e2e;
-  --b-low: #2c6f52; --b-moderate: #9a6410; --b-high: #b0562a; --b-critical: #a63e2e;
-  --shadow: 0 1px 2px rgba(14,24,27,.05), 0 8px 24px -12px rgba(14,24,27,.18);
+  /* Near-white ground with white cards floating on it, rather than a tinted
+     page and bordered panels. The neutrals carry a faint blue-green bias
+     toward the accent so greys read as chosen rather than default. */
+  --ground: #f3f6f8; --surface: #fff; --surface-2: #eef2f6;
+  --ink: #101720; --ink-2: #46535f; --ink-3: #6b7684;
+  --line: #e3e9ef; --line-2: #d0d9e2;
+  /* A green light enough to feel fresh and dark enough to read as text on
+     white — the mint in the reference is a fill colour, not a type colour,
+     and setting labels in it would fail contrast. */
+  /* Lime is a fill colour that cannot carry white type — nothing in the
+     reference sets white on it either, so `--on-accent` goes dark. */
+  --accent: #a9c520; --accent-soft: #f0f6d9; --on-accent: #1b2206;
+  /* The accent again, dark enough to set type in. The bright green is a fill
+     colour: on white it clears 3:1 and on the tinted cards it does not, and
+     the figure on those cards is the whole point of them. */
+  --accent-text: #5c6f0f;
+  /* Tiers stay four separable hues, because the letter is a claim about
+     evidence quality and colour is how it is read at a glance. */
+  /* Warm tiers move from amber to orange. Beside a lime accent an amber
+     read as the same colour at a glance, and the tier letter and the band
+     name are both things a reader is meant to tell apart without reading. */
+  --t-A: #5c6f0f; --t-B: #3179c0; --t-C: #b4610f; --t-D: #cc4436;
+  --b-low: #5c6f0f; --b-moderate: #c9761c; --b-high: #dd6a2c; --b-critical: #cc4436;
+  --shadow: 0 1px 2px rgba(16,24,40,.04), 0 12px 32px -14px rgba(16,24,40,.16);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #0c1416; --surface: #131f23; --surface-2: #18272c;
-    --ink: #e7eff1; --ink-2: #9fb4bb; --ink-3: #758d95;
-    --line: #22343a; --line-2: #2e454c;
-    --accent: #3fc9d6; --accent-soft: #0e2e34; --on-accent: #0c1416;
-    --t-A: #3fc9d6; --t-B: #7fa9c2; --t-C: #d9a441; --t-D: #e2705c;
-    --b-low: #4fb286; --b-moderate: #d9a441; --b-high: #e08a54; --b-critical: #e2705c;
-    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+    --ground: #0d1218; --surface: #151c24; --surface-2: #1c242e;
+    --ink: #e8eef4; --ink-2: #a3b1bf; --ink-3: #78869a;
+    --line: #242e3a; --line-2: #31404f;
+    --accent: #c3dd4a; --accent-soft: #262e10; --on-accent: #12180a;
+    --accent-text: #c3dd4a;
+    --t-A: #c3dd4a; --t-B: #7bb0e8; --t-C: #e8974e; --t-D: #ef7f70;
+    --b-low: #c3dd4a; --b-moderate: #e8974e; --b-high: #ee8352; --b-critical: #ef7f70;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 12px 32px -14px rgba(0,0,0,.66);
   }
 }
 
@@ -575,20 +593,20 @@ tbody tr:last-child td { border-bottom: none; }
      constant is right at every width, and a constant that is too small hides
      content under an opaque bar. */
   --topbar-h: 60px;
-  --series-1: #7f97a3;   /* current care  — deliberately quiet */
-  --series-2: #07707c;   /* with the new therapy — the accent */
-  --series-3: #b0562a;   /* incremental — the cost being added */
-  --series-4: #2c6f52;   /* avoided events — the benefit */
-  --radius: 8px;
-  --radius-sm: 5px;
+  --series-1: #9fadbd;   /* current care  — deliberately quiet */
+  --series-2: #a9c520;   /* with the new therapy — the accent, in fill weight */
+  --series-3: #ef8c33;   /* incremental — the cost being added */
+  --series-4: #6f8a14;   /* avoided events — the benefit */
+  --radius: 14px;
+  --radius-sm: 9px;
   --studio-width: 428px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --series-1: #6f8894;
-    --series-2: #3fc9d6;
-    --series-3: #e08a54;
-    --series-4: #4fb286;
+    --series-1: #7d8b9c;
+    --series-2: #c3dd4a;
+    --series-3: #f59d52;
+    --series-4: #9cb734;
   }
 }
 
@@ -1037,8 +1055,8 @@ td.cell.edited input { background: var(--accent-soft); border-color: var(--accen
    ================================================================== */
 
 :root {
-  --brand-1: #0B6E7A;
-  --brand-2: #38B2A6;
+  --brand-1: #7d9612;
+  --brand-2: #b3cf27;
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 16px;
@@ -1047,7 +1065,7 @@ td.cell.edited input { background: var(--accent-soft); border-color: var(--accen
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --brand-1: #0E8A97; --brand-2: #4FD8CA;
+    --brand-1: #8fab16; --brand-2: #c3dd4a;
     --shadow-card: 0 1px 2px rgba(0,0,0,.35), 0 4px 16px -8px rgba(0,0,0,.5);
     --shadow-lift: 0 2px 4px rgba(0,0,0,.4), 0 12px 32px -14px rgba(0,0,0,.7);
   }
@@ -1247,3 +1265,152 @@ tr.peak:hover td { background: var(--accent-soft); }
    silently falling back to the national population is a defect in the
    reading, and hiding that leaves the number looking sounder than it is. */
 [data-explain="off"] .studio .hint.warn { display: block; }
+
+/* ------------------------------------------------------------------ *
+ * Icons, and the softer card surface the palette asks for.
+ * ------------------------------------------------------------------ */
+
+/* One size, one stroke, always the colour of the text beside it — so an
+   active tab, a muted heading and an error state need no icon rule each. */
+.icon { width: 16px; height: 16px; flex: 0 0 auto; display: block; }
+
+.instep-title { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.instep-icon { color: var(--accent); opacity: .85; }
+/* A collapsed group is a heading, not a destination — the glyph steps back
+   with the rest of the row rather than staying at full strength. */
+.instep.collapsed .instep-icon { color: var(--ink-3); opacity: .7; }
+
+.tab-label { display: flex; align-items: center; gap: 8px; }
+.tab-icon { color: var(--ink-3); transition: color .12s ease; }
+.tab[aria-selected="true"] .tab-icon { color: var(--accent); }
+.tab:hover .tab-icon { color: var(--ink-2); }
+
+/* Cards float on the ground rather than being fenced off from it: the
+   reference layout carries almost no borders, and a hairline around a card
+   that already casts a shadow reads as two edges for one boundary. */
+.card, .instep, .results-shell .panel-card {
+  border-radius: var(--radius);
+}
+.card { box-shadow: var(--shadow); }
+
+/* The small radii predate the token and were tuned to an 8px card. Chips,
+   inputs and buttons round a little more so nothing sits square inside a
+   14px corner. */
+input[type="number"], input[type="text"], select, .mkt, .persp,
+.rate-number, .reset, .run, .chip { border-radius: var(--radius-sm); }
+
+/* ------------------------------------------------------------------ *
+ * Surfaces: white cards on a light ground, the way the reference layout
+ * carries them. A hairline plus a shadow draws one boundary twice, so the
+ * border goes and the shadow does the separating.
+ * ------------------------------------------------------------------ */
+:root {
+  --shadow-card: 0 1px 2px rgba(16,24,40,.03), 0 6px 20px -10px rgba(16,24,40,.13);
+  --shadow-lift: 0 2px 6px rgba(16,24,40,.05), 0 16px 36px -16px rgba(16,24,40,.20);
+  /* The tinted card. Mint at card weight, not text weight — nothing is set
+     in it, so it never has to clear a contrast bar. */
+  --fill-mint: linear-gradient(142deg, #f5f9e4, #eaf3cd);
+  --fill-teal: linear-gradient(142deg, #f8fbec, #f0f6d9);
+  --fill-amber: linear-gradient(142deg, #fef6e0, #fdedc8);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --shadow-card: 0 1px 2px rgba(0,0,0,.34), 0 6px 20px -10px rgba(0,0,0,.5);
+    --shadow-lift: 0 2px 6px rgba(0,0,0,.4), 0 16px 36px -16px rgba(0,0,0,.68);
+    --fill-mint: linear-gradient(142deg, #232b0f, #1c230c);
+    --fill-teal: linear-gradient(142deg, #1f270e, #1a210b);
+    --fill-amber: linear-gradient(142deg, #2e2617, #271f13);
+  }
+}
+
+.card, .stat { border-color: transparent; }
+.card { padding: 18px 20px 20px; }
+.stat { padding: 15px 17px 14px; }
+
+/* Tint follows tone, which the tabs already set from the figure itself —
+   the budget-impact tile is `good` when the market saves money and `accent`
+   when it adds cost. Colouring by position instead would have marked
+   whichever tile happened to be first, which is a fact about the grid and
+   not about the number. Neutral tiles stay white, so a tint always means
+   "this is the one to read". */
+.stat-accent { background: var(--fill-mint); }
+.stat-good   { background: var(--fill-teal); }
+.stat-warn   { background: var(--fill-amber); }
+.stat-accent .stat-icon { background: rgba(139,166,20,.20); color: var(--accent-text); }
+.stat-good   .stat-icon { background: rgba(139,166,20,.14); color: var(--accent-text); }
+.stat-warn   .stat-icon { background: rgba(208,152,42,.18); color: var(--b-moderate); }
+
+/* Wider gutters. The reference reads as calm mostly because of the air
+   between its cards, not the cards themselves. */
+.stat-row, .cards, .card-grid { gap: 14px; }
+
+/* Figures and tier letters are read, not glanced at, so they take the type
+   weight of the accent rather than the fill weight. */
+.stat-accent .stat-value, .t-A, .tier-A { color: var(--accent-text); }
+.stat-good .stat-value { color: var(--accent-text); }
+.stat-label { color: var(--ink-2); }
+
+/* ------------------------------------------------------------------ *
+ * Lime is a fill, not a typeface colour.
+ *
+ * The accent is used two ways across this sheet: as a background with dark
+ * text on it, and as the text colour itself on a white or pale surface. The
+ * first is fine at full brightness. The second was already marginal with the
+ * old green and fails outright with lime — the active tab measured 1.96:1,
+ * which is not a legibility nit, it is the label you look at to know where
+ * you are.
+ *
+ * So every text-weight use is redirected to `--accent-text` here rather than
+ * edited in thirty places, and the fills, borders and focus rings keep the
+ * bright colour they are meant to have.
+ * ------------------------------------------------------------------ */
+.val-set,
+.topfigure,
+.sources summary,
+.provenance-line b,
+.ghost-btn:hover,
+.cell-flag.edited,
+.srcbtn:hover, .srcbtn[aria-expanded="true"],
+.verdict-pos .verdict-figure,
+.tab[aria-selected="true"],
+.tab[aria-selected="true"] .tab-hint,
+.tab[aria-selected="true"] .tab-icon,
+.instep-icon,
+.mode[aria-pressed="true"],
+.mode[aria-pressed="true"] em,
+.segment.on, .segment.on em,
+.persp.on, .persp.on em,
+.cmp-picker button[aria-pressed="true"],
+.cmp-picker button[aria-pressed="true"] em,
+.stat-accent .stat-value,
+.stat-good .stat-value { color: var(--accent-text); }
+
+/* The badge and chip surfaces are pale, so their text takes the dark weight
+   too — and the underline under an active tab stays bright, because a rule
+   is a mark rather than something to read. */
+.tab-badge, .stat-icon, .chip.on { color: var(--accent-text); }
+.tab[aria-selected="true"] { border-bottom-color: var(--accent); }
+
+/* ------------------------------------------------------------------ *
+ * Result tabs read like the market chips: the name in ordinary ink,
+ * the accent kept for the one that is selected.
+ *
+ * They were grey, which made every unselected tab look disabled — nine
+ * dimmed labels above a panel is a row that reads as unavailable rather
+ * than as a choice. Black for the name, muted for its gloss so the
+ * hierarchy inside the tab survives, accent on hover and when selected.
+ * ------------------------------------------------------------------ */
+.tab { color: var(--ink); }
+.tab .tab-label { color: var(--ink); }
+.tab .tab-hint { color: var(--ink-3); }
+.tab .tab-icon { color: var(--ink-2); }
+
+.tab:hover .tab-label,
+.tab:hover .tab-hint,
+.tab:hover .tab-icon { color: var(--accent-text); }
+.tab:hover { background: var(--accent-soft); }
+
+.tab[aria-selected="true"] .tab-label,
+.tab[aria-selected="true"] .tab-hint,
+.tab[aria-selected="true"] .tab-icon { color: var(--accent-text); }
+.tab[aria-selected="true"] .tab-hint { opacity: .8; }

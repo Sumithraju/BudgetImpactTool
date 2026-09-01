@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from ..exceptions import ConflictError, EntityNotFoundError, ValidationError
 from ..models.reference import Indication
 from ..models.scenario import ModelRun, Scenario, ScenarioOverride
+from ..repositories.outcomes import OutcomesRepository
 from ..repositories.reference import ReferenceRepository
 from ..repositories.scenario import OverrideRepository, RunRepository, ScenarioRepository
 from ..schemas.scenario import OverrideItem, ScenarioCreate, ScenarioUpdate
@@ -68,11 +69,15 @@ class ScenarioService:
     def create(self, payload: ScenarioCreate) -> Scenario:
         self._validate_definition(
             payload.indication_id, payload.country_codes, payload.reporting_currency,
+            payload.subgroup_codes,
         )
         for item in payload.overrides:
             validate_override(
                 item.parameter_path, item.value, horizon_years=payload.horizon_years,
             )
+        self._validate_override_identifiers(
+            payload.indication_id, [i.parameter_path for i in payload.overrides],
+        )
 
         scenario = Scenario(
             name=payload.name,
@@ -105,6 +110,7 @@ class ScenarioService:
                 scenario.indication_id,
                 changes.get("country_codes", scenario.country_codes),
                 changes.get("reporting_currency", scenario.reporting_currency),
+                changes.get("subgroup_codes", scenario.subgroup_codes),
             )
 
         for field, value in changes.items():
@@ -120,6 +126,9 @@ class ScenarioService:
             validate_override(
                 item.parameter_path, item.value, horizon_years=scenario.horizon_years,
             )
+        self._validate_override_identifiers(
+            scenario.indication_id, [i.parameter_path for i in overrides],
+        )
         self._overrides.replace_for(scenario_id, [])
         self._write_overrides(scenario_id, overrides)
         self._session.flush()
@@ -181,6 +190,9 @@ class ScenarioService:
             validate_override(
                 item.parameter_path, item.value, horizon_years=clone.horizon_years,
             )
+        self._validate_override_identifiers(
+            clone.indication_id, [i.parameter_path for i in merged],
+        )
         self._write_overrides(clone.scenario_id, merged)
         self._session.flush()
         return self.require(clone.scenario_id)
@@ -273,13 +285,102 @@ class ScenarioService:
                 note=item.note,
             ))
 
+    def _validate_override_identifiers(
+        self, indication_id: int, paths: Sequence[str],
+    ) -> None:
+        """Check the identifier inside a path against the seeded data.
+
+        `validate_override` checks a path against the closed vocabulary and
+        the value against its range, but it is a pure function with no
+        session, so it cannot know whether `criteria.bmi_ge_35.factor` names a
+        criterion that exists. The templates are regexes over
+        `[A-Za-z0-9_]+`, so a misspelled code matched, stored, and was then
+        skipped by the engine, which only ever iterates the seeded rows. The
+        override looked accepted and did nothing.
+
+        Resolved lazily and once per kind, so a scenario with no overrides of
+        a given kind costs no query.
+        """
+        known: dict[str, set[str]] = {}
+
+        def codes(kind: str) -> set[str]:
+            if kind not in known:
+                if kind == "criteria":
+                    known[kind] = {
+                        row.criterion_code
+                        for row in self._reference.list_criteria(indication_id)
+                    }
+                elif kind == "subgroup":
+                    known[kind] = {
+                        row.subgroup_code
+                        for row in OutcomesRepository(
+                            self._session
+                        ).list_subgroups(indication_id)
+                    }
+                else:  # therapy / substitution, both keyed by drug_id
+                    known[kind] = {
+                        str(row.drug_id)
+                        for row in self._reference.list_drugs_with_regimens(
+                            indication_id
+                        )
+                    }
+            return known[kind]
+
+        for path in paths:
+            segments = path.split(".")
+            head = segments[0]
+            if head in {"criteria", "subgroup"} and len(segments) >= 2:
+                kind, code = head, segments[1]
+            elif head == "therapy" and len(segments) >= 2:
+                kind, code = "therapy", segments[1]
+            elif head == "substitution" and len(segments) == 2:
+                # `substitution.naive` is a literal, not a drug id.
+                if segments[1] == "naive":
+                    continue
+                kind, code = "therapy", segments[1]
+            else:
+                continue
+
+            valid = codes(kind)
+            if code not in valid:
+                raise ValidationError(
+                    f"{path!r} names {code!r}, which is not a "
+                    f"{'criterion' if kind == 'criteria' else kind} in "
+                    f"indication {indication_id}; available: {sorted(valid)}",
+                    parameter_path=path,
+                )
+
     def _validate_definition(
-        self, indication_id: int, country_codes: Sequence[str], currency: str,
+        self,
+        indication_id: int,
+        country_codes: Sequence[str],
+        currency: str,
+        subgroup_codes: Sequence[str] = (),
     ) -> None:
         if self._session.get(Indication, indication_id) is None:
             raise ValidationError(
                 f"no indication {indication_id}", indication_id=indication_id,
             )
+
+        # A segment code that names nothing was silently dropped, and the run
+        # then modelled the whole diagnosed population while the request said
+        # otherwise — a wrong denominator reported as a correct answer, which
+        # is worse than a refusal. Checked here beside the market codes
+        # because it fails for the same reason and deserves the same message.
+        if subgroup_codes:
+            known = {
+                row.subgroup_code
+                for row in OutcomesRepository(self._session).list_subgroups(
+                    indication_id
+                )
+            }
+            unknown_segments = [c for c in subgroup_codes if c not in known]
+            if unknown_segments:
+                raise ValidationError(
+                    f"unknown subgroups for indication {indication_id}: "
+                    f"{unknown_segments}; available: {sorted(known)}",
+                    subgroup_codes=unknown_segments,
+                )
 
         active = self._reference.list_active_country_codes()
         unknown = [c for c in country_codes if c not in active]

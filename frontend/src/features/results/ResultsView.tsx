@@ -69,28 +69,31 @@ export function ResultsView({
     // The order a budget-impact conversation actually runs in: who are the
     // patients, can the market pay, what would it take to get reimbursed —
     // and only then the headline number and everything behind it.
-    { id: "population", label: "Population funnel", hint: "where the patients come from" },
-    { id: "affordability", label: "Affordability", hint: "can the market pay" },
-    { id: "access", label: "Market access", hint: "price & break-even" },
-    { id: "summary", label: "Budget impact", hint: "with vs without" },
+    { id: "population", label: "Population funnel", hint: "where the patients come from", icon: "funnel" },
+    { id: "affordability", label: "Affordability", hint: "can the market pay", icon: "affordability" },
+    { id: "access", label: "Market access", hint: "price & break-even", icon: "access" },
+    { id: "summary", label: "Budget impact", hint: "with vs without", icon: "impact" },
     {
       id: "outcomes",
       label: "What it buys",
       hint: "events avoided",
+      icon: "buys",
       badge: outcomeCount >= 1 ? Math.round(outcomeCount).toLocaleString("en-US") : null,
     },
     {
       id: "subgroups",
       label: "Subgroups",
       hint: "where it lands",
+      icon: "subgroups",
       badge: calculation.subgroups.length || null,
     },
-    { id: "payer", label: "Payer view", hint: "PMPM & uptake cases" },
-    { id: "uncertainty", label: "Uncertainty", hint: "and what to learn" },
+    { id: "payer", label: "Payer view", hint: "PMPM & uptake cases", icon: "payer" },
+    { id: "uncertainty", label: "Uncertainty", hint: "and what to learn", icon: "uncertainty" },
     {
       id: "deliverable",
       label: "Report",
       hint: "narrative & export",
+      icon: "report",
       badge: calculation.warnings.length || null,
     },
   ];

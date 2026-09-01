@@ -1,0 +1,84 @@
+# Render blueprint — the whole stack in one apply.
+#
+# Three services, matching docker-compose: a managed PostgreSQL, the API from
+# Dockerfile.api, and the interface as a static site.
+#
+# The interface is a static site rather than the nginx container because the
+# container proxies to `api:8077`, a hostname that only exists inside the
+# Compose network. Render's static sites take rewrite rules instead, so the
+# same relative `/api/...` calls the frontend already makes reach the API
+# without a single line of application code changing.
+#
+# Deploy: push this file, then Render dashboard -> New -> Blueprint -> pick
+# this repository. Everything below is created and wired automatically.
+
+databases:
+  - name: biet-db
+    databaseName: biet
+    user: biet
+    plan: free
+    # pgvector backs the guideline-citation search. Render provisions the
+    # extension on request; if a fresh database reports it missing, connect
+    # with psql and run: CREATE EXTENSION IF NOT EXISTS vector;
+    postgresMajorVersion: "16"
+
+services:
+  # ----------------------------------------------------------------- API
+  - type: web
+    name: biet-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.api
+    dockerContext: .
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    # Schema first, then the curated reference data. Runs before the new
+    # version takes traffic, so a failed migration never leaves an API
+    # serving against a schema it does not match — the same reason Compose
+    # keeps `migrate` a separate one-shot service.
+    preDeployCommand: >-
+      sh -c "cd /app/backend && alembic upgrade head &&
+             cd /app && python -m data.ingestion.run --seed-only"
+    envVars:
+      - key: BIET_DATABASE_URL
+        fromDatabase:
+          name: biet-db
+          property: connectionString
+      # Render supplies PORT; the image's CMD binds 8077, so pin them together.
+      - key: PORT
+        value: "8077"
+      # Comparator discovery calls Open Targets and Reactome while serving a
+      # request. Left empty so httpx connects directly.
+      - key: HTTPS_PROXY
+        value: ""
+      - key: HTTP_PROXY
+        value: ""
+
+  # ----------------------------------------------------------- interface
+  - type: web
+    name: biet-ui
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: ./frontend/dist
+    # The frontend addresses the API with relative paths and has no
+    # configurable base URL, so it needs something same-origin to forward
+    # them. These two rules are that something.
+    #
+    # CHECK THIS AFTER THE FIRST DEPLOY. `onrender.com` subdomains are global,
+    # so if `biet-api` is already taken Render appends a suffix and the real
+    # host becomes something like `biet-api-x7f2.onrender.com`. The rewrites
+    # below would then point at a service that is not yours, and every panel
+    # would come up empty with no error worth reading. Open the API service in
+    # the dashboard, copy its actual URL, and if it differs from the two lines
+    # below, change them and redeploy the static site.
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://biet-api.onrender.com/api/*
+      - type: rewrite
+        source: /health
+        destination: https://biet-api.onrender.com/health
+      # Single-page app: every other path is served by the bundle.
+      - type: rewrite
+        source: /*
+        destination: /index.html

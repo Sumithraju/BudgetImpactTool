@@ -59,7 +59,7 @@ def test_health(client: TestClient) -> None:
 
 
 def test_reference_endpoints_serve_the_seeded_data(client: TestClient) -> None:
-    assert len(client.get("/api/v1/reference/countries").json()) == 10
+    assert len(client.get("/api/v1/reference/countries").json()) == 8
     assert len(client.get("/api/v1/reference/indications").json()) == 2
     assert client.get("/api/v1/reference/parameter-paths").json()
 
