@@ -929,8 +929,12 @@ export function InputStudio({
               <Readout
                 label="Mean weight change"
                 value={
+                  // Already a percentage from the API, not a fraction —
+                  // `formatPercent` multiplies by 100 and rendered 14.9 as
+                  // 1490.0%, disagreeing with the same figure on the
+                  // Outcomes tab. Signed, because this is a weight *loss*.
                   shown.outcomes.mean_weight_loss_pct != null
-                    ? formatPercent(Math.abs(shown.outcomes.mean_weight_loss_pct), 1)
+                    ? `−${shown.outcomes.mean_weight_loss_pct.toFixed(1)}%`
                     : "—"
                 }
                 meaning={

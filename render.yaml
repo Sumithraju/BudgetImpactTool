@@ -32,13 +32,23 @@ services:
     plan: free
     region: oregon
     healthCheckPath: /health
-    # Schema first, then the curated reference data. Runs before the new
-    # version takes traffic, so a failed migration never leaves an API
-    # serving against a schema it does not match — the same reason Compose
-    # keeps `migrate` a separate one-shot service.
-    preDeployCommand: >-
+    # Schema first, then the curated reference data, then serve.
+    #
+    # This is a start command rather than a `preDeployCommand` because
+    # pre-deploy commands need a paid instance type. On free they simply do
+    # not run, and the failure is the worst kind: the API comes up healthy
+    # against an empty database and every panel renders blank with nothing
+    # to explain it.
+    #
+    # Both steps are safe to repeat, which matters here — a free instance
+    # spins down when idle, so this runs again on every cold start.
+    # `alembic upgrade head` is a no-op at head, and the seed upserts. `exec`
+    # hands PID 1 to uvicorn so Render's shutdown signal reaches the server
+    # rather than the shell.
+    dockerCommand: >-
       sh -c "cd /app/backend && alembic upgrade head &&
-             cd /app && python -m data.ingestion.run --seed-only"
+             cd /app && python -m data.ingestion.run --seed-only &&
+             exec uvicorn biet_api.main:app --host 0.0.0.0 --port 8077"
     envVars:
       - key: BIET_DATABASE_URL
         fromDatabase:
